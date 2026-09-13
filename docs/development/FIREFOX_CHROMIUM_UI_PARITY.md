@@ -67,3 +67,10 @@
 configuration, произвольный PAC, browser-driven locale, OFF-only mutation,
 fail-closed terminal proxy exhaustion и отсутствие MV2 migration остаются явно
 зафиксированными `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытыми parity.
+
+Cross-browser visual gate дополнительно проверил все popup states и семь
+Options sections на EN/RU при 100%, 125% и 150%. Структурных расхождений,
+clipping, overflow или unusable controls не найдено; Firefox намеренно выше и
+менее плотный, но сохраняет ту же информационную иерархию. Фактическая
+browser/version matrix и остающиеся release-environment gaps записаны в
+[0.0.4.0 cross-browser UX gate](qa/CROSS_BROWSER_0.0.4_UX.md).
