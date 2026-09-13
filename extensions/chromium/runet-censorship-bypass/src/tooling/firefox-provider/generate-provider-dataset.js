@@ -335,6 +335,24 @@ function signManifestBytes(manifestBytes, privateKeyPem) {
 
 }
 
+function createUpdateManifest(options = {}) {
+
+  const manifest = {
+    schemaVersion: 1,
+    providerKey: options.envelope && options.envelope.providerKey,
+    sequence: Number(options.sequence),
+    keyId: options.keyId,
+    artifactPath: options.artifactPath,
+    envelope: options.envelope,
+  };
+  ProviderUpdater.validateManifest(manifest, manifest.providerKey);
+  return Object.freeze({
+    manifest: Object.freeze(manifest),
+    manifestBytes: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
+  });
+
+}
+
 function parseArguments(argv) {
 
   const options = {};
@@ -386,16 +404,17 @@ async function runCli(argv) {
       options['manifest-output-directory'] || outputDirectory,
   );
   await Fs.mkdir(manifestOutputDirectory, {recursive: true});
-  const manifest = {
-    schemaVersion: 1,
-    providerKey: generated.envelope.providerKey,
-    sequence: Number(options.sequence || 1),
+  if (options['private-key'] &&
+      (!options.sequence || !options['key-id'])) {
+    throw toolingError('SIGNED_UPDATE_METADATA_REQUIRED');
+  }
+  const updateManifest = createUpdateManifest({
+    envelope: generated.envelope,
+    sequence: options.sequence || 1,
     keyId: options['key-id'] || 'development-key',
     artifactPath: artifactName,
-    envelope: generated.envelope,
-  };
-  ProviderUpdater.validateManifest(manifest, generated.envelope.providerKey);
-  const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  });
+  const manifestBytes = updateManifest.manifestBytes;
   await Fs.writeFile(
       Path.join(
           manifestOutputDirectory,
@@ -436,6 +455,7 @@ module.exports = Object.freeze({
   EXPECTED_TOR_PROXIES,
   MAX_SOURCE_BYTES,
   createPayload,
+  createUpdateManifest,
   downloadSource,
   extractPacData,
   generateFromPacBytes,

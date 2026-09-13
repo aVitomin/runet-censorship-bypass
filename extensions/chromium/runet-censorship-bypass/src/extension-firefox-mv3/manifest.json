@@ -6,6 +6,7 @@
   "default_locale": "en",
   "permissions": [
     "storage",
+    "alarms",
     "proxy",
     "webRequest",
     "webRequestBlocking",
@@ -24,6 +25,7 @@
       "background/proxy-control.js",
       "background/dataset-store.js",
       "background/provider-updater.js",
+      "background/provider-update-control.js",
       "background/provider-lookup.js",
       "background/dataset-runtime.js",
       "background/routing-adapter.js",

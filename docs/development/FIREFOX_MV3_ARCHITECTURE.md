@@ -11,7 +11,8 @@ Packaged Anticensority baseline, его воспроизводимость и tr
 в [Firefox production provider dataset](FIREFOX_PROVIDER_DATASET.md).
 Adapter заранее регистрирует `proxy.onRequest` и блокирующий
 `webRequest.onBeforeRequest`, поэтому manifest уже запрашивает `proxy`,
-`webRequest`, `webRequestBlocking` и `<all_urls>`. Пока durable intent равен
+`webRequest`, `webRequestBlocking` и `<all_urls>`. `alarms` поддерживает только
+12-hour authenticated dataset check и не активирует routing. Пока durable intent равен
 `OFF`, proxy listener не задаёт маршрут, а guard разрешает обычный трафик.
 
 Firefox routing adapter фиксирует проверенную в Firefox 154.0.1 семантику
@@ -109,8 +110,8 @@ route-auth, так и attempt state. Отмена исчерпанного auth 
 request вместо перехода к следующему proxy candidate; это известное Firefox
 availability-отличие, а не Direct fallback или утечка.
 
-Production updater configuration и health-проверки ещё не реализованы. На
-чистой установке bootstrap проверяет и локально сохраняет
+Production health-проверки и authenticated provider-update control plane
+реализованы. На чистой установке bootstrap проверяет и локально сохраняет
 packaged baseline и default product config, но оставляет durable intent `OFF` и
 не меняет proxy settings.
 
@@ -257,8 +258,9 @@ config остаётся fail-closed; новая config никогда не пр�
 Recovery не выполняет network request: production dataset store открывается
 локально через IndexedDB, exact stored artifact ещё раз проверяется существующим
 dataset runtime, и session публикуется только после полного успеха. Packaged
-provider artifact и default product configuration присутствуют; updater URL/key
-и persistent credential configuration по-прежнему отсутствуют.
+provider artifact и default product configuration присутствуют; persistent
+credential configuration по-прежнему отсутствует. Provider update check
+изолирован от boot/recovery и не выбирает dataset для текущей session.
 
 Production Gecko ID — неизменяемый UUIDv4
 `{adf5f697-1149-42a2-92eb-c163cb9a4146}`. Он создан для этого Firefox MV3
@@ -290,15 +292,16 @@ bytes. Remote candidate с unauthenticated trust не может стать acti
 входит. В `OFF` proxy settings не меняются. Firefox build не меняет Chromium
 build output.
 
-Пакет содержит инертный authenticated-download pipeline, но production event
-page не запускает загрузку: отсутствуют production URL, public key,
-alarm/timer, startup fetch и RPC download command. Update manifest schema v1
+Пакет содержит production authenticated-download control plane и строгие
+no-input RPC `firefox.provider.update.get`/`check`/`install`. Update manifest schema v1
 содержит только `schemaVersion`, `providerKey`, monotonic `sequence`, `keyId`,
 relative `artifactPath` и строгий dataset `envelope`. Отдельная 64-byte
 Ed25519 signature проверяется native WebCrypto над точными UTF-8 bytes
 manifest до доверия его полям. `keyId` выбирает ключ только из injected pinned
 `Map`; remote JSON не может объявить `trust`. Production trust configuration
-пока disabled и не содержит URL/ключей. После signature, manifest,
+пока disabled, потому что release HTTPS manifest endpoint и raw 32-byte
+Ed25519 public key со stable keyId ещё не предоставлены. Никакой test key или
+caller-controlled URL вместо них не используется. После signature, manifest,
 provider identity, exact byte count, SHA-256 и общей declarative dataset
 verification pipeline внутренне присваивает `REMOTE_AUTHENTICATED`.
 
@@ -327,6 +330,23 @@ journal по фактическому pointer state детерминирован
 settings не затрагиваются, live session не hot-swap-ится. Storage/signature/
 network failure не продвигает sequence и не меняет текущий routing dataset.
 
+Manual check принимает только `{type: "firefox.provider.update.check"}` и
+использует исключительно compile-time production trust configuration. Он может
+работать при ACTIVE, но только stage-ит candidate. Install остаётся OFF-only и
+никогда не вызывает Clear. Event page синхронно регистрирует `alarms.onAlarm`;
+после включения реального trust anchor создаётся один 12-hour alarm с
+пятиминутной первой задержкой. Alarm выполняет тот же authenticated check и не
+promote-ит dataset, не меняет settings/credentials и не получает proxy control.
+При disabled/malformed trust alarm удаляется и external fetch отсутствует.
+
+В `firefoxMv3ProviderUpdateStatus` сохраняются только schema, фиксированный
+статус, timestamps и очищенная error category. Публичный status добавляет
+только current/staged public dataset versions и boolean update availability;
+URL, key/signature bytes, provider/hash identity, endpoints, authRef,
+credentials, floor и browsing data из RPC/UI исключены. Прерванный CHECKING
+после event-page recreation становится `UPDATE_INTERRUPTED`; verified staged
+artifact при этом остаётся авторитетным в IndexedDB.
+
 Отдельный
 локальный smoke с установленным Firefox 154.0.1 и одноразовым профилем можно
 запустить командой:
@@ -353,12 +373,13 @@ routing flags. Как и Chromium MV3, plain host означает exact host, w
 `*.example.com` — base + subdomains; defaults остаются
 `useProviderProxies=true`, `ownProxiesOnlyForOwnSites=true`,
 `replaceDirectWithProxy=false`, `noDirect=false`. Firefox-specific Tor scope
-показывается напрямую, без Chromium-only master control. Provider source/update
-и migration controls намеренно отсутствуют, потому что Firefox control plane их
-пока не предоставляет. Maintenance предоставляет только user-triggered
+показывается напрямую, без Chromium-only master control. Arbitrary provider
+source и migration controls намеренно отсутствуют. Maintenance предоставляет
+no-input authenticated update check, OFF-only staged install, user-triggered
 connection check для последнего explicit Proxy origin и sanitized diagnostics.
-Только для этой явной проверки Firefox CSP разрешает `connect-src http: https:`;
-запрос нормализован до origin, не отправляет cookies/referrer, не следует
+Firefox CSP разрешает `connect-src http: https:` для этой явной проверки и
+фиксированного HTTPS authenticated-update origin; connection-check запрос
+нормализован до origin, не отправляет cookies/referrer, не следует
 redirects и не читает response body. Проверка не меняет rules, dataset,
 credentials или proxy ownership и не использует отдельный telemetry endpoint.
 Изменение доступно только при полном

@@ -21,6 +21,8 @@
     'privateWindowAccess',
     'providerDatasetAvailable',
     'providerDatasetImplemented',
+    'providerUpdateConfigured',
+    'providerUpdateImplemented',
     'recoveryFailureCode',
     'recoveryStatus',
     'routingImplemented',
@@ -220,6 +222,8 @@
         typeof value.activationSupported !== 'boolean' ||
         typeof value.providerDatasetImplemented !== 'boolean' ||
         typeof value.providerDatasetAvailable !== 'boolean' ||
+        typeof value.providerUpdateImplemented !== 'boolean' ||
+        typeof value.providerUpdateConfigured !== 'boolean' ||
         typeof value.recoveryStatus !== 'string' ||
         (value.recoveryFailureCode !== null &&
           typeof value.recoveryFailureCode !== 'string')) {

@@ -158,6 +158,12 @@ dd {
   justify-content: space-between;
 }
 
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-1);
+}
+
 .diagnostics-facts {
   margin: 0;
 }

@@ -23,7 +23,7 @@
 | Browser/extension pages unavailable | Явное uncontrollable state без route controls | PARITY | Поддерживаются только HTTP(S) tabs. |
 | Proxy candidate unavailable | Apply заблокирован, ссылка на Proxy connections | PARITY | Background также отклоняет Proxy rule без кандидата. |
 | External proxy control | Отдельное external/control-loss state | EQUIVALENT | Firefox синхронно withdraw-ит session и не перезаписывает внешний setting. |
-| PAC freshness / last download | Локальный packaged dataset availability | INTENTIONAL_PLATFORM_DIFFERENCE | Firefox не исполняет PAC и не включает remote updater. |
+| PAC freshness / last download | Signed dataset version, check и staged-update status | EQUIVALENT | Firefox не исполняет PAC: он проверяет Ed25519 manifest и declarative dataset, затем отдельно устанавливает staged update. Release trust URL/key ещё должны быть предоставлены до включения. |
 | Proxy health summary/check | Ручная проверка текущего explicit Proxy origin | EQUIVALENT | Как Chromium, не меняет routing; Firefox не запускает automatic health и не использует отдельный telemetry endpoint. |
 | Toolbar A/P/D/OFF/EXT badge и state icons | A/P/D/OFF/EXT, busy/loading/error icons и title | PARITY | Значение строится из authoritative activation, proxy-control и current-site state и восстанавливается после event-page recreation. |
 
@@ -39,8 +39,8 @@
 | Proxy credentials | KEEP / SET / NONE | PARITY | Password никогда не читается обратно в page state. |
 | Local Tor / Tor Browser / WARP | Явные scoped controls | EQUIVALENT | Firefox показывает lossless runtime fields без Chromium-only master toggle. |
 | Safe routing defaults | Те же четыре browser-neutral defaults | PARITY | Provider=true, own-sites-only=true, replace-Direct=false, noDirect=false. |
-| Maintenance section | Packaged dataset readiness | EQUIVALENT | Локальная проверка доступна без сети. |
-| Manual/periodic provider refresh | Нет UI | INTENTIONAL_PLATFORM_DIFFERENCE | Authenticated updater code остаётся dormant: URL/key/timer не настроены. |
+| Maintenance section | Packaged/current dataset, signed check, staged install | EQUIVALENT | Check не меняет active routing; install доступен только в полном OFF. |
+| Manual/periodic provider refresh | No-input manual check и 12-hour alarm | EQUIVALENT | Оба stage-ят проверенные данные. Firefox никогда не promote-ит автоматически и требует release-pinned URL/key; эти внешние значения пока отсутствуют. |
 | Proxy health и diagnostics | Maintenance check и redacted report/export | EQUIVALENT | Отчёт содержит только версии, состояния, public dataset version и proxy type/count; URL, endpoints, authRef, hashes, floor и credentials исключены. |
 | Advanced Direct policy | replaceDirectWithProxy / noDirect | PARITY | Общий routing contract остаётся авторитетным. |
 | Legacy MV2 migration | Нет | INTENTIONAL_PLATFORM_DIFFERENCE | MV2 исторический и отсутствует в maintained main. |
@@ -63,8 +63,9 @@
 
 ## Оставшаяся работа milestone
 
-В этой матрице больше нет `MISSING` user-visible классов. Remote update
-configuration, произвольный PAC, browser-driven locale, OFF-only mutation,
+В этой матрице больше нет `MISSING` user-visible классов. До release остаётся
+внешний blocker включения update flow: fixed HTTPS manifest endpoint и pinned
+raw Ed25519 public key/stable keyId. Произвольный PAC, browser-driven locale, OFF-only mutation,
 fail-closed terminal proxy exhaustion и отсутствие MV2 migration остаются явно
 зафиксированными `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытыми parity.
 
