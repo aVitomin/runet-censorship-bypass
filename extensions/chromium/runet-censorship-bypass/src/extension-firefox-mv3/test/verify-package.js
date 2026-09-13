@@ -40,6 +40,7 @@ const EXPECTED_FILES = Object.freeze([
   'background/product-config.js',
   'background/production-provider.js',
   'background/provider-lookup.js',
+  'background/provider-update-control.js',
   'background/provider-updater.js',
   'background/proxy-auth.js',
   'background/proxy-control.js',
@@ -139,6 +140,7 @@ function verifyPackage(packageRoot, sourceRoot) {
   Assert.strictEqual(manifest.default_locale, 'en');
   Assert.deepStrictEqual(manifest.permissions, [
     'storage',
+    'alarms',
     'proxy',
     'webRequest',
     'webRequestBlocking',
@@ -154,6 +156,7 @@ function verifyPackage(packageRoot, sourceRoot) {
     'background/proxy-control.js',
     'background/dataset-store.js',
     'background/provider-updater.js',
+    'background/provider-update-control.js',
     'background/provider-lookup.js',
     'background/dataset-runtime.js',
     'background/routing-adapter.js',

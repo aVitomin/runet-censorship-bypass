@@ -55,6 +55,30 @@
     ['advanced', 'optionsNavAdvanced'],
     ['about', 'optionsNavAbout'],
   ]);
+  const UPDATE_STATUS_KEYS = Object.freeze([
+    'automaticChecksEnabled',
+    'currentDatasetVersion',
+    'errorCategory',
+    'lastCheckAt',
+    'lastCheckStatus',
+    'lastSuccessfulCheckAt',
+    'schemaVersion',
+    'stagedDatasetVersion',
+    'status',
+    'trustConfigured',
+    'updateAvailable',
+  ]);
+  const UPDATE_STATUSES = Object.freeze([
+    'CHECK_FAILED', 'CHECKING', 'IDLE', 'NOT_CONFIGURED', 'UPDATED',
+    'UPDATE_AVAILABLE', 'UP_TO_DATE',
+  ]);
+  const UPDATE_ERROR_CATEGORIES = Object.freeze([
+    'AUTHENTICATION_FAILED', 'DATASET_REJECTED', 'NETWORK_FAILED',
+    'ROLLBACK_REJECTED', 'SEQUENCE_CONFLICT', 'STORAGE_FAILED',
+    'TRUST_NOT_CONFIGURED', 'UPDATE_INTERRUPTED', 'UPDATE_REJECTED',
+  ]);
+  const PUBLIC_DATASET_VERSION_PATTERN =
+    /^[a-z0-9](?:[a-z0-9._-]{0,63})$/;
 
   function validCandidateFields(value, expected, requiresId = false) {
 
@@ -139,6 +163,37 @@
 
   }
 
+  function validateProviderUpdateStatus(value) {
+
+    if (!Ui.hasExactKeys(value, UPDATE_STATUS_KEYS) ||
+        value.schemaVersion !== 1 ||
+        typeof value.trustConfigured !== 'boolean' ||
+        typeof value.automaticChecksEnabled !== 'boolean' ||
+        !UPDATE_STATUSES.includes(value.status) ||
+        typeof value.updateAvailable !== 'boolean' ||
+        (value.currentDatasetVersion !== null &&
+          (typeof value.currentDatasetVersion !== 'string' ||
+            !PUBLIC_DATASET_VERSION_PATTERN.test(
+                value.currentDatasetVersion))) ||
+        (value.stagedDatasetVersion !== null &&
+          (typeof value.stagedDatasetVersion !== 'string' ||
+            !PUBLIC_DATASET_VERSION_PATTERN.test(
+                value.stagedDatasetVersion))) ||
+        (value.lastCheckAt !== null &&
+          (!Number.isSafeInteger(value.lastCheckAt) ||
+            value.lastCheckAt < 1)) ||
+        (value.lastSuccessfulCheckAt !== null &&
+          (!Number.isSafeInteger(value.lastSuccessfulCheckAt) ||
+            value.lastSuccessfulCheckAt < 1)) ||
+        typeof value.lastCheckStatus !== 'string' ||
+        (value.errorCategory !== null &&
+          !UPDATE_ERROR_CATEGORIES.includes(value.errorCategory))) {
+      throw Ui.rpcError('UI_RPC_FAILED');
+    }
+    return Object.freeze(Ui.clone(value));
+
+  }
+
   function editableFromCapabilities(value) {
 
     const capabilities = Ui.validateCapabilities(value);
@@ -207,6 +262,7 @@
       notice: null,
       operational: null,
       pending: false,
+      providerUpdate: null,
       revision: null,
       settings: null,
     };
@@ -229,6 +285,7 @@
         rpc.call({type: 'firefox.capabilities.get'}),
         rpc.call({type: 'firefox.settings.get'}),
         rpc.call({type: 'firefox.operational.get'}),
+        rpc.call({type: 'firefox.provider.update.get'}),
       ]);
       const capabilities = Ui.validateCapabilities(results[0]);
       const settings = validateSettingsResult(results[1]);
@@ -236,6 +293,7 @@
       state.capabilities = capabilities;
       state.editable = editableFromCapabilities(capabilities);
       state.operational = operational;
+      state.providerUpdate = validateProviderUpdateStatus(results[3]);
       state.revision = settings.revision;
       state.settings = settings.settings;
 
@@ -332,7 +390,69 @@
 
     }
 
-    return Object.freeze({checkHealth, load, save, snapshot});
+    async function providerUpdateAction(type, notice) {
+
+      if (state.pending) {
+        return false;
+      }
+      state.pending = true;
+      state.errorCode = null;
+      state.notice = null;
+      emit();
+      try {
+        await rpc.call({type});
+        await loadNow();
+        state.notice = notice;
+        return true;
+      } catch (error) {
+        state.errorCode = Ui.safeErrorCode(error);
+        try {
+          const status = await rpc.call({
+            type: 'firefox.provider.update.get',
+          });
+          state.providerUpdate = validateProviderUpdateStatus(status);
+        } catch (_statusError) {
+          // Preserve the sanitized operation error as the primary result.
+        }
+        return false;
+      } finally {
+        state.pending = false;
+        emit();
+      }
+
+    }
+
+    function checkProviderUpdate() {
+
+      return providerUpdateAction(
+          'firefox.provider.update.check',
+          'UPDATE_CHECKED',
+      );
+
+    }
+
+    function installProviderUpdate() {
+
+      if (!state.editable) {
+        state.errorCode = 'SETTINGS_READ_ONLY';
+        emit();
+        return Promise.resolve(false);
+      }
+      return providerUpdateAction(
+          'firefox.provider.update.install',
+          'UPDATE_INSTALLED',
+      );
+
+    }
+
+    return Object.freeze({
+      checkHealth,
+      checkProviderUpdate,
+      installProviderUpdate,
+      load,
+      save,
+      snapshot,
+    });
 
   }
 
@@ -441,6 +561,21 @@
         UNKNOWN: 'healthStatusUnknown',
       };
       return t(keys[health.status] || keys.UNKNOWN);
+
+    }
+
+    function providerUpdateLabel(update) {
+
+      const keys = {
+        CHECK_FAILED: 'providerUpdateStatusFailed',
+        CHECKING: 'providerUpdateStatusChecking',
+        IDLE: 'providerUpdateStatusIdle',
+        NOT_CONFIGURED: 'providerUpdateStatusUnavailable',
+        UPDATED: 'providerUpdateStatusUpdated',
+        UPDATE_AVAILABLE: 'providerUpdateStatusAvailable',
+        UP_TO_DATE: 'providerUpdateStatusCurrent',
+      };
+      return t(keys[update.status] || keys.CHECK_FAILED);
 
     }
 
@@ -913,6 +1048,68 @@
           `pill ${state.capabilities.providerDatasetAvailable ?
             'success' : 'warning'}`,
       );
+      const update = state.providerUpdate;
+      const updateCard = Ui.append(maintenance, 'article', 'subsection');
+      const updateHeader = Ui.append(updateCard, 'div', 'section-row');
+      Ui.appendText(updateHeader, 'h3', t('providerUpdateTitle'));
+      Ui.appendText(
+          updateHeader,
+          'span',
+          providerUpdateLabel(update),
+          `pill ${update.status === 'UP_TO_DATE' ||
+            update.status === 'UPDATED' ? 'success' :
+            update.status === 'CHECK_FAILED' ? 'error' : 'warning'}`,
+      );
+      Ui.appendText(
+          updateCard, 'p', t('providerUpdateHelp'), 'muted',
+      );
+      const updateFacts = Ui.append(updateCard, 'dl', 'overview-facts');
+      definition(
+          updateFacts,
+          'providerUpdateCurrentVersion',
+          update.currentDatasetVersion,
+      );
+      definition(
+          updateFacts,
+          'providerUpdateAvailableVersion',
+          update.stagedDatasetVersion,
+      );
+      definition(
+          updateFacts,
+          'providerUpdateLastCheck',
+          formatTime(update.lastCheckAt),
+      );
+      if (update.errorCategory) {
+        definition(
+            updateFacts,
+            'providerUpdateErrorCategory',
+            t(`providerUpdateError_${update.errorCategory}`),
+        );
+      }
+      const updateActions = Ui.append(updateCard, 'div', 'inline-actions');
+      const checkUpdate = Ui.append(updateActions, 'button', 'primary');
+      checkUpdate.type = 'button';
+      checkUpdate.dataset.operational = 'true';
+      checkUpdate.textContent = t('providerUpdateCheck');
+      checkUpdate.disabled = state.pending || !update.trustConfigured;
+      checkUpdate.addEventListener('click', () =>
+        controller.checkProviderUpdate());
+      const installUpdate = Ui.append(updateActions, 'button');
+      installUpdate.type = 'button';
+      installUpdate.dataset.operational = 'true';
+      installUpdate.textContent = t('providerUpdateInstall');
+      installUpdate.disabled = state.pending || !state.editable ||
+        !update.updateAvailable;
+      installUpdate.addEventListener('click', () =>
+        controller.installProviderUpdate());
+      if (update.updateAvailable && !state.editable) {
+        Ui.appendText(
+            updateCard,
+            'p',
+            t('providerUpdateRequiresOff'),
+            'status warning',
+        );
+      }
       const health = state.operational.health;
       const healthCard = Ui.append(maintenance, 'article', 'subsection');
       const healthHeader = Ui.append(healthCard, 'div', 'section-row');
@@ -1103,6 +1300,12 @@
       } else if (state.notice === 'SAVED') {
         statusKey = 'optionsSaved';
         statusClass = 'status success';
+      } else if (state.notice === 'UPDATE_CHECKED') {
+        statusKey = 'providerUpdateChecked';
+        statusClass = 'status success';
+      } else if (state.notice === 'UPDATE_INSTALLED') {
+        statusKey = 'providerUpdateInstalled';
+        statusClass = 'status success';
       } else if (!state.editable) {
         statusKey = 'optionsReadOnlyShort';
         statusClass = 'status warning';
@@ -1115,6 +1318,9 @@
       }
       healthButton.disabled = state.pending ||
         state.capabilities.runtimeState !== 'READY';
+      checkUpdate.disabled = state.pending || !update.trustConfigured;
+      installUpdate.disabled = state.pending || !state.editable ||
+        !update.updateAvailable;
       download.disabled = state.pending;
       reload.disabled = state.pending;
       form.addEventListener('submit', async (event) => {
@@ -1197,6 +1403,7 @@
     parseRuleLines,
     userErrorKey,
     validateCandidate,
+    validateProviderUpdateStatus,
     validateSettingsResult,
   });
 

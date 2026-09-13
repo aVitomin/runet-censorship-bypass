@@ -15,8 +15,10 @@
 
 ## Поддерживаемые браузеры
 
-- **Chromium MV3:** Google Chrome, Яндекс Браузер, Microsoft Edge, Opera,
-  Brave, Vivaldi и другие современные Chromium-браузеры с необходимыми MV3 API.
+- **Chromium MV3:** Google Chrome, Microsoft Edge и Brave проверены для
+  готовящегося `0.0.4.0`; Яндекс Браузер, Opera, Vivaldi и другие современные
+  Chromium-браузеры с необходимыми MV3 API ожидаются совместимыми, но не
+  считаются release-tested для этого выпуска.
 - **Firefox MV3:** Firefox 154 и новее.
 
 Это список поддерживаемых и совместимых семейств, а не обещание совместимости с
@@ -117,5 +119,9 @@ or AMO listing in the next dual-browser release. See the
 [installation guide](docs/user/INSTALLATION.md),
 [user guide](docs/user/USER_GUIDE.md), and
 [privacy and security notes](docs/user/PRIVACY_AND_SECURITY.md).
+Release QA for `0.0.4.0` covers Google Chrome, Microsoft Edge, Brave and
+Firefox. Yandex Browser, Opera, Vivaldi and other modern Chromium-based browsers
+with the required MV3 APIs are expected-compatible targets, but are not claimed
+as separately release-tested or universally guaranteed.
 
 </details>

@@ -17,6 +17,9 @@ configuration.
   narrower host set would create an unguarded routing gap.
 - `storage` keeps strict product configuration, durable OFF/ON recovery
   metadata, credential records and exact local dataset pointers.
+- `alarms` schedules one 12-hour authenticated provider-dataset check. A check
+  can only stage verified data and never enables routing, promotes while active,
+  changes proxy ownership or sends credentials.
 - `notifications` is used only for fixed localized attention alerts after
   proxy control loss, blocked recovery or a failed user-requested connection
   check. Notifications never contain a hostname, URL, proxy endpoint or
@@ -28,7 +31,8 @@ configuration.
 
 The extension contains no content scripts and injects no code into web pages.
 Its CSP permits only extension-local scripts, forbids objects and permits
-HTTP(S) connections only for the user-requested connection check below.
+HTTP(S) connections for the user-requested connection check below and for the
+fixed-origin authenticated provider-data check described later.
 The popup reads the active tab only to derive a normalized HTTP(S) hostname;
 the background site RPC never returns the full URL, path or query.
 The user-triggered connection check reuses the origin of an explicit Proxy
@@ -54,7 +58,9 @@ that exact request-authorized proxy challenger. These transmissions are the
 primary routing function and are enabled only by the user's Apply action.
 
 The extension sends no analytics, telemetry, crash reports, advertising IDs,
-search feed, remote configuration or background update requests. Routing
+search feed or remote configuration. Once release trust is configured, a
+manual or 12-hour background check requests the fixed signed provider manifest,
+signature and declarative artifact from one pinned HTTPS origin. Routing
 configuration, dataset lookups and durable metadata stay local. Passwords stay
 in `browser.storage.local`, are loaded only into an in-memory synchronous
 resolver for a verified active session, and never appear in UI reads, logs,
@@ -81,10 +87,12 @@ build and upstream license are both packaged solely to derive the exact
 public-suffix-aware domain scope shown by the current-site popup; it performs no
 network access and does not participate in provider data execution.
 
-An authenticated-update implementation is present for future use, but the
-production package contains no update URL, public key, alarm, startup fetch or
-RPC that invokes it. It cannot perform a production network update in this
-release candidate.
+The authenticated-update control plane uses strict no-input RPCs and an alarm;
+callers cannot provide a URL, key, provider or artifact. This source revision
+still has an intentionally disabled empty release trust configuration because
+the actual fixed HTTPS manifest endpoint and raw Ed25519 public key/stable keyId
+have not been supplied. It therefore performs no production update request
+until those fixed values are added and reviewed.
 
 ## Fail-closed model
 

@@ -328,6 +328,7 @@ describe('Firefox production provider baseline', function() {
     Assert.deepStrictEqual(Production.UPDATE_TRUST_CONFIGURATION, {
       enabled: false,
       manifestUrl: null,
+      providerKey: Production.PROVIDER_KEY,
       trustedPublicKeys: {},
     });
 

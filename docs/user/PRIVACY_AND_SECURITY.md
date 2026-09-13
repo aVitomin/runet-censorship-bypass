@@ -30,6 +30,7 @@ Chromium host permissions включают встроенные PAC-источн
 | `proxy` | Получать маршрут запроса, владеть fail-closed proxy floor и безопасно выполнять Clear. |
 | `webRequest`, `webRequestBlocking` | Синхронно разрешать только ожидаемые proxy callbacks и обрабатывать request-scoped proxy-auth. |
 | `storage` | Хранить OFF/ON intent, пользовательскую конфигурацию и отделённые credential records. |
+| `alarms` | Запускать редкую аутентифицированную проверку обновления набора данных; alarm может только stage-ить данные. |
 | `notifications` | Сообщать только о потере контроля, блокировке recovery и запрошенной проверке, требующей внимания. |
 
 Firefox использует `<all_urls>` для полной маршрутизации и fail-closed guard.
@@ -61,8 +62,12 @@ diagnostics, notifications, ошибки или логи. Интерфейс п�
 - Chromium проверяет начальный и final URL источника, запрещает URL credentials,
   ограничивает размер/время/UTF-8 и не выполняет скачанный PAC через
   `eval`/`Function` в extension runtime.
-- Firefox поставляет локальный декларативный dataset. Код authenticated updater
-  не имеет production URL, ключа или timer и не делает автоматических fetch.
+- Firefox поставляет локальный декларативный dataset. Authenticated updater
+  умеет вручную и раз в 12 часов получать только fixed release manifest,
+  signature и dataset с одного HTTPS origin. В текущем исходном состоянии
+  release URL/public key ещё не заданы, поэтому fetch и alarm отключены.
+  Проверенные данные сначала только stage-ятся; active routing не меняется без
+  отдельной OFF-only установки.
 - Запущенная пользователем проверка подключения обращается к текущему целевому
   origin без cookies/credentials и не меняет правила, dataset или proxy
   ownership.

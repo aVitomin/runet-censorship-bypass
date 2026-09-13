@@ -45,10 +45,45 @@ the previously audited 11,639,379-byte experimental `HOSTNAMES` representation;
 the production artifact is larger only because every bucket now carries the
 strict `width` and `routeRef` schema fields. The generator can also produce the
 updater's strict manifest
-and, when given an explicitly selected disposable Ed25519 private key, its
+and, when given an explicitly selected external Ed25519 private key, its
 detached signature. No private key, production update URL, or production public
-key is committed. Remote updates remain disabled; the updater accepts trust
-anchors only through its existing injected pinned-key interface.
+key is committed. The update control plane is integrated, but external release
+configuration remains disabled until an actual fixed HTTPS manifest endpoint
+and raw Ed25519 public key/stable keyId are supplied. The updater accepts trust
+anchors only through its pinned production-key table.
+
+For a signed publication, pass explicit monotonically increasing `--sequence`,
+stable `--key-id` and an external `--private-key` PKCS#8 PEM path to the same
+generator command. Signing refuses omitted sequence/key metadata; the key is
+read only for the detached signature and is never copied or printed. The
+deterministic outputs are:
+
+- `anticensority-hosts-v1.data`;
+- `anticensority-hosts-v1.envelope.json`;
+- `anticensority-hosts-v1.manifest.json` with fixed field order, two-space JSON
+  indentation and one final LF;
+- `anticensority-hosts-v1.manifest.json.sig` containing exactly 64 bytes.
+
+Example from the repository root (the key and output stay outside tracked
+source):
+
+```powershell
+$Project = '.\extensions\chromium\runet-censorship-bypass'
+node "$Project\src\tooling\firefox-provider\generate-provider-dataset.js" `
+  --source-url 'https://raw.githubusercontent.com/anticensority/generated-pac-scripts/0448d748585ce0ed31434097d83b2b18236acbfb/anticensority.pac' `
+  --source-sha256 '47334452e4075e1be3e20dca842a9ee62f694ae5404dfc3c154b3de8215ba4f5' `
+  --source-revision '0448d748585ce0ed31434097d83b2b18236acbfb' `
+  --generator-revision '869aad85dce20ace9d44d3a9d694b6ac84baea6a' `
+  --dataset-version '<public-version>' --sequence '<monotonic-integer>' `
+  --key-id '<pinned-key-id>' --private-key '<external-pkcs8-pem>' `
+  --output-directory '.local\firefox-provider-publication'
+```
+
+Publish all four files at the same HTTPS origin. The manifest `artifactPath` is
+relative; signature and artifact redirects are restricted to HTTPS and that
+same origin. Key rotation is extension-controlled: multiple keyIds may coexist
+in the pinned table, a remote manifest cannot add one, and removing an old key
+requires a new extension release.
 
 ## Routing policy
 
@@ -95,9 +130,10 @@ provider fallback are internal and never RPC input. A settings write preserves
 the exact current dataset identity and cannot select, mutate, or promote a
 provider artifact.
 
-The package has no production update URL, public key, alarm, startup fetch, or
-RPC that invokes a download. A separate exact no-input install RPC can promote
-only a candidate already staged as `REMOTE_AUTHENTICATED`. It is OFF-only,
+The package has exact no-input status/check/install RPC integration and a
+12-hour alarm, but the disabled empty trust configuration causes no external
+fetch until the missing release endpoint/key are pinned. Check can only stage a
+candidate already verified as `REMOTE_AUTHENTICATED`; a separate install RPC is OFF-only,
 reverifies exact bytes/provider/sequence, rotates active/LKG pointers, and uses
 a `storage.local` write-ahead journal so startup resolves cross-store crashes to
 one consistent old or new dataset/config pair. It never changes settings,

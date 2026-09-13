@@ -151,6 +151,32 @@ describe('Firefox provider dataset generator', function() {
 
       });
 
+  it('creates deterministic exact manifest bytes for external signing',
+      function() {
+
+        const input = {
+          envelope: {providerKey: 'anticensority'},
+          sequence: 42,
+          keyId: 'release-2026',
+          artifactPath: 'anticensority-hosts-v1.data',
+        };
+        const first = Generator.createUpdateManifest(input);
+        const second = Generator.createUpdateManifest(input);
+        Assert.deepStrictEqual(first.manifestBytes, second.manifestBytes);
+        Assert.strictEqual(first.manifest.sequence, 42);
+        Assert.strictEqual(first.manifest.keyId, 'release-2026');
+        Assert.strictEqual(first.manifestBytes.at(-1), 0x0a);
+        Assert.deepStrictEqual(Object.keys(first.manifest), [
+          'schemaVersion',
+          'providerKey',
+          'sequence',
+          'keyId',
+          'artifactPath',
+          'envelope',
+        ]);
+
+      });
+
   it('downloads only bounded exact same-origin HTTPS bytes', async function() {
 
     const url = 'https://example.test/provider.pac';

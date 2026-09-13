@@ -38,6 +38,7 @@
       const UPDATE_TRUST_CONFIGURATION = Object.freeze({
         enabled: false,
         manifestUrl: null,
+        providerKey: PROVIDER_KEY,
         trustedPublicKeys: Object.freeze({}),
       });
       const BOOTSTRAP_FIELDS = Object.freeze([

@@ -8,6 +8,7 @@
   const routing = root.rucbFirefoxRoutingAdapter;
   const activationApi = root.rucbFirefoxActivationController;
   const datasetStoreApi = root.rucbFirefoxDatasetStore;
+  const providerUpdateControlApi = root.rucbFirefoxProviderUpdateControl;
   const productConfigApi = root.rucbFirefoxProductConfig;
   const productionProviderApi = root.rucbFirefoxProductionProvider;
   const datasetPromotionApi = root.rucbFirefoxDatasetPromotion;
@@ -20,6 +21,7 @@
   let operationalController = null;
   let productionDatasetStore = null;
   let datasetPromotionController = null;
+  let providerUpdateController = null;
   let providerBootstrapState = Object.freeze({
     ok: false,
     status: 'INITIALIZING',
@@ -171,6 +173,36 @@
     activationSnapshot: () => activationController.snapshot(),
     providerKey: productionProviderApi.PROVIDER_KEY,
   });
+  async function readCurrentDatasetIdentity() {
+
+    const stored = await browser.storage.local.get(
+        productConfigApi.CONFIG_STORAGE_KEY,
+    );
+    if (!stored || !Object.prototype.hasOwnProperty.call(
+        stored,
+        productConfigApi.CONFIG_STORAGE_KEY,
+    )) {
+      return null;
+    }
+    const verified = await productConfigApi.verifyProductConfig(
+        stored[productConfigApi.CONFIG_STORAGE_KEY],
+        sha256,
+    );
+    return verified.config.datasetIdentity;
+
+  }
+  providerUpdateController = providerUpdateControlApi.createController({
+    storageArea: browser.storage.local,
+    datasetStore: createProductionDatasetStore(),
+    alarmsApi: browser.alarms,
+    fetchImpl: root.fetch.bind(root),
+    cryptoSubtle: root.crypto.subtle,
+    AbortController: root.AbortController,
+    sha256,
+    providerKey: productionProviderApi.PROVIDER_KEY,
+    trustConfiguration: productionProviderApi.UPDATE_TRUST_CONFIGURATION,
+    readCurrentDatasetIdentity,
+  });
   const bootId = root.crypto && typeof root.crypto.randomUUID === 'function' ?
     root.crypto.randomUUID() :
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -229,6 +261,15 @@
       value && typeof value === 'object' ? value.code : null;
     return SAFE_PROMOTION_ERROR_CODES.has(code) ? code :
       datasetPromotionApi.ERRORS.RECOVERY_REQUIRED;
+
+  }
+
+  function safeProviderUpdateErrorCode(value) {
+
+    const code = typeof value === 'string' ? value :
+      value && typeof value === 'object' ? value.code : null;
+    return Object.values(providerUpdateControlApi.ERRORS).includes(code) ?
+      code : providerUpdateControlApi.ERRORS.UPDATE_FAILED;
 
   }
 
@@ -396,9 +437,40 @@
 
     try {
       const installed = await datasetPromotionController.install();
+      try {
+        await providerUpdateController.markInstalled();
+      } catch (_error) {
+        // Promotion is authoritative even if optional UI status persistence
+        // fails after the crash-safe transaction has committed.
+      }
       return {ok: true, result: {status: installed.status}};
     } catch (error) {
       return errorResponse(safePromotionErrorCode(error));
+    }
+
+  }
+
+  async function checkForProviderUpdate() {
+
+    let checked;
+    try {
+      checked = await providerUpdateController.check();
+    } catch (_error) {
+      return errorResponse(providerUpdateControlApi.ERRORS.STATE_UNAVAILABLE);
+    }
+    if (!checked || checked.ok !== true) {
+      return errorResponse(safeProviderUpdateErrorCode(checked));
+    }
+    try {
+      return {
+        ok: true,
+        result: {
+          status: checked.status,
+          update: await providerUpdateController.publicStatus(),
+        },
+      };
+    } catch (_error) {
+      return errorResponse(providerUpdateControlApi.ERRORS.STATE_UNAVAILABLE);
     }
 
   }
@@ -451,6 +523,9 @@
           providerDatasetImplemented: true,
           providerDatasetAvailable:
             providerBootstrapState.datasetAvailable === true,
+          providerUpdateImplemented: true,
+          providerUpdateConfigured:
+            providerUpdateController.trustConfigured(),
         },
       };
     }
@@ -536,6 +611,25 @@
       }
       return enqueueRpcControlOperation(installStagedProviderDataset);
     }
+    if (type === 'firefox.provider.update.get') {
+      if (!exactRpcRequest(message, type)) {
+        return errorResponse('INVALID_RPC_REQUEST');
+      }
+      try {
+        return {
+          ok: true,
+          result: await providerUpdateController.publicStatus(),
+        };
+      } catch (_error) {
+        return errorResponse(providerUpdateControlApi.ERRORS.STATE_UNAVAILABLE);
+      }
+    }
+    if (type === 'firefox.provider.update.check') {
+      if (!exactRpcRequest(message, type)) {
+        return errorResponse('INVALID_RPC_REQUEST');
+      }
+      return enqueueRpcControlOperation(checkForProviderUpdate);
+    }
     return errorResponse('UNKNOWN_RPC');
 
   }
@@ -575,6 +669,15 @@
       {urls: ['<all_urls>']},
   );
   browser.runtime.onMessage.addListener(handleMessage);
+  if (browser.alarms && browser.alarms.onAlarm) {
+    browser.alarms.onAlarm.addListener((alarm) => {
+
+      initialization.then(() => enqueueRpcControlOperation(() =>
+        providerUpdateController.handleAlarm(alarm),
+      )).catch(() => undefined);
+
+    });
+  }
   if (browser.tabs && browser.tabs.onActivated) {
     browser.tabs.onActivated.addListener((activeInfo) => {
 
@@ -620,6 +723,7 @@
     await datasetPromotionController.initialize();
     await settingsController.initialize();
     const activation = await activationController.initializeFromDurable();
+    await providerUpdateController.initialize();
     await operationalController.initialize();
     await operationalController.restoreToolbar();
     await operationalController.reconcileStartupAttention();

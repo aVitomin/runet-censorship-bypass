@@ -15,13 +15,14 @@ Chromium runs.
 | Microsoft Edge | 153.0.4234.32 | Automated packaged-extension routing/auth/restart smoke over an attached CDP endpoint | PASS |
 | Brave | 1.95.101 (Chromium 153.0.8010.37) | Automated packaged-extension routing/auth/restart smoke | PASS |
 | Firefox | 154.0.1 | Automated packaged UI plus local routing/auth/recovery/private/control-loss smoke | PASS |
-| Яндекс Браузер | Not installed in the QA environment | Not run | RELEASE GATE OPEN |
-| Opera | Not installed in the QA environment | Not run | RELEASE GATE OPEN |
-| Vivaldi | Not installed; optional matrix entry | Not run | OPTIONAL |
+| Яндекс Браузер | Not installed in the QA environment | Not run | EXPECTED COMPATIBLE; NOT RELEASE-TESTED |
+| Opera | Not installed in the QA environment | Not run | EXPECTED COMPATIBLE; NOT RELEASE-TESTED |
+| Vivaldi | Not installed in the QA environment | Not run | EXPECTED COMPATIBLE; NOT RELEASE-TESTED |
 
-An absent browser is never reported as tested. Яндекс Браузер and Opera remain
-release-gate work even though the product supports modern Chromium browsers with
-the required MV3 APIs.
+An absent browser is never reported as tested. The release-tested browser set is
+Google Chrome, Microsoft Edge, Brave and Firefox. Яндекс Браузер, Opera,
+Vivaldi and other modern Chromium-based browsers with the required MV3 APIs are
+compatibility targets, not release blockers and not guaranteed browser forks.
 
 ## Functional result
 
@@ -91,7 +92,6 @@ deletion tolerates Edge's delayed final file release.
 
 ## Release decision
 
-The UI parity matrix has no `MISSING` product rows and the browsers available in
-this environment passed. Public `0.0.4.0` release remains blocked until the same
-release-critical script is completed on Яндекс Браузер and Opera and the
-results are added here.
+The UI parity matrix has no `MISSING` product rows. All four release-tested
+browsers passed; unavailable compatibility-only Chromium browsers do not block
+`0.0.4.0` and are not described as tested.

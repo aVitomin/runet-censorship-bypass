@@ -50,6 +50,10 @@ const providerUpdaterSource = Fs.readFileSync(
     Path.join(sourceRoot, 'background', 'provider-updater.js'),
     'utf8',
 );
+const providerUpdateControlSource = Fs.readFileSync(
+    Path.join(sourceRoot, 'background', 'provider-update-control.js'),
+    'utf8',
+);
 const datasetPromotionSource = Fs.readFileSync(
     Path.join(sourceRoot, 'background', 'dataset-promotion.js'),
     'utf8',
@@ -196,6 +200,8 @@ function startEventPage(options = {}) {
   const notificationCalls = [];
   const tabListeners = {};
   const notificationListeners = {};
+  const alarmListeners = {};
+  const alarms = new Map();
   const noopEvent = (key, collection = tabListeners) => ({
     addListener(listener) {
 
@@ -204,6 +210,24 @@ function startEventPage(options = {}) {
     },
   });
   const browser = {
+    alarms: {
+      async clear(name) {
+
+        return alarms.delete(name);
+
+      },
+      async create(name, details) {
+
+        alarms.set(name, Object.assign({name}, details));
+
+      },
+      async get(name) {
+
+        return alarms.get(name) || null;
+
+      },
+      onAlarm: noopEvent('alarm', alarmListeners),
+    },
     action: [
       'setBadgeBackgroundColor',
       'setBadgeText',
@@ -460,6 +484,9 @@ function startEventPage(options = {}) {
   Vm.runInContext(providerUpdaterSource, context, {
     filename: 'provider-updater.js',
   });
+  Vm.runInContext(providerUpdateControlSource, context, {
+    filename: 'provider-update-control.js',
+  });
   Vm.runInContext(providerLookupSource, context, {
     filename: 'provider-lookup.js',
   });
@@ -530,6 +557,38 @@ function startEventPage(options = {}) {
         }),
       },
   ));
+  const providerUpdateStatus = Object.freeze({
+    schemaVersion: 1,
+    trustConfigured: false,
+    automaticChecksEnabled: false,
+    status: 'NOT_CONFIGURED',
+    currentDatasetVersion: ProductionProvider.DATASET_VERSION,
+    stagedDatasetVersion: null,
+    updateAvailable: false,
+    lastCheckStatus: 'NEVER',
+    lastCheckAt: null,
+    lastSuccessfulCheckAt: null,
+    errorCategory: null,
+  });
+  context.rucbFirefoxProviderUpdateControl = Object.freeze(Object.assign(
+      {},
+      context.rucbFirefoxProviderUpdateControl,
+      {
+        createController: () => ({
+          check: options.providerUpdateCheck || (async () => ({
+            ok: false,
+            code: 'UPDATE_TRUST_NOT_CONFIGURED',
+          })),
+          handleAlarm: options.providerUpdateAlarm || (async () => ({
+            ok: true, status: 'IGNORED',
+          })),
+          initialize: async () => providerUpdateStatus,
+          markInstalled: async () => providerUpdateStatus,
+          publicStatus: async () => providerUpdateStatus,
+          trustConfigured: () => false,
+        }),
+      },
+  ));
   if (options.activationFactory) {
     context.rucbFirefoxProductConfig = Object.freeze(Object.assign(
         {},
@@ -551,6 +610,7 @@ function startEventPage(options = {}) {
     networkListeners,
     notificationCalls,
     notificationListeners,
+    alarmListeners,
     proxySettingsCalls,
     proxySettingsChange(change) {
 
@@ -590,6 +650,7 @@ describe('Firefox MV3 production control package', function() {
         'background/proxy-control.js',
         'background/dataset-store.js',
         'background/provider-updater.js',
+        'background/provider-update-control.js',
         'background/provider-lookup.js',
         'background/dataset-runtime.js',
         'background/routing-adapter.js',
@@ -623,6 +684,7 @@ describe('Firefox MV3 production control package', function() {
 
         Assert.deepStrictEqual(manifest.permissions, [
           'storage',
+          'alarms',
           'proxy',
           'webRequest',
           'webRequestBlocking',
@@ -837,6 +899,8 @@ describe('Firefox MV3 production control package', function() {
             activationSupported: true,
             providerDatasetImplemented: true,
             providerDatasetAvailable: true,
+            providerUpdateImplemented: true,
+            providerUpdateConfigured: false,
           },
         });
         Assert.strictEqual('bootId' in response.result, false);
@@ -1314,6 +1378,107 @@ describe('Firefox MV3 production control package', function() {
 
       });
 
+  it('checks provider updates only through an exact no-input RPC',
+      async function() {
+
+        let calls = 0;
+        const eventPage = startEventPage({
+          providerUpdateCheck: async () => {
+
+            calls += 1;
+            return {ok: true, status: 'STAGED'};
+
+          },
+        });
+        Assert.deepStrictEqual(await eventPage.send({
+          type: 'firefox.provider.update.check',
+          manifestUrl: 'https://caller.example/secret',
+        }), {ok: false, error: {code: 'INVALID_RPC_REQUEST'}});
+        const checked = await eventPage.send({
+          type: 'firefox.provider.update.check',
+        });
+        Assert.strictEqual(checked.ok, true);
+        Assert.strictEqual(checked.result.status, 'STAGED');
+        Assert.strictEqual(
+            JSON.stringify(checked).includes('caller.example'),
+            false,
+        );
+        Assert.strictEqual(calls, 1);
+
+      });
+
+  it('exposes only the fixed sanitized provider update status',
+      async function() {
+
+        const eventPage = startEventPage();
+        Assert.deepStrictEqual(await eventPage.send({
+          type: 'firefox.provider.update.get',
+          providerKey: 'caller-controlled',
+        }), {ok: false, error: {code: 'INVALID_RPC_REQUEST'}});
+        const status = await eventPage.send({
+          type: 'firefox.provider.update.get',
+        });
+        Assert.strictEqual(status.ok, true);
+        Assert.deepStrictEqual(Object.keys(status.result).sort(), [
+          'automaticChecksEnabled',
+          'currentDatasetVersion',
+          'errorCategory',
+          'lastCheckAt',
+          'lastCheckStatus',
+          'lastSuccessfulCheckAt',
+          'schemaVersion',
+          'stagedDatasetVersion',
+          'status',
+          'trustConfigured',
+          'updateAvailable',
+        ]);
+        for (const forbidden of [
+          'artifactSha256', 'authRef', 'credentials', 'floorIdentity',
+          'manifestUrl', 'providerKey', 'proxyEndpoint', 'signature',
+        ]) {
+          Assert.strictEqual(JSON.stringify(status).includes(forbidden), false);
+        }
+
+      });
+
+  it('registers the update alarm listener synchronously and delegates alarms',
+      async function() {
+
+        let calls = 0;
+        const eventPage = startEventPage({
+          providerUpdateAlarm: async (alarm) => {
+
+            calls += 1;
+            return {ok: true, status: alarm.name};
+
+          },
+        });
+        Assert.strictEqual(typeof eventPage.alarmListeners.alarm, 'function');
+        eventPage.alarmListeners.alarm({name: 'other'});
+        await eventPage.ready();
+        await new Promise((resolve) => setImmediate(resolve));
+        Assert.strictEqual(calls, 1);
+
+      });
+
+  it('never returns an untrusted provider-update exception code',
+      async function() {
+
+        const eventPage = startEventPage({
+          providerUpdateCheck: async () => ({
+            ok: false,
+            code: 'secret-bearing raw exception',
+          }),
+        });
+        Assert.deepStrictEqual(await eventPage.send({
+          type: 'firefox.provider.update.check',
+        }), {
+          ok: false,
+          error: {code: 'PROVIDER_UPDATE_FAILED'},
+        });
+
+      });
+
   it('serializes provider install with Apply, Clear, and settings operations',
       async function() {
 
@@ -1344,6 +1509,43 @@ describe('Firefox MV3 production control package', function() {
         releaseInstall();
         await Promise.all([installing, clearing]);
         Assert.deepStrictEqual(order, ['install-start', 'install-end', 'clear']);
+
+      });
+
+  it('serializes a manual provider check with staged installation',
+      async function() {
+
+        let releaseCheck;
+        const checkWait = new Promise((resolve) => {
+          releaseCheck = resolve;
+        });
+        const order = [];
+        const eventPage = startEventPage({
+          providerUpdateCheck: async () => {
+
+            order.push('check-start');
+            await checkWait;
+            order.push('check-end');
+            return {ok: true, status: 'STAGED'};
+
+          },
+          promotionInstall: async () => {
+
+            order.push('install');
+            return {ok: true, status: 'INSTALLED'};
+
+          },
+        });
+        const checking = eventPage.send({
+          type: 'firefox.provider.update.check',
+        });
+        const installing = eventPage.send({
+          type: 'firefox.provider.update.install',
+        });
+        await Promise.resolve();
+        releaseCheck();
+        await Promise.all([checking, installing]);
+        Assert.deepStrictEqual(order, ['check-start', 'check-end', 'install']);
 
       });
 

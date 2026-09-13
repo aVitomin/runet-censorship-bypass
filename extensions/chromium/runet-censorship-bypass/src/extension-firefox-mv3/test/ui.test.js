@@ -26,6 +26,8 @@ function capabilities(overrides = {}) {
     activationSupported: true,
     providerDatasetImplemented: true,
     providerDatasetAvailable: true,
+    providerUpdateImplemented: true,
+    providerUpdateConfigured: false,
   }, overrides);
 
 }
@@ -87,6 +89,24 @@ function operationalResult(overrides = {}) {
       privateWindowAccess: 'GRANTED',
       notificationsAvailable: true,
     },
+  }, overrides);
+
+}
+
+function providerUpdateResult(overrides = {}) {
+
+  return Object.assign({
+    schemaVersion: 1,
+    trustConfigured: false,
+    automaticChecksEnabled: false,
+    status: 'NOT_CONFIGURED',
+    currentDatasetVersion: 'public-v1',
+    stagedDatasetVersion: null,
+    updateAvailable: false,
+    lastCheckStatus: 'NEVER',
+    lastCheckAt: null,
+    lastSuccessfulCheckAt: null,
+    errorCategory: null,
   }, overrides);
 
 }
@@ -490,7 +510,8 @@ describe('Firefox production UI controllers', function() {
 
       return message.type === 'firefox.capabilities.get' ?
         capabilities() : message.type === 'firefox.settings.get' ?
-          settingsResult(7) : operationalResult();
+          settingsResult(7) : message.type === 'firefox.operational.get' ?
+            operationalResult() : providerUpdateResult();
 
     }};
     const controller = Options.createController({rpc});
@@ -512,6 +533,9 @@ describe('Firefox production UI controllers', function() {
       if (message.type === 'firefox.operational.get') {
         return operationalResult();
       }
+      if (message.type === 'firefox.provider.update.get') {
+        return providerUpdateResult();
+      }
       return settingsResult(4, (settings) => {
         settings.flags.noDirect = true;
       });
@@ -523,8 +547,8 @@ describe('Firefox production UI controllers', function() {
     next.flags.noDirect = true;
 
     Assert.strictEqual(await controller.save(next), true);
-    Assert.strictEqual(calls[3].expectedRevision, 3);
-    Assert.strictEqual(calls[3].settings.flags.noDirect, true);
+    Assert.strictEqual(calls[4].expectedRevision, 3);
+    Assert.strictEqual(calls[4].settings.flags.noDirect, true);
     Assert.strictEqual(controller.snapshot().revision, 4);
 
   });
@@ -543,6 +567,9 @@ describe('Firefox production UI controllers', function() {
       }
       if (message.type === 'firefox.operational.get') {
         return operationalResult();
+      }
+      if (message.type === 'firefox.provider.update.get') {
+        return providerUpdateResult();
       }
       throw failure('SETTINGS_REVISION_CONFLICT');
 
@@ -574,6 +601,9 @@ describe('Firefox production UI controllers', function() {
       if (message.type === 'firefox.operational.get') {
         return operationalResult();
       }
+      if (message.type === 'firefox.provider.update.get') {
+        return providerUpdateResult();
+      }
       return settingsResult();
 
     }};
@@ -598,6 +628,9 @@ describe('Firefox production UI controllers', function() {
       if (message.type === 'firefox.settings.get') return settingsResult();
       if (message.type === 'firefox.operational.get') {
         return operationalResult();
+      }
+      if (message.type === 'firefox.provider.update.get') {
+        return providerUpdateResult();
       }
       replaceCalls += 1;
       await gate.promise;
@@ -721,6 +754,9 @@ describe('Firefox production UI controllers', function() {
               candidateType: 'ownProxy',
             };
           }
+          if (message.type === 'firefox.provider.update.get') {
+            return providerUpdateResult();
+          }
           return operationalResult();
 
         }}});
@@ -757,6 +793,9 @@ describe('Firefox production UI controllers', function() {
               checkedAt: 1001, candidateType: null,
             };
           }
+          if (message.type === 'firefox.provider.update.get') {
+            return providerUpdateResult();
+          }
           return operationalResult();
 
         }};
@@ -769,6 +808,169 @@ describe('Firefox production UI controllers', function() {
         });
 
       });
+
+  it('checks updates with no caller-controlled trust or dataset input',
+      async function() {
+
+        const calls = [];
+        let checked = false;
+        const controller = Options.createController({rpc: {
+          async call(message) {
+
+            calls.push(message);
+            if (message.type === 'firefox.capabilities.get') {
+              return capabilities({providerUpdateConfigured: true});
+            }
+            if (message.type === 'firefox.settings.get') {
+              return settingsResult();
+            }
+            if (message.type === 'firefox.operational.get') {
+              return operationalResult();
+            }
+            if (message.type === 'firefox.provider.update.get') {
+              return providerUpdateResult(checked ? {
+                trustConfigured: true,
+                automaticChecksEnabled: true,
+                status: 'UPDATE_AVAILABLE',
+                updateAvailable: true,
+                stagedDatasetVersion: 'public-v2',
+                lastCheckStatus: 'STAGED',
+                lastCheckAt: 1000,
+                lastSuccessfulCheckAt: 1000,
+              } : {
+                trustConfigured: true,
+                automaticChecksEnabled: true,
+                status: 'IDLE',
+              });
+            }
+            if (message.type === 'firefox.provider.update.check') {
+              checked = true;
+              return {status: 'STAGED'};
+            }
+            throw failure('UNEXPECTED_RPC');
+
+          },
+        }});
+        await controller.load();
+        Assert.strictEqual(await controller.checkProviderUpdate(), true);
+        Assert.deepStrictEqual(calls.find((message) =>
+          message.type === 'firefox.provider.update.check'), {
+          type: 'firefox.provider.update.check',
+        });
+        Assert.strictEqual(
+            controller.snapshot().providerUpdate.updateAvailable,
+            true,
+        );
+
+      });
+
+  it('installs a staged update only while settings are fully OFF',
+      async function() {
+
+        const calls = [];
+        let installed = false;
+        const controller = Options.createController({rpc: {
+          async call(message) {
+
+            calls.push(message);
+            if (message.type === 'firefox.capabilities.get') {
+              return capabilities();
+            }
+            if (message.type === 'firefox.settings.get') {
+              return settingsResult();
+            }
+            if (message.type === 'firefox.operational.get') {
+              return operationalResult();
+            }
+            if (message.type === 'firefox.provider.update.get') {
+              return providerUpdateResult({
+                trustConfigured: true,
+                automaticChecksEnabled: true,
+                status: installed ? 'UPDATED' : 'UPDATE_AVAILABLE',
+                currentDatasetVersion: installed ? 'public-v2' : 'public-v1',
+                stagedDatasetVersion: installed ? null : 'public-v2',
+                updateAvailable: !installed,
+                lastCheckStatus: installed ? 'INSTALLED' : 'STAGED',
+              });
+            }
+            if (message.type === 'firefox.provider.update.install') {
+              installed = true;
+              return {status: 'INSTALLED'};
+            }
+            throw failure('UNEXPECTED_RPC');
+
+          },
+        }});
+        await controller.load();
+        Assert.strictEqual(await controller.installProviderUpdate(), true);
+        Assert.deepStrictEqual(calls.find((message) =>
+          message.type === 'firefox.provider.update.install'), {
+          type: 'firefox.provider.update.install',
+        });
+        Assert.strictEqual(
+            controller.snapshot().providerUpdate.currentDatasetVersion,
+            'public-v2',
+        );
+
+      });
+
+  it('does not ask background to install while ACTIVE', async function() {
+
+    const calls = [];
+    const controller = Options.createController({rpc: {
+      async call(message) {
+
+        calls.push(message.type);
+        if (message.type === 'firefox.capabilities.get') {
+          return capabilities({
+            runtimeState: 'READY', durableIntent: 'ON',
+            recoveryStatus: 'ACTIVE', providerUpdateConfigured: true,
+          });
+        }
+        if (message.type === 'firefox.settings.get') {
+          return settingsResult();
+        }
+        if (message.type === 'firefox.operational.get') {
+          return operationalResult();
+        }
+        return providerUpdateResult({
+          trustConfigured: true,
+          automaticChecksEnabled: true,
+          status: 'UPDATE_AVAILABLE',
+          stagedDatasetVersion: 'public-v2',
+          updateAvailable: true,
+          lastCheckStatus: 'STAGED',
+        });
+
+      },
+    }});
+    await controller.load();
+    Assert.strictEqual(await controller.installProviderUpdate(), false);
+    Assert.strictEqual(
+        calls.includes('firefox.provider.update.install'),
+        false,
+    );
+
+  });
+
+  it('rejects secret-bearing provider update status', function() {
+
+    for (const unsafe of [
+      Object.assign(providerUpdateResult(), {
+        manifestUrl: 'https://updates.example/private',
+      }),
+      providerUpdateResult({
+        status: 'CHECK_FAILED',
+        errorCategory: 'https://updates.example/private',
+      }),
+    ]) {
+      Assert.throws(
+          () => Options.validateProviderUpdateStatus(unsafe),
+          (error) => error.code === 'UI_RPC_FAILED',
+      );
+    }
+
+  });
 
   it('falls back to the message key without throwing', function() {
 
@@ -846,6 +1048,15 @@ describe('Firefox production UI controllers', function() {
       'healthCode_HEALTH_PROXY_CANDIDATE_UNAVAILABLE',
       'healthCode_HEALTH_PROXY_RULE_REQUIRED',
       'healthCode_HEALTH_TARGET_REQUIRED',
+      'providerUpdateError_AUTHENTICATION_FAILED',
+      'providerUpdateError_DATASET_REJECTED',
+      'providerUpdateError_NETWORK_FAILED',
+      'providerUpdateError_ROLLBACK_REJECTED',
+      'providerUpdateError_SEQUENCE_CONFLICT',
+      'providerUpdateError_STORAGE_FAILED',
+      'providerUpdateError_TRUST_NOT_CONFIGURED',
+      'providerUpdateError_UPDATE_INTERRUPTED',
+      'providerUpdateError_UPDATE_REJECTED',
     ]) {
       used.add(key);
     }
