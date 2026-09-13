@@ -1,19 +1,21 @@
 # Документация Runet Censorship Bypass
 
 Здесь собраны инструкции для пользователей, справочные материалы и техническая
-документация текущего продукта для Chromium. Для начала достаточно
+документация текущего продукта для Chromium MV3 и Firefox MV3. Для начала достаточно
 [установить стабильный выпуск](user/INSTALLATION.md), пройти
 [первую настройку](user/USER_GUIDE.md#1-первая-настройка) и использовать popup
 для выбора маршрута сайта.
 
 Текущий опубликованный стабильный выпуск —
 [`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0).
-Его интерфейс соответствует актуальным руководствам и скриншотам.
+Он содержит только Chromium-пакет. Руководства также описывают готовящийся
+совместный выпуск `0.0.4.0`; обычная установка Firefox начнётся только после
+публикации Mozilla-signed XPI/AMO.
 
 ## Пользователям
 
 - [Установка, обновление и удаление](user/INSTALLATION.md) — стабильный ZIP,
-  проверка SHA-256, Load unpacked и ручные обновления.
+  проверка SHA-256, Chromium Load unpacked и Firefox signing/AMO boundary.
 - [Руководство пользователя](user/USER_GUIDE.md) — первая настройка, popup,
   Auto / Proxy / Direct и все разделы Options.
 - [Решение проблем](user/TROUBLESHOOTING.md) — проблема → причина → безопасное
@@ -55,6 +57,6 @@
 
 Runet Censorship Bypass сохраняет историю, вклад авторов и GPL-3.0 атрибуцию
 [`anticensority/runet-censorship-bypass`](https://github.com/anticensority/runet-censorship-bypass).
-Материалы в `legacy/**` могут описывать MV2, Firefox, магазины и старые
+Материалы в `legacy/**` могут описывать MV2, старые Firefox-сборки, магазины и
 upstream-процессы; они сохранены как история и не являются инструкцией по
-установке текущего Chromium-продукта.
+установке текущего MV3-продукта.

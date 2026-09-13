@@ -117,6 +117,29 @@ $env:CHROME_BIN = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 npm --prefix $Project run test:browser:mv3
 ```
 
+Тот же smoke принимает путь к Edge или Brave через `CHROME_BIN`. Он использует
+одну и ту же Chromium package tree; для Edge test-only launcher подключается к
+локальному CDP endpoint, если первый Edge process делегирует запуск и завершается
+до обычного Puppeteer handshake. Это не меняет production runtime.
+
+### Cross-browser visual QA
+
+Детерминированный visual harness проверяет Chromium и Firefox при 100%, 125% и
+150%, на английском и русском, для девяти popup states и семи Options sections:
+
+```powershell
+$env:CHROMIUM_BIN = '<installed Chromium executable>'
+$env:FIREFOX_BIN = '<installed Firefox executable>'
+node ./scripts/cross-browser-visual-qa.mjs
+```
+
+Кадры и JSON report сохраняются только в `.local/cross-browser-visual-qa/`.
+Harness не требует pixel equality: он блокирует пропавшие секции, горизонтальный
+overflow, clipped или непригодные controls; различия font metrics и сглаживания
+между engines допустимы. Fixture меняет только disposable copy popup, а не
+проверяемые package outputs. Полная матрица milestone описана в
+[cross-browser UX gate](qa/CROSS_BROWSER_0.0.4_UX.md).
+
 `CHROME_BIN` — явный авторитетный override. Без него скрипт проверяет только
 несколько стандартных путей установки и никогда не скачивает браузер. Тест
 запускает собранное unpacked MV3-расширение в одноразовом профиле и поднимает

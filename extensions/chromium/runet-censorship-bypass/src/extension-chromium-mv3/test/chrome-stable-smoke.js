@@ -37,6 +37,7 @@ const TEST_HOSTS = Object.freeze({
 });
 const CHROME_TIMEOUT_MS = 20 * 1000;
 const AUTH_FAILURE_TIMEOUT_MS = 8 * 1000;
+const CONNECTED_EDGE_BROWSERS = new WeakSet();
 
 function resolveChromeExecutable() {
 
@@ -1072,39 +1073,45 @@ async function launchExtension(
   );
   const diagnostics = [];
   const monitoredWorkers = new WeakSet();
-  console.log('Chrome smoke: launching Chrome Stable.');
-  const browser = await Puppeteer.launch({
-    args: [
-      '--disable-background-networking',
-      '--disable-component-update',
-      '--disable-default-apps',
-      '--disable-features=HttpsFirstBalancedModeAutoEnable',
-      '--disable-gpu',
-      '--disable-sync',
-      '--metrics-recording-only',
-      '--no-default-browser-check',
-      '--no-first-run',
-      `--ignore-certificate-errors-spki-list=${tlsSpkiSha256}`,
-      '--host-resolver-rules=' + [
-        `MAP ${TEST_HOSTS.auto} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authA} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authB} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authConnect} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authHttpsProxy} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authMismatch} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authPasswordless} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authWorkerRestart} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.authWrong} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.proxy} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.direct} 127.0.0.1`,
-        `MAP ${TEST_HOSTS.origin401} 127.0.0.1`,
-      ].join(','),
-    ],
-    enableExtensions: true,
-    executablePath: chromeExecutable,
-    headless: true,
-    userDataDir: profilePath,
-  });
+  const browserArguments = [
+    '--disable-background-networking',
+    '--disable-component-update',
+    '--disable-default-apps',
+    '--disable-features=HttpsFirstBalancedModeAutoEnable',
+    '--disable-gpu',
+    '--disable-sync',
+    '--metrics-recording-only',
+    '--no-default-browser-check',
+    '--no-first-run',
+    `--ignore-certificate-errors-spki-list=${tlsSpkiSha256}`,
+    '--host-resolver-rules=' + [
+      `MAP ${TEST_HOSTS.auto} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authA} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authB} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authConnect} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authHttpsProxy} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authMismatch} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authPasswordless} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authWorkerRestart} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.authWrong} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.proxy} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.direct} 127.0.0.1`,
+      `MAP ${TEST_HOSTS.origin401} 127.0.0.1`,
+    ].join(','),
+  ];
+  console.log('Chrome smoke: launching Chromium browser.');
+  const browser = Path.basename(chromeExecutable).toLowerCase() ===
+    'msedge.exe' ?
+      await launchEdgeForPuppeteer(
+          chromeExecutable, profilePath, browserArguments,
+      ) :
+      await Puppeteer.launch({
+        args: browserArguments,
+        enableExtensions: true,
+        executablePath: chromeExecutable,
+        headless: true,
+        userDataDir: profilePath,
+      });
   const monitorTarget = async (target) => {
     if (!isExtensionWorkerTarget(target)) {
       return;
@@ -1150,6 +1157,63 @@ async function launchExtension(
     diagnostics,
     extensionId,
   };
+
+}
+
+async function launchEdgeForPuppeteer(
+    executablePath,
+    userDataDir,
+    browserArguments,
+) {
+
+  const endpointServer = Net.createServer();
+  const port = await listen(endpointServer);
+  await closeServer(endpointServer);
+  const child = ChildProcess.spawn(executablePath, [
+    ...browserArguments,
+    '--enable-unsafe-extension-debugging',
+    '--headless=new',
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${userDataDir}`,
+    'about:blank',
+  ], {
+    stdio: ['ignore', 'ignore', 'pipe'],
+    windowsHide: true,
+  });
+  let stderr = '';
+  child.stderr.on('data', (chunk) => {
+    stderr = `${stderr}${chunk}`.slice(-8000);
+  });
+  const browserURL = `http://127.0.0.1:${port}`;
+  const deadline = Date.now() + CHROME_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      const browser = await Puppeteer.connect({browserURL});
+      CONNECTED_EDGE_BROWSERS.add(browser);
+      child.unref();
+      return browser;
+    } catch (_error) {
+      await delay(50);
+    }
+  }
+  if (!child.killed) {
+    child.kill();
+  }
+  throw new Error(
+      `Microsoft Edge DevTools endpoint did not start. ${stderr}`.trim(),
+  );
+
+}
+
+async function closeSmokeBrowser(browser) {
+
+  if (!CONNECTED_EDGE_BROWSERS.has(browser)) {
+    await browser.close();
+    return;
+  }
+  const closing = browser.close().catch(() => undefined);
+  await Promise.race([closing, delay(3000)]);
+  browser.disconnect();
 
 }
 
@@ -2497,9 +2561,9 @@ function removeProfile(profilePath) {
   Assert.ok(Path.basename(resolvedProfile).startsWith('rucb-mv3-smoke-'));
   Fs.rmSync(resolvedProfile, {
     force: true,
-    maxRetries: 3,
+    maxRetries: 40,
     recursive: true,
-    retryDelay: 100,
+    retryDelay: 250,
   });
 
 }
@@ -2570,7 +2634,7 @@ async function runSmoke() {
     assertNoSeriousDiagnostics(session.diagnostics);
     const firstExtensionId = session.extensionId;
     await optionsPage.close();
-    await browser.close();
+    await closeSmokeBrowser(browser);
     browser = null;
 
     console.log('Chrome smoke: verifying applied PAC after browser restart.');
@@ -2746,7 +2810,7 @@ async function runSmoke() {
     });
     await restartedOptionsPage.close();
 
-    await browser.close();
+    await closeSmokeBrowser(browser);
     browser = null;
     console.log('Chrome smoke: verifying deferred Clear after browser restart.');
     session = await launchExtension(
@@ -2785,7 +2849,7 @@ async function runSmoke() {
     );
   } finally {
     if (browser) {
-      await browser.close().catch(() => undefined);
+      await closeSmokeBrowser(browser).catch(() => undefined);
     }
     try {
       await closeInfrastructure(infrastructure);
