@@ -164,7 +164,13 @@ itself took 8 seconds. Thus repeated deterministic work and four PR release
 builds are demonstrably gone, but one noisy run does not prove a wall-clock
 improvement. Normalizing only those two observed runner/browser variances gives
 a 47-second critical path; future runs should be measured rather than promising
-that estimate.
+that estimate. A second branch run with ordinary runner/browser timing completed
+the maintained workflow in 34 seconds: policy 18 seconds, Firefox 13, Chromium
+28 (11-second target verification plus 8-second Chrome smoke), and the final
+conclusion 2. This is the observed after value used for the audit; the first
+outlier remains recorded above rather than discarded. CodeQL Default Setup also
+remained green; its JavaScript analysis execution was 64 seconds versus 73 on
+the baseline, independent of the maintained-workflow critical path.
 
 ## Agent instruction architecture
 
