@@ -172,6 +172,13 @@ outlier remains recorded above rather than discarded. CodeQL Default Setup also
 remained green; its JavaScript analysis execution was 64 seconds versus 73 on
 the baseline, independent of the maintained-workflow critical path.
 
+Counting executable verification/action gates (excluding checkout/setup,
+dependency-review itself and skipped artifact uploads), the ordinary PR path
+falls from 21 commands to 16. The package script surface grows from 16 to 20:
+the four additions are intentional named aggregate/tooling gates (`lint`,
+`lint:tooling`, `test:tooling`, `verify:tooling`), not additional CI
+executions.
+
 ## Agent instruction architecture
 
 Priority is now explicit: current user scope, hard invariants, scoped
