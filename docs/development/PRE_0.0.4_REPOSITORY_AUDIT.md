@@ -154,6 +154,18 @@ builds. CodeQL Default Setup and the pinned dependency-review gate are unchanged
 All Actions remain full-SHA pinned, permissions remain `contents: read`, and
 checkout keeps `persist-credentials:false`.
 
+The first branch run provides an honest wall-clock sample rather than an assumed
+speedup: policy and Firefox each completed in 14 seconds, Chromium completed in
+71 seconds, and the final conclusion completed in 4 seconds. End-to-end workflow
+time was 78 seconds versus PR #71's 66 seconds. That sample's Chrome smoke took
+34 seconds versus 15 on the baseline run, while one parallel `setup-node` took
+14 seconds versus 2 on the baseline; the Chromium deterministic target gate
+itself took 8 seconds. Thus repeated deterministic work and four PR release
+builds are demonstrably gone, but one noisy run does not prove a wall-clock
+improvement. Normalizing only those two observed runner/browser variances gives
+a 47-second critical path; future runs should be measured rather than promising
+that estimate.
+
 ## Agent instruction architecture
 
 Priority is now explicit: current user scope, hard invariants, scoped
@@ -293,6 +305,13 @@ available. Required local evidence:
 - Chrome Stable smoke and release-only Firefox lifecycle smoke when the pinned
   local browser is available;
 - deterministic Chromium and Firefox release packaging;
+- Chromium release ZIP 1,137,540 bytes
+  (`706de23c2f7476ef1a27c389d29d438495ffced416d2a58c1d4793361ca33bc8`);
+- Firefox unsigned XPI 12,250,378 bytes
+  (`6152e2455de2060f6a05c3fb7cacee7a15a27abc184e5b5214c5a4b1f0fdbad6`)
+  and reviewer source ZIP 16,059,608 bytes
+  (`c5ac0134fdcaeee82835a893ec03f14c63964842411f256b3745dda8b27189c7`);
+- Mozilla `addons-linter@10.10.0`: zero errors, warnings and notices;
 - Code Scanning 0, Dependabot 0, `git diff --check`, and a clean committed tree.
 
 Local browser evidence passed with Chrome 153.0.8010.37 and Firefox 154.0.1.
