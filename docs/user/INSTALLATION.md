@@ -1,26 +1,22 @@
 # Установка, обновление и удаление
 
-Runet Censorship Bypass поддерживает современные Chromium-браузеры и Firefox
-154+. Способ установки зависит от браузера и от того, опубликован ли для него
-подписанный релиз.
+Runet Censorship Bypass поддерживает Chromium MV3 и Firefox MV3.
 
-Для готовящегося `0.0.4.0` release QA пройден в Google Chrome, Microsoft Edge,
-Brave и Firefox. Яндекс Браузер, Opera, Vivaldi и другие современные
-Chromium-браузеры с необходимыми MV3 API ожидаются совместимыми, но не заявлены
-как отдельно протестированные для этого выпуска.
+Для готовящегося `0.0.4.0` проверены Google Chrome, Microsoft Edge, Brave и
+Firefox 154+. Яндекс Браузер, Opera, Vivaldi и другие современные Chromium-
+браузеры с необходимыми MV3 API ожидаются совместимыми, но отдельно для этого
+выпуска не тестировались.
 
-Сейчас опубликован `v0.0.3.0` только для Chromium. Совместный выпуск Chromium и
-Firefox `0.0.4.0` ещё не опубликован: до Mozilla signing неподписанный Firefox
-XPI остаётся артефактом для reviewer/development QA, а не пользовательской
-загрузкой.
+Сейчас опубликован только Chromium-выпуск `v0.0.3.0`. Совместный `0.0.4.0` ещё
+не опубликован; обычная установка Firefox появится после Mozilla signing.
 
-## Chromium
+## Chromium: установить стабильный ZIP
 
 ### 1. Скачать и проверить
 
-Последний опубликованный стабильный выпуск —
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0).
-Скачайте файл
+Откройте
+[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0)
+и скачайте именно
 [`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip),
 а не автоматически созданный **Source code**.
 
@@ -30,7 +26,7 @@ XPI остаётся артефактом для reviewer/development QA, а н�
 68a32aa9162d5ba8b2cd9070c2eba6e5eb055434b899c284107c55d3e5a55635
 ```
 
-Опубликованный файл проверки:
+Файл проверки:
 [`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt).
 
 В PowerShell:
@@ -39,72 +35,67 @@ XPI остаётся артефактом для reviewer/development QA, а н�
 Get-FileHash .\runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip -Algorithm SHA256
 ```
 
-Если хэш отличается, не устанавливайте архив.
+Не устанавливайте архив, если хэш отличается.
 
-### 2. Распаковать
+### 2. Распаковать и загрузить
 
-Полностью распакуйте ZIP в постоянную папку. В выбранной при установке папке
-`manifest.json` должен лежать непосредственно в корне. Не выбирайте сам ZIP,
-родительский каталог или корень репозитория.
+1. Полностью распакуйте ZIP в постоянную папку.
+2. Откройте страницу расширений браузера.
+3. Включите **Developer mode / Режим разработчика**.
+4. Нажмите **Load unpacked / Загрузить распакованное расширение**.
+5. Выберите папку, где `manifest.json` находится непосредственно в корне.
+6. Закрепите значок расширения на панели.
 
-Папку нельзя перемещать или удалять после **Load unpacked**: браузер продолжает
-читать расширение прямо из неё.
+| Браузер | Страница расширений | Статус для `0.0.4.0` |
+| --- | --- | --- |
+| Google Chrome | `chrome://extensions` | Проверен |
+| Microsoft Edge | `edge://extensions` | Проверен |
+| Brave | `brave://extensions` | Проверен |
+| Яндекс Браузер | `browser://extensions` | Ожидается совместимым |
+| Opera | `opera:extensions` | Ожидается совместимым |
+| Vivaldi | `vivaldi://extensions` | Ожидается совместимым |
 
-### 3. Открыть страницу расширений
-
-| Браузер | Адрес страницы |
-| --- | --- |
-| Google Chrome | `chrome://extensions` |
-| Яндекс Браузер | `browser://extensions` |
-| Microsoft Edge | `edge://extensions` |
-| Opera | `opera:extensions` |
-| Brave | `brave://extensions` |
-| Vivaldi | `vivaldi://extensions` |
-
-Если специальный адрес изменён конкретным Chromium-форком, откройте его меню и
-найдите **Extensions / Расширения**.
-
-1. Включите **Developer mode / Режим разработчика**.
-2. Нажмите **Load unpacked / Загрузить распакованное расширение**.
-3. Выберите папку с `manifest.json`.
-4. Закрепите значок расширения на панели браузера.
+Если специальный адрес отличается, откройте меню браузера и найдите раздел
+**Extensions / Расширения**. Папку установленного unpacked-расширения нельзя
+перемещать или удалять: браузер продолжает читать файлы из неё.
 
 Яндекс Браузер может отключать расширения из непроверенного источника после
-перезапуска. До появления магазинного канала их приходится явно включать снова;
-это [документированное ограничение Яндекс Браузера](https://yandex.com/support/browser/en/security/check-extensions?lang=ru),
+перезапуска. Это
+[ограничение браузера](https://yandex.com/support/browser/en/security/check-extensions?lang=ru),
 а не состояние Active внутри расширения.
 
-Ошибка **Manifest file is missing or unreadable** обычно означает, что выбрана
-папка на один уровень выше или ниже нужной.
+## Firefox: только подписанная пользовательская установка
 
-## Firefox
+Обычный пользователь должен устанавливать Firefox-версию только:
 
-Обычная установка Firefox должна использовать только один из двух путей:
+1. со страницы Mozilla Add-ons (AMO); или
+2. из Mozilla-подписанного XPI опубликованного выпуска.
 
-1. страницу расширения на Mozilla Add-ons (AMO); или
-2. Mozilla-подписанный XPI, приложенный к опубликованному выпуску.
+Таких публичных ссылок пока нет. Не обходите проверку подписи и не используйте
+unsigned reviewer XPI как обычную пользовательскую версию. После публикации
+ссылки появятся в README и release notes.
 
-Эти ссылки появятся здесь после публикации совместного релиза. До этого не
-обходите проверку подписи и не устанавливайте unsigned reviewer XPI как
-пользовательскую версию. Временная установка через `about:debugging` относится
-только к разработке и описана в
-[инструкции по Firefox release build](../development/FIREFOX_RELEASE_BUILD.md).
+Firefox попросит подтвердить разрешения. Для **Apply** требуется разрешить
+работу расширения в приватных окнах: без него включение завершается безопасной
+ошибкой и не меняет proxy settings.
 
-После публикации Firefox автоматически установит подписанный XPI и попросит
-подтвердить необходимые разрешения. Для безопасного включения маршрутизации
-потребуется разрешить расширению работу в приватных окнах; без него **Apply**
-завершится безопасной ошибкой и не изменит proxy settings.
+### Временная установка для разработчиков
+
+Unsigned XPI можно временно установить через `about:debugging` только для
+review/development QA. После перезапуска такая установка может исчезнуть. Этот
+путь описан отдельно в
+[Firefox release build](../development/FIREFOX_RELEASE_BUILD.md) и не является
+пользовательской инструкцией.
 
 ## Первый запуск
 
-1. Нажмите значок Runet Censorship Bypass.
-2. Откройте **Settings** и проверьте автоматический источник маршрутизации.
-3. При необходимости настройте собственный прокси, Tor, Tor Browser или WARP.
-4. Нажмите **Apply** и дождитесь состояния **Active**.
+1. Откройте значок Runet Censorship Bypass.
+2. Нажмите **Apply / Enable** и дождитесь состояния **Active**.
+3. При необходимости выберите для текущего сайта **Auto**, **Proxy** или
+   **Direct** и область правила.
 
-После этого popup позволяет выбрать **Auto**, **Proxy** или **Direct** для
-текущего точного хоста либо домена с поддоменами. Сохранённые изменения могут
-показываться как **Not applied** до следующего Apply.
+Advanced-настройки собственных прокси, Tor, Tor Browser и WARP находятся в
+[руководстве пользователя](USER_GUIDE.md), а не нужны для обычного старта.
 
 ## Обновление
 
@@ -112,39 +103,36 @@ Get-FileHash .\runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip -Algorithm SHA256
 
 1. Скачайте новый ZIP только со страницы
    [Releases](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases).
-2. Проверьте SHA-256 и распакуйте выпуск в отдельную постоянную папку.
-3. Удалите старую карточку и загрузите новую папку либо целиком замените
-   содержимое прежней папки и нажмите **Reload**.
-4. Не смешивайте файлы двух версий.
+2. Проверьте опубликованный SHA-256.
+3. Распакуйте выпуск в отдельную постоянную папку.
+4. Загрузите новую папку либо полностью замените содержимое старой и нажмите
+   **Reload**. Не смешивайте файлы разных версий.
 
 ### Firefox
 
-AMO или установленный подписанный XPI использует механизм обновлений Firefox.
-Не заменяйте подписанную установку временным unsigned add-on.
+AMO или подписанный XPI использует механизм обновлений Firefox. Не заменяйте
+подписанную установку временным unsigned add-on.
 
 ## Удаление
 
-1. Если расширение активно, нажмите **Turn off**, чтобы вернуть предыдущую
-   конфигурацию прокси.
-2. Откройте страницу расширений браузера и нажмите **Remove / Удалить**.
-3. Для Chromium Load unpacked после удаления карточки можно удалить постоянную
-   папку выпуска.
+1. Если расширение активно, нажмите **Turn off / Clear**, чтобы вернуть
+   предыдущую конфигурацию прокси.
+2. Удалите расширение на странице расширений браузера.
+3. После удаления Chromium-карточки можно удалить её постоянную unpacked-папку.
 
-Если proxy settings контролирует другое расширение или политика, Runet
-Censorship Bypass не очищает чужую настройку. Сначала определите владельца в
-браузере или обратитесь к администратору.
+Расширение не очищает настройку, принадлежащую другому расширению или политике.
+Если установка, Apply или восстановление proxy settings не работают, используйте
+[решение проблем](TROUBLESHOOTING.md).
 
-## Если установка не работает
+## English summary
 
-- **Chromium не видит manifest** — выберите папку, где `manifest.json` лежит в
-  корне.
-- **Popup не открывается** — перезагрузите карточку и убедитесь, что папка не
-  перемещена.
-- **Firefox отклоняет XPI** — используйте только опубликованный Mozilla-signed
-  файл или AMO; unsigned release ещё не является пользовательским каналом.
-- **Apply недоступен** — проверьте данные маршрутизации, настройки прокси и
-  Firefox private-window access.
+Release-tested for the upcoming `0.0.4.0`: Google Chrome, Microsoft Edge,
+Brave, and Firefox 154+. Yandex Browser, Opera, Vivaldi, and other modern
+Chromium browsers with the required MV3 APIs are expected to be compatible but
+were not separately release-tested.
 
-Дополнительные сценарии есть в [решении проблем](TROUBLESHOOTING.md). Не
-прикладывайте к публичному issue пароли, приватные endpoints, локальные пути
-профиля, полный URL с query string или историю посещений.
+The published stable release is still Chromium-only `v0.0.3.0`: download its
+ZIP, verify SHA-256, extract it, enable **Developer mode**, and choose
+**Load unpacked**. Normal Firefox installation will require an AMO listing or a
+Mozilla-signed XPI; no public Firefox download exists yet. Unsigned XPI loading
+is for temporary developer/reviewer testing only.
