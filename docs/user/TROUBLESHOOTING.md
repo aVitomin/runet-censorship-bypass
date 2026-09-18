@@ -17,9 +17,10 @@ string, cookies, routing data или историю посещений.
 
 ### Firefox
 
-Используйте только опубликованную AMO-страницу или Mozilla-подписанный XPI.
-Публичной Firefox-версии `0.0.4.0` пока нет. Unsigned XPI предназначен только
-для временного reviewer/development тестирования и не является обычной
+Используйте Mozilla-подписанный XPI из опубликованного
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0).
+Публичной AMO-страницы для нового Gecko ID пока нет. Unsigned XPI предназначен
+только для временного reviewer/development тестирования и не является обычной
 пользовательской установкой.
 
 Подробности: [установка](INSTALLATION.md).
