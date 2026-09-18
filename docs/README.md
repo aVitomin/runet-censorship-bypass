@@ -1,62 +1,54 @@
 # Документация Runet Censorship Bypass
 
-Здесь собраны инструкции для пользователей, справочные материалы и техническая
-документация текущего продукта для Chromium MV3 и Firefox MV3. Для начала достаточно
-[установить стабильный выпуск](user/INSTALLATION.md), пройти
-[первую настройку](user/USER_GUIDE.md#1-первая-настройка) и использовать popup
-для выбора маршрута сайта.
+Начните с [установки](user/INSTALLATION.md), затем откройте popup расширения и
+нажмите **Apply / Enable**. Для текущего сайта можно выбрать **Auto**, **Proxy**
+или **Direct**; подробности есть в [руководстве](user/USER_GUIDE.md).
 
 Текущий опубликованный стабильный выпуск —
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0).
-Он содержит только Chromium-пакет. Руководства также описывают готовящийся
-совместный выпуск `0.0.4.0`; обычная установка Firefox начнётся только после
-публикации Mozilla-signed XPI/AMO.
+[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0),
+только для Chromium. `0.0.4.0` готовится как совместный Chromium/Firefox выпуск,
+но ещё не опубликован. Обычная установка Firefox появится только после Mozilla
+signing; unsigned XPI остаётся reviewer/development-артефактом.
 
 ## Пользователям
 
-- [Установка, обновление и удаление](user/INSTALLATION.md) — стабильный ZIP,
-  проверка SHA-256, Chromium Load unpacked и Firefox signing/AMO boundary.
-- [Руководство пользователя](user/USER_GUIDE.md) — первая настройка, popup,
-  Auto / Proxy / Direct и все разделы Options.
-- [Решение проблем](user/TROUBLESHOOTING.md) — проблема → причина → безопасное
-  действие.
-- [Приватность и безопасность](user/PRIVACY_AND_SECURITY.md) — разрешения,
-  локальные данные, сетевые обращения и границы защиты.
+- [Установка, обновление и удаление](user/INSTALLATION.md) — Chromium ZIP,
+  Firefox signed-XPI/AMO boundary и первый запуск.
+- [Руководство пользователя](user/USER_GUIDE.md) — Auto / Proxy / Direct,
+  правила сайтов, прокси, Tor, Tor Browser, WARP, health и диагностика.
+- [Решение проблем](user/TROUBLESHOOTING.md) — действия по наблюдаемому симптому.
+- [Приватность и безопасность](user/PRIVACY_AND_SECURITY.md) — локальные данные,
+  сетевые стороны, разрешения и границы защиты.
 
-## Расширенные возможности и обслуживание
+Для готовящегося выпуска проверены Google Chrome, Microsoft Edge, Brave и
+Firefox 154+. Яндекс Браузер, Opera, Vivaldi и другие современные Chromium-
+браузеры с необходимыми MV3 API ожидаются совместимыми, но отдельно не
+тестировались.
 
-- [Automatic routing и Site rules](user/USER_GUIDE.md#3-automatic-routing)
-- [Proxy connections](user/USER_GUIDE.md#5-proxy-connections)
-- [Maintenance](user/USER_GUIDE.md#6-maintenance)
-- [Advanced](user/USER_GUIDE.md#7-advanced)
-- [Диагностика распространённых проблем](user/TROUBLESHOOTING.md)
-- [Модель приватности и безопасности](user/PRIVACY_AND_SECURITY.md)
+## Разработчикам и участникам
 
-## Участникам и разработчикам
-
-- [Подготовка среды и разработка](development/DEVELOPMENT.md)
-- [Архитектура Manifest V3](development/ARCHITECTURE.md)
-- [Архитектура Firefox MV3](development/FIREFOX_MV3_ARCHITECTURE.md)
-- [Сборка Firefox release candidate](development/FIREFOX_RELEASE_BUILD.md)
-- [Памятка Firefox AMO reviewer](development/FIREFOX_AMO_REVIEW.md)
+- [Подготовка среды](development/DEVELOPMENT.md)
+- [Архитектура Chromium/общих компонентов](development/ARCHITECTURE.md)
+- [Архитектура Firefox](development/FIREFOX_MV3_ARCHITECTURE.md)
 - [Тестирование и браузерная QA](development/TESTING.md)
 - [Процесс выпуска](development/RELEASE_PROCESS.md)
-- [Совместимость и миграция старых настроек](development/LEGACY_MIGRATION.md)
-- [Правила участия](../CONTRIBUTING.md)
-- [Политика безопасности](../SECURITY.md)
+- [Firefox release build](development/FIREFOX_RELEASE_BUILD.md)
+- [Firefox AMO reviewer notes](development/FIREFOX_AMO_REVIEW.md)
+- [Черновик release notes 0.0.4.0](development/release-drafts/0.0.4.0.md) —
+  ещё не опубликованный выпуск.
+- [Совместимость старых настроек](development/LEGACY_MIGRATION.md)
+- [Правила участия](../CONTRIBUTING.md) и
+  [политика безопасности](../SECURITY.md)
 
-Точечные браузерные чек-листы находятся в
-[`development/qa/`](development/qa/), а агентские инструкции — в
-[`../.agents/`](../.agents/). Эти материалы описывают инженерный процесс, а не
-обычную установку продукта.
+Точечные браузерные чек-листы находятся в [`development/qa/`](development/qa/).
+Они описывают инженерную проверку, а не обычную установку.
 
 ## История
 
 - [README исходного проекта](legacy/UPSTREAM_README.md)
 - [Архив upstream-документации](legacy/)
 
-Runet Censorship Bypass сохраняет историю, вклад авторов и GPL-3.0 атрибуцию
-[`anticensority/runet-censorship-bypass`](https://github.com/anticensority/runet-censorship-bypass).
-Материалы в `legacy/**` могут описывать MV2, старые Firefox-сборки, магазины и
-upstream-процессы; они сохранены как история и не являются инструкцией по
-установке текущего MV3-продукта.
+`docs/legacy/**` сохраняет старые MV2/Firefox-магазинные инструкции как историю;
+они не являются руководством для текущего продукта. Репозиторий продолжает
+работу [`anticensority/runet-censorship-bypass`](https://github.com/anticensority/runet-censorship-bypass)
+с сохранением истории, авторства и GPL-3.0 атрибуции.

@@ -222,7 +222,9 @@ function fixtureSource(target) {
       routingImplemented: true,
       activationSupported: true,
       providerDatasetImplemented: true,
-      providerDatasetAvailable: true
+      providerDatasetAvailable: true,
+      providerUpdateImplemented: true,
+      providerUpdateConfigured: false
     };
     const site = {
       schemaVersion: 1,
@@ -264,7 +266,20 @@ function fixtureSource(target) {
         notificationsAvailable: true
       }
     };
-    return {capabilities, operational, site};
+    const providerUpdate = {
+      schemaVersion: 1,
+      trustConfigured: false,
+      automaticChecksEnabled: false,
+      status: 'NOT_CONFIGURED',
+      updateAvailable: false,
+      currentDatasetVersion: 'production-v1',
+      stagedDatasetVersion: null,
+      lastCheckAt: null,
+      lastSuccessfulCheckAt: null,
+      lastCheckStatus: 'NOT_CONFIGURED',
+      errorCategory: 'TRUST_NOT_CONFIGURED'
+    };
+    return {capabilities, operational, providerUpdate, site};
   }
   browser.runtime.onMessage.addListener((message, sender) => {
     const state = stateFor(sender);
@@ -277,6 +292,8 @@ function fixtureSource(target) {
       result = state.operational;
     } else if (message.type === 'firefox.settings.get') {
       result = {revision: 7, settings};
+    } else if (message.type === 'firefox.provider.update.get') {
+      result = state.providerUpdate;
     } else {
       return Promise.resolve({ok: false, error: {code: 'UI_RPC_FAILED'}});
     }

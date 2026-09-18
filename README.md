@@ -4,124 +4,138 @@
 [![Verify MV3](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/mv3.yml/badge.svg?branch=main)](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/mv3.yml)
 
 Расширение выборочно направляет заблокированные и выбранные сайты через
-автоматические либо пользовательские прокси, не превращая весь браузерный
-трафик в VPN. Одинаковый рабочий процесс **Auto / Proxy / Direct** поддерживается
-в современных Chromium-браузерах и Firefox.
+автоматические или пользовательские прокси. Поддерживает единый рабочий процесс
+**Auto / Proxy / Direct** в Chromium и Firefox.
 
-[Скачать](#скачивание-и-установка) ·
-[Установить](docs/user/INSTALLATION.md) ·
-[Начать работу](#быстрый-старт) ·
-[Получить помощь](docs/user/TROUBLESHOOTING.md)
+[Скачать / Releases](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases) ·
+[Установка](docs/user/INSTALLATION.md) ·
+[Быстрый старт](#быстрый-старт) ·
+[Помощь](docs/user/TROUBLESHOOTING.md)
 
-## Поддерживаемые браузеры
+## Браузеры
 
-- **Chromium MV3:** Google Chrome, Microsoft Edge и Brave проверены для
-  готовящегося `0.0.4.0`; Яндекс Браузер, Opera, Vivaldi и другие современные
-  Chromium-браузеры с необходимыми MV3 API ожидаются совместимыми, но не
-  считаются release-tested для этого выпуска.
-- **Firefox MV3:** Firefox 154 и новее.
+Для готовящегося `0.0.4.0` проверены:
 
-Это список поддерживаемых и совместимых семейств, а не обещание совместимости с
-каждым Chromium-форком. Для каждого выпуска отдельно указываются браузеры и
-точные версии, на которых пройден release QA.
+- Google Chrome;
+- Microsoft Edge;
+- Brave;
+- Firefox 154 и новее.
 
-Опубликованный стабильный `v0.0.3.0` пока содержит только Chromium-пакет.
-Firefox войдёт в следующий совместный выпуск после Mozilla signing; неподписанный
-XPI не предлагается как обычная пользовательская установка.
+Яндекс Браузер, Opera, Vivaldi и другие современные Chromium-браузеры с
+необходимыми MV3 API ожидаются совместимыми, но отдельно для этого выпуска не
+тестировались. Совместимость со всеми Chromium-форками не гарантируется.
 
-## Скачивание и установка
+## Скачать и установить
+
+Текущий опубликованный стабильный выпуск —
+[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0)
+и пока содержит только Chromium-пакет.
 
 ### Chromium
 
-Последний опубликованный выпуск —
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0):
-
-- [`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip)
-  (361 977 байт);
-- SHA-256:
-  `68a32aa9162d5ba8b2cd9070c2eba6e5eb055434b899c284107c55d3e5a55635`;
-- [`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt).
-
-Скачайте ZIP, распакуйте его в постоянную папку, откройте страницу расширений,
-включите **Режим разработчика / Developer mode** и выберите **Загрузить
-распакованное расширение / Load unpacked**. Выбирать нужно папку, где
-`manifest.json` лежит непосредственно в корне.
+Скачайте
+[`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip),
+проверьте SHA-256
+`68a32aa9162d5ba8b2cd9070c2eba6e5eb055434b899c284107c55d3e5a55635`
+по файлу
+[`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt),
+распакуйте ZIP, включите **Developer mode** на странице расширений и выберите
+**Load unpacked** для папки с `manifest.json`.
 
 ### Firefox
 
-Нормальным пользовательским путём будет Mozilla-подписанный XPI или страница
-AMO, опубликованная вместе с совместным выпуском. Пока такого файла нет, не
-устанавливайте unsigned development XPI как обычный релиз. Подробности и
-актуальный статус есть в [инструкции по установке](docs/user/INSTALLATION.md).
+Обычная пользовательская установка будет доступна только как
+Mozilla-подписанный XPI или через AMO после публикации совместного выпуска.
+Такой публичной ссылки пока нет; unsigned reviewer XPI не является
+пользовательским релизом. Подробнее: [установка](docs/user/INSTALLATION.md).
 
 ## Быстрый старт
 
-1. Установите расширение и нажмите его значок на панели браузера.
-2. Откройте **Settings**, проверьте автоматическую маршрутизацию и при
-   необходимости настройте собственный прокси, Tor, Tor Browser или WARP.
-3. Нажмите **Apply** и дождитесь состояния **Active**.
-4. Для текущего сайта выбирайте **Auto**, **Proxy** или **Direct**; кнопка
-   **Turn off** безопасно возвращает прежние настройки прокси браузера.
+1. Установите расширение и откройте его значок на панели браузера.
+2. Нажмите **Apply / Enable** и дождитесь состояния **Active**.
+3. При необходимости выберите для текущего сайта **Auto**, **Proxy** или
+   **Direct** и область: точный хост либо домен с поддоменами.
 
-## Что умеет расширение
+Собственные прокси, аутентификация, Tor, Tor Browser и WARP описаны в
+[руководстве пользователя](docs/user/USER_GUIDE.md).
 
-- Автоматически выбирает маршруты по локальным доверенным данным провайдера.
-- Создаёт правила для точного хоста либо домена вместе с поддоменами.
-- Поддерживает HTTP, HTTPS, SOCKS4, SOCKS5, локальный Tor, Tor Browser и WARP.
-- Не показывает сохранённые пароли прокси и не передаёт их в диагностику.
-- Показывает состояние защиты, внешний контроль, проверку подключения и
-  очищенную диагностику.
-- Имеет английский и русский интерфейс.
+## Возможности
 
-Расширение не является VPN-сервисом и не обещает анонимность или отсутствие
-DNS-утечек. Firefox намеренно завершает запрос без Direct, если исчерпаны все
-proxy-кандидаты автоматического маршрута; Chromium может иметь иной последний
-fallback из-за платформенной модели PAC.
+- Автоматическая маршрутизация по встроенным локальным данным.
+- Правила Auto / Proxy / Direct для текущего сайта.
+- HTTP, HTTPS, SOCKS4, SOCKS5, Tor, Tor Browser и WARP.
+- Локальное хранение настроек и прокси-аутентификации без показа сохранённого
+  пароля в интерфейсе или диагностике.
+- Проверка подключения, очищенная диагностика и понятные состояния панели.
+- Английский и русский интерфейс.
 
 ## Интерфейс
 
 <p align="center">
-  <a href="docs/assets/readme/popup-daily-auto.png"><img src="docs/assets/readme/popup-daily-auto.png" alt="Auto для текущего сайта в popup" width="300"></a>
+  <a href="docs/assets/readme/chromium-popup-auto.png"><img src="docs/assets/readme/chromium-popup-auto.png" alt="Chromium: Auto для текущего сайта" width="300"></a>
   &nbsp;
-  <a href="docs/assets/readme/options-overview.png"><img src="docs/assets/readme/options-overview.png" alt="Overview на странице настроек" width="600"></a>
+  <a href="docs/assets/readme/firefox-popup-auto.png"><img src="docs/assets/readme/firefox-popup-auto.png" alt="Firefox: Auto для текущего сайта" width="300"></a>
 </p>
 
-Кадры используют синтетический адрес `example.test` и не содержат личных данных
-или реальных учётных данных. Внешний вид между движками может не совпадать по
-пикселям, но структура и пользовательский workflow одинаковы.
+Кадры используют синтетический адрес `sub.example.com`; в них нет реальной
+истории, паролей или приватных proxy endpoints.
 
-## Помощь, приватность и разработка
+## Важно знать
+
+- Это не VPN и не гарантия анонимности или отсутствия DNS-утечек.
+- Выбранный прокси видит адреса и трафик в пределах своей роли; используйте
+  только доверенные подключения.
+- Firefox поставляется с локальным набором автоматической маршрутизации.
+  Удалённое обновление этого набора пока отключено, но встроенный набор работает.
+- При исчерпании автоматической proxy-цепочки Firefox безопасно завершает запрос,
+  тогда как Chromium может использовать иной последний fallback браузерного PAC.
+
+## Помощь и документация
 
 - [Установка, обновление и удаление](docs/user/INSTALLATION.md)
 - [Руководство пользователя](docs/user/USER_GUIDE.md)
 - [Решение проблем](docs/user/TROUBLESHOOTING.md)
 - [Приватность и безопасность](docs/user/PRIVACY_AND_SECURITY.md)
-- [Обзор документации](docs/README.md)
-- [Разработка](docs/development/DEVELOPMENT.md) и
-  [архитектура](docs/development/ARCHITECTURE.md)
-- [Тестирование](docs/development/TESTING.md) и
-  [процесс выпуска](docs/development/RELEASE_PROCESS.md)
-- [Участие в проекте](CONTRIBUTING.md), [политика безопасности](SECURITY.md) и
-  [исторический README](docs/legacy/UPSTREAM_README.md)
+- [Вся документация](docs/README.md)
+- [Сообщить о проблеме](https://github.com/aVitomin/runet-censorship-bypass-mv3/issues/new/choose)
+- [Политика безопасности](SECURITY.md)
+
+<details>
+<summary>Разработка и история</summary>
+
+[Разработка](docs/development/DEVELOPMENT.md) ·
+[Архитектура](docs/development/ARCHITECTURE.md) ·
+[Тестирование](docs/development/TESTING.md) ·
+[Процесс выпуска](docs/development/RELEASE_PROCESS.md) ·
+[Участие в проекте](CONTRIBUTING.md) ·
+[Исторический README](docs/legacy/UPSTREAM_README.md)
+
+</details>
 
 Проект продолжает работу
 [`anticensority/runet-censorship-bypass`](https://github.com/anticensority/runet-censorship-bypass)
-с сохранением истории и атрибуции. Код распространяется по [GNU GPL v3](LICENSE).
+с сохранением истории и атрибуции. Лицензия: [GNU GPL v3](LICENSE).
 
-<details>
-<summary>English</summary>
+## English
 
-Runet Censorship Bypass selectively routes blocked or chosen sites through an
-automatic source or configured proxies. It supports modern Chromium-based
-browsers and Firefox 154+. The currently published `v0.0.3.0` download is
-Chromium-only; the normal Firefox installation path will be a Mozilla-signed XPI
-or AMO listing in the next dual-browser release. See the
-[installation guide](docs/user/INSTALLATION.md),
-[user guide](docs/user/USER_GUIDE.md), and
-[privacy and security notes](docs/user/PRIVACY_AND_SECURITY.md).
-Release QA for `0.0.4.0` covers Google Chrome, Microsoft Edge, Brave and
-Firefox. Yandex Browser, Opera, Vivaldi and other modern Chromium-based browsers
-with the required MV3 APIs are expected-compatible targets, but are not claimed
-as separately release-tested or universally guaranteed.
+Runet Censorship Bypass selectively routes blocked or chosen sites through
+automatic or user-configured proxies. It supports the same **Auto / Proxy /
+Direct** workflow on Chromium and Firefox.
 
-</details>
+Release-tested for the upcoming `0.0.4.0`: Google Chrome, Microsoft Edge,
+Brave, and Firefox 154+. Yandex Browser, Opera, Vivaldi, and other modern
+Chromium browsers with the required MV3 APIs are expected to be compatible but
+were not separately release-tested; universal Chromium-fork compatibility is
+not claimed.
+
+The currently published stable release is Chromium-only
+[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0).
+Install its extracted ZIP with **Developer mode → Load unpacked**. Normal
+Firefox installation will require a Mozilla-signed XPI or AMO listing; no public
+Firefox download exists yet.
+
+Quick start: install the extension, open its toolbar popup, choose **Apply /
+Enable**, then optionally select **Auto**, **Proxy**, or **Direct** for the
+current site. See [Installation](docs/user/INSTALLATION.md), the
+[User guide](docs/user/USER_GUIDE.md), or
+[Troubleshooting](docs/user/TROUBLESHOOTING.md).
