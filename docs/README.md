@@ -5,10 +5,10 @@
 или **Direct**; подробности есть в [руководстве](user/USER_GUIDE.md).
 
 Текущий опубликованный стабильный выпуск —
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0),
-только для Chromium. `0.0.4.0` готовится как совместный Chromium/Firefox выпуск,
-но ещё не опубликован. Обычная установка Firefox появится только после Mozilla
-signing; unsigned XPI остаётся reviewer/development-артефактом.
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0) —
+первый общий выпуск Chromium и Firefox. Chromium устанавливается из
+опубликованного ZIP, Firefox 154+ — из Mozilla-подписанного XPI того же GitHub
+Release. Публичной AMO-страницы для нового Firefox ID пока нет.
 
 ## Пользователям
 
@@ -20,7 +20,7 @@ signing; unsigned XPI остаётся reviewer/development-артефактом
 - [Приватность и безопасность](user/PRIVACY_AND_SECURITY.md) — локальные данные,
   сетевые стороны, разрешения и границы защиты.
 
-Для готовящегося выпуска проверены Google Chrome, Microsoft Edge, Brave и
+Для выпуска `0.0.4.0` проверены Google Chrome, Microsoft Edge, Brave и
 Firefox 154+. Яндекс Браузер, Opera, Vivaldi и другие современные Chromium-
 браузеры с необходимыми MV3 API ожидаются совместимыми, но отдельно не
 тестировались.
@@ -34,8 +34,8 @@ Firefox 154+. Яндекс Браузер, Opera, Vivaldi и другие сов
 - [Процесс выпуска](development/RELEASE_PROCESS.md)
 - [Firefox release build](development/FIREFOX_RELEASE_BUILD.md)
 - [Firefox AMO reviewer notes](development/FIREFOX_AMO_REVIEW.md)
-- [Черновик release notes 0.0.4.0](development/release-drafts/0.0.4.0.md) —
-  ещё не опубликованный выпуск.
+- [Опубликованный release 0.0.4.0](development/release-drafts/0.0.4.0.md) —
+  архивная ссылка и границы выпуска.
 - [Совместимость старых настроек](development/LEGACY_MIGRATION.md)
 - [Правила участия](../CONTRIBUTING.md) и
   [политика безопасности](../SECURITY.md)

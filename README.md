@@ -14,7 +14,7 @@
 
 ## Браузеры
 
-Для готовящегося `0.0.4.0` проверены:
+Для выпуска `0.0.4.0` проверены:
 
 - Google Chrome;
 - Microsoft Edge;
@@ -28,26 +28,29 @@
 ## Скачать и установить
 
 Текущий опубликованный стабильный выпуск —
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0)
-и пока содержит только Chromium-пакет.
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0) —
+первый общий выпуск для Chromium и Firefox.
 
 ### Chromium
 
 Скачайте
-[`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip),
+[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip),
 проверьте SHA-256
-`68a32aa9162d5ba8b2cd9070c2eba6e5eb055434b899c284107c55d3e5a55635`
+`e702dff6ba3fe9bb3291de413c4e106f95dcd9b83f9cf8fc98f9635f5990f236`
 по файлу
-[`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt),
+[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt),
 распакуйте ZIP, включите **Developer mode** на странице расширений и выберите
 **Load unpacked** для папки с `manifest.json`.
 
 ### Firefox
 
-Обычная пользовательская установка будет доступна только как
-Mozilla-подписанный XPI или через AMO после публикации совместного выпуска.
-Такой публичной ссылки пока нет; unsigned reviewer XPI не является
-пользовательским релизом. Подробнее: [установка](docs/user/INSTALLATION.md).
+Скачайте Mozilla-подписанный
+[`runet-censorship-bypass-firefox-0.0.4.0-signed.xpi`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi)
+и при необходимости проверьте SHA-256
+`c7e3042e48819644673db92b9150a9d54a551281046212d896a7f7202bc9c34c`
+по [checksum-файлу](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt).
+Публичной AMO-страницы для нового Firefox ID пока нет. Подробнее:
+[установка](docs/user/INSTALLATION.md).
 
 ## Быстрый старт
 
@@ -122,17 +125,17 @@ Runet Censorship Bypass selectively routes blocked or chosen sites through
 automatic or user-configured proxies. It supports the same **Auto / Proxy /
 Direct** workflow on Chromium and Firefox.
 
-Release-tested for the upcoming `0.0.4.0`: Google Chrome, Microsoft Edge,
-Brave, and Firefox 154+. Yandex Browser, Opera, Vivaldi, and other modern
+Release-tested for `0.0.4.0`: Google Chrome, Microsoft Edge, Brave, and Firefox
+154+. Yandex Browser, Opera, Vivaldi, and other modern
 Chromium browsers with the required MV3 APIs are expected to be compatible but
 were not separately release-tested; universal Chromium-fork compatibility is
 not claimed.
 
-The currently published stable release is Chromium-only
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0).
-Install its extracted ZIP with **Developer mode → Load unpacked**. Normal
-Firefox installation will require a Mozilla-signed XPI or AMO listing; no public
-Firefox download exists yet.
+The current stable release is the first dual-browser release,
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0).
+Chromium uses the published ZIP with **Developer mode → Load unpacked**;
+Firefox 154+ uses the Mozilla-signed XPI attached to the same GitHub Release.
+There is no public AMO listing for the new Firefox ID yet.
 
 Quick start: install the extension, open its toolbar popup, choose **Apply /
 Enable**, then optionally select **Auto**, **Proxy**, or **Direct** for the

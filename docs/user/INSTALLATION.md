@@ -2,37 +2,37 @@
 
 Runet Censorship Bypass поддерживает Chromium MV3 и Firefox MV3.
 
-Для готовящегося `0.0.4.0` проверены Google Chrome, Microsoft Edge, Brave и
+Для выпуска `0.0.4.0` проверены Google Chrome, Microsoft Edge, Brave и
 Firefox 154+. Яндекс Браузер, Opera, Vivaldi и другие современные Chromium-
 браузеры с необходимыми MV3 API ожидаются совместимыми, но отдельно для этого
 выпуска не тестировались.
 
-Сейчас опубликован только Chromium-выпуск `v0.0.3.0`. Совместный `0.0.4.0` ещё
-не опубликован; обычная установка Firefox появится после Mozilla signing.
+Текущий стабильный [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0) —
+первый общий выпуск для Chromium и Firefox.
 
 ## Chromium: установить стабильный ZIP
 
 ### 1. Скачать и проверить
 
 Откройте
-[`v0.0.3.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.3.0)
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0)
 и скачайте именно
-[`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip),
+[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip),
 а не автоматически созданный **Source code**.
 
 Ожидаемый SHA-256:
 
 ```text
-68a32aa9162d5ba8b2cd9070c2eba6e5eb055434b899c284107c55d3e5a55635
+e702dff6ba3fe9bb3291de413c4e106f95dcd9b83f9cf8fc98f9635f5990f236
 ```
 
 Файл проверки:
-[`runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.3.0/runet-censorship-bypass-mv3-0.0.3.0-cd59e14.sha256.txt).
+[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt).
 
 В PowerShell:
 
 ```powershell
-Get-FileHash .\runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip -Algorithm SHA256
+Get-FileHash .\runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip -Algorithm SHA256
 ```
 
 Не устанавливайте архив, если хэш отличается.
@@ -66,14 +66,20 @@ Get-FileHash .\runet-censorship-bypass-mv3-0.0.3.0-cd59e14.zip -Algorithm SHA256
 
 ## Firefox: только подписанная пользовательская установка
 
-Обычный пользователь должен устанавливать Firefox-версию только:
+Обычный пользователь должен скачать Mozilla-подписанный
+[`runet-censorship-bypass-firefox-0.0.4.0-signed.xpi`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi)
+из опубликованного GitHub Release. Ожидаемый SHA-256:
 
-1. со страницы Mozilla Add-ons (AMO); или
-2. из Mozilla-подписанного XPI опубликованного выпуска.
+```text
+c7e3042e48819644673db92b9150a9d54a551281046212d896a7f7202bc9c34c
+```
 
-Таких публичных ссылок пока нет. Не обходите проверку подписи и не используйте
-unsigned reviewer XPI как обычную пользовательскую версию. После публикации
-ссылки появятся в README и release notes.
+Файл проверки:
+[`runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt).
+
+Публичной AMO-страницы для нового Gecko ID пока нет. Не обходите проверку
+подписи и не используйте unsigned reviewer XPI как обычную пользовательскую
+версию.
 
 Firefox попросит подтвердить разрешения. Для **Apply** требуется разрешить
 работу расширения в приватных окнах: без него включение завершается безопасной
@@ -110,7 +116,8 @@ Advanced-настройки собственных прокси, Tor, Tor Browse
 
 ### Firefox
 
-AMO или подписанный XPI использует механизм обновлений Firefox. Не заменяйте
+До появления публичной AMO-страницы проверяйте новый GitHub Release и
+устанавливайте следующий Mozilla-подписанный XPI вручную. Не заменяйте
 подписанную установку временным unsigned add-on.
 
 ## Удаление
@@ -126,13 +133,13 @@ AMO или подписанный XPI использует механизм об
 
 ## English summary
 
-Release-tested for the upcoming `0.0.4.0`: Google Chrome, Microsoft Edge,
-Brave, and Firefox 154+. Yandex Browser, Opera, Vivaldi, and other modern
+Release-tested for `0.0.4.0`: Google Chrome, Microsoft Edge, Brave, and Firefox
+154+. Yandex Browser, Opera, Vivaldi, and other modern
 Chromium browsers with the required MV3 APIs are expected to be compatible but
 were not separately release-tested.
 
-The published stable release is still Chromium-only `v0.0.3.0`: download its
-ZIP, verify SHA-256, extract it, enable **Developer mode**, and choose
-**Load unpacked**. Normal Firefox installation will require an AMO listing or a
-Mozilla-signed XPI; no public Firefox download exists yet. Unsigned XPI loading
-is for temporary developer/reviewer testing only.
+The current stable release is the dual-browser `v0.0.4.0`. Chromium users
+download and verify the published ZIP, extract it, enable **Developer mode**,
+and choose **Load unpacked**. Firefox 154+ users install the Mozilla-signed XPI
+from the same GitHub Release. No public AMO listing exists for the new Firefox
+ID yet; unsigned XPI loading is only for temporary developer/reviewer testing.

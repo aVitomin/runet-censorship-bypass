@@ -439,6 +439,10 @@ if (fs.existsSync(readmePath)) {
         'zipSize',
         'zipSha256',
         'checksumFilename',
+        'firefoxXpiFilename',
+        'firefoxXpiSize',
+        'firefoxXpiSha256',
+        'firefoxChecksumFilename',
       ];
       for (const field of requiredFields) {
         if (release[field] === undefined || release[field] === '') {
@@ -454,11 +458,17 @@ if (fs.existsSync(readmePath)) {
       if (!/^[0-9a-f]{64}$/u.test(release.zipSha256 ?? '')) {
         addError(releaseMetadataPath, 1, release.zipSha256, 'zipSha256 must be a lowercase SHA-256');
       }
+      if (!/^[0-9a-f]{64}$/u.test(release.firefoxXpiSha256 ?? '')) {
+        addError(releaseMetadataPath, 1, release.firefoxXpiSha256, 'firefoxXpiSha256 must be a lowercase SHA-256');
+      }
       if (typeof release.prerelease !== 'boolean') {
         addError(releaseMetadataPath, 1, release.prerelease, 'prerelease must be a boolean');
       }
       if (!Number.isInteger(release.zipSize) || release.zipSize <= 0) {
         addError(releaseMetadataPath, 1, release.zipSize, 'zipSize must be a positive integer byte count');
+      }
+      if (!Number.isInteger(release.firefoxXpiSize) || release.firefoxXpiSize <= 0) {
+        addError(releaseMetadataPath, 1, release.firefoxXpiSize, 'firefoxXpiSize must be a positive integer byte count');
       }
       if (Number.isNaN(Date.parse(release.publishedAt ?? ''))) {
         addError(releaseMetadataPath, 1, release.publishedAt, 'publishedAt must be a valid timestamp');
@@ -471,6 +481,8 @@ if (fs.existsSync(readmePath)) {
       for (const assetUrl of [
         `${expectedAssetBase}/${release.zipFilename}`,
         `${expectedAssetBase}/${release.checksumFilename}`,
+        `${expectedAssetBase}/${release.firefoxXpiFilename}`,
+        `${expectedAssetBase}/${release.firefoxChecksumFilename}`,
       ]) {
         if (!readme.includes(`](${assetUrl})`)) {
           addError('README.md', 1, assetUrl, 'README current-release asset link is missing or inconsistent');
@@ -482,6 +494,9 @@ if (fs.existsSync(readmePath)) {
         ['zipFilename', release.zipFilename],
         ['zipSha256', release.zipSha256],
         ['checksumFilename', release.checksumFilename],
+        ['firefoxXpiFilename', release.firefoxXpiFilename],
+        ['firefoxXpiSha256', release.firefoxXpiSha256],
+        ['firefoxChecksumFilename', release.firefoxChecksumFilename],
       ]) {
         if (value && !readme.toLowerCase().includes(String(value).toLowerCase())) {
           addError('README.md', 1, value, `README current-release block does not match ${field} in ${releaseMetadataPath}`);

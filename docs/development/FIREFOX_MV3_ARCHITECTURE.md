@@ -2,7 +2,8 @@
 
 Firefox production source находится в отдельной границе
 `src/extension-firefox-mv3`. Пакет готовится как воспроизводимый release
-candidate, но пока не опубликован и не входит в публичные инструкции установки.
+candidate; Mozilla-подписанный пакет `0.0.4.0` опубликован и входит в
+пользовательские инструкции установки.
 
 Чистая установка намеренно остаётся в состоянии `OFF`. Пакет содержит Firefox
 MV3 manifest, непостоянную background event page, durable activation state,
@@ -265,7 +266,7 @@ credential configuration по-прежнему отсутствует. Provider 
 Production Gecko ID — неизменяемый UUIDv4
 `{adf5f697-1149-42a2-92eb-c163cb9a4146}`. Он создан для этого Firefox MV3
 продукта и не переиспользует legacy AMO identity. Firefox следует общей версии
-репозитория: текущий release candidate имеет manifest version `0.0.4.0`,
+репозитория: текущий опубликованный release имеет manifest version `0.0.4.0`,
 совпадающую с `storeVersion` Chromium release train; следующий публичный
 release обновляет обе версии согласованно через обычный release-процесс.
 
