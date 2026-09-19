@@ -106,7 +106,7 @@
             count >= MAX_AUTH_ATTEMPTS_PER_REQUEST_CHALLENGER) {
           return CANCEL;
         }
-        const credentials = resolveCredentials(authentication.authRef);
+        const credentials = resolveCredentials(authentication.authRef, details);
         if (!validCredentials(credentials)) {
           return CANCEL;
         }

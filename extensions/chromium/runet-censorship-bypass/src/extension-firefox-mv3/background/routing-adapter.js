@@ -209,6 +209,7 @@
       (() => initialState);
     const decideRoute = options.decideRoute || Routing.decideRoute;
     const routingInputForRequest = options.routingInputForRequest;
+    const credentialResolverForRequest = options.credentialResolverForRequest;
     let authorizations = options.authorizations || new Map();
     let requestAuthContexts = options.requestAuthContexts || new Map();
 
@@ -246,7 +247,7 @@
 
     }
 
-    function authorize(requestId, callbackBudget, authCandidates) {
+    function authorize(requestId, callbackBudget, authCandidates, resolver) {
 
       if (!isRequestId(requestId) ||
           !Number.isSafeInteger(callbackBudget) || callbackBudget < 1 ||
@@ -266,6 +267,7 @@
           requestAuthContexts.set(requestId, {
             candidates: authCandidates,
             selected: null,
+            resolver,
           });
         }
         return authorizations.size <= MAX_AUTHORIZATIONS &&
@@ -296,6 +298,7 @@
             requestId,
             converted.callbackBudget,
             converted.authCandidates,
+            credentialResolverForRequest ? credentialResolverForRequest() : null,
         )) {
           clearAuthorization(requestId);
           return DEFAULT_ROUTE;
@@ -416,6 +419,15 @@
 
     }
 
+    function resolveCredentialsForChallenge(details) {
+
+      const authentication = authenticationForChallenge(details);
+      const context = authentication && requestAuthContexts.get(details.requestId);
+      return context && typeof context.resolver === 'function' ?
+        context.resolver(authentication.authRef) : null;
+
+    }
+
     function onRequestTerminal(details) {
 
       clearAuthorization(details && details.requestId);
@@ -454,6 +466,7 @@
       onBeforeRequest,
       onProxyRequest,
       onRequestTerminal,
+      resolveCredentialsForChallenge,
     };
     Object.defineProperty(api, 'runtimeState', {
       enumerable: true,

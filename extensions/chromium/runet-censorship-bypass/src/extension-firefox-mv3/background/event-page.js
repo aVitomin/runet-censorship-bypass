@@ -101,11 +101,13 @@
       activationController.currentRuntimeState() : routing.STATES.INITIALIZING,
     routingInputForRequest: (details) =>
       activationController.routingInputForRequest(details),
+    credentialResolverForRequest: () =>
+      activationController.credentialResolverForRequest(),
   });
   const proxyAuth = proxyAuthApi.createHandler({
     routingAdapter,
-    resolveCredentials: (authRef) => activationController ?
-      activationController.resolveCredentials(authRef) : null,
+    resolveCredentials: (_authRef, details) =>
+      routingAdapter.resolveCredentialsForChallenge(details),
   });
   function clearEphemeralState() {
 
@@ -146,7 +148,13 @@
 
     },
   });
-  siteController = siteControlApi.createController({settingsController});
+  const routingSettingsController = {
+    get: () => settingsController.getEffective(),
+    replace: (...args) => settingsController.replace(...args),
+  };
+  siteController = siteControlApi.createController({
+    settingsController: routingSettingsController,
+  });
   operationalController = operationalStatusApi.createController({
     storageArea: browser.storage.local,
     actionApi: browser.action,
@@ -155,7 +163,7 @@
     runtimeApi: browser.runtime,
     extensionApi: browser.extension,
     proxySettings: browser.proxy.settings,
-    settingsController,
+    settingsController: routingSettingsController,
     siteController,
     activationSnapshot: () => activationController.snapshot(),
     fetch: root.fetch.bind(root),
@@ -340,25 +348,31 @@
 
   }
 
-  async function applyPersistedProductConfiguration() {
+  async function applyPersistedProductConfiguration(message) {
 
     const current = activationController.snapshot();
-    if (current.active) {
-      return errorResponse(activationApi.ERRORS.ACTIVATION_ALREADY_ACTIVE);
-    }
-    if (current.durableIntent !== offState.OFF ||
-        current.runtimeState !== routing.STATES.OFF) {
+    if (!current.active && (current.durableIntent !== offState.OFF ||
+        current.runtimeState !== routing.STATES.OFF)) {
       return errorResponse(activationApi.ERRORS.BOOT_NOT_READY);
     }
     let prepared;
     try {
-      prepared = await activationFactory();
+      if (message.expectedRevision !== undefined) {
+        const saved = await settingsController.get();
+        if (saved.revision !== message.expectedRevision) {
+          return errorResponse('SAVED_REVISION_CHANGED');
+        }
+      }
+      prepared = await activationFactory(message.expectedRevision === undefined ?
+        null : message.expectedRevision);
     } catch (error) {
       return errorResponse(safeApplyErrorCode(error));
     }
     let activated;
     try {
-      activated = await activationController.activatePrepared(prepared);
+      activated = current.active ?
+        await activationController.replacePrepared(prepared) :
+        await activationController.activatePrepared(prepared);
     } catch (_error) {
       return errorResponse(activationApi.ERRORS.ACTIVATION_FAILED);
     }
@@ -426,6 +440,11 @@
   async function replaceSiteSettings(message) {
 
     try {
+      const current = activationController.snapshot();
+      if (current.active || current.runtimeState !== routing.STATES.OFF ||
+          current.durableIntent !== offState.OFF) {
+        return errorResponse(settingsControlApi.ERRORS.SETTINGS_MUTATION_REQUIRES_OFF);
+      }
       return {ok: true, result: await siteController.replace(message)};
     } catch (error) {
       return errorResponse(safeSettingsErrorCode(error));
@@ -530,13 +549,15 @@
       };
     }
     if (type === 'firefox.activation.apply') {
-      if (!exactRpcRequest(message, type)) {
+      const revisionRequest = message && Object.keys(message).length === 2 &&
+        Number.isSafeInteger(message.expectedRevision) && message.expectedRevision >= 0;
+      if (!exactRpcRequest(message, type) && !revisionRequest) {
         return errorResponse('INVALID_RPC_REQUEST');
       }
       return enqueueRpcControlOperation(() => runOperationalAction(
           'APPLY',
           async () => {
-            const result = await applyPersistedProductConfiguration();
+            const result = await applyPersistedProductConfiguration(message);
             if (result.ok === true) {
               await operationalController.resetHealth();
             }
