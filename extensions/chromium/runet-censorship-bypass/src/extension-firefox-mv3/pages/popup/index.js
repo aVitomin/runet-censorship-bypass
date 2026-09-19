@@ -90,6 +90,9 @@
     if (code === 'PRIVATE_ACCESS_REQUIRED') {
       return 'popupErrorPrivateAccess';
     }
+    if (code === 'PRIVATE_ACCESS_CHECK_FAILED') {
+      return 'popupErrorPrivateAccessCheck';
+    }
     if (String(code).includes('DATASET')) {
       return 'popupErrorDataset';
     }
@@ -144,6 +147,14 @@
 
     return Boolean(site && site.target.controllable && draft &&
       (site.route.mode !== draft.mode || site.route.scope !== draft.scope));
+
+  }
+
+  function activationAllowed(capabilities) {
+
+    const value = Ui.validateCapabilities(capabilities);
+    return value.activationSupported && value.providerDatasetAvailable &&
+      value.privateWindowAccess === 'GRANTED';
 
   }
 
@@ -211,6 +222,31 @@
       emit();
       try {
         await readAll();
+        return true;
+      } catch (error) {
+        state.errorCode = Ui.safeErrorCode(error);
+        return false;
+      } finally {
+        state.operation = null;
+        state.pending = false;
+        emit();
+      }
+
+    }
+
+    async function checkPrivateAccess() {
+
+      if (state.pending) {
+        return false;
+      }
+      state = Object.assign({}, state, {
+        errorCode: null, operation: 'PRIVATE_ACCESS', pending: true,
+      });
+      emit();
+      try {
+        state.capabilities = Ui.validateCapabilities(await rpc.call({
+          type: 'firefox.capabilities.get',
+        }));
         return true;
       } catch (error) {
         state.errorCode = Ui.safeErrorCode(error);
@@ -298,6 +334,7 @@
     return Object.freeze({
       apply: (draft) => operate('ENABLE', draft),
       checkHealth,
+      checkPrivateAccess,
       clear: () => operate('DISABLE'),
       refresh,
       snapshot,
@@ -528,6 +565,11 @@
           `pill ${view.tone}`,
       );
       Ui.appendText(card, 'p', t(view.helpKey), 'muted');
+      Ui.renderPrivateAccessOnboarding(card, state.capabilities, {
+        checkAgain: () => controller.checkPrivateAccess(),
+        pending: state.pending,
+        translate: t,
+      });
       if (state.errorCode) {
         const error = Ui.appendText(
             card, 'p', t(userErrorKey(state.errorCode)),
@@ -545,9 +587,7 @@
           !state.site.proxyCandidateAvailable;
         primary.disabled = state.pending ||
           (view.action === 'ENABLE' && (
-            !state.capabilities.activationSupported ||
-            !state.capabilities.providerDatasetAvailable ||
-            state.capabilities.privateWindowAccess !== 'GRANTED' ||
+            !activationAllowed(state.capabilities) ||
             proxyUnavailable));
         primary.addEventListener('click', () => view.action === 'ENABLE' ?
           controller.apply(draft) : controller.clear());
@@ -586,6 +626,7 @@
   }
 
   return Object.freeze({
+    activationAllowed,
     createController,
     isDraftDirty,
     mount,

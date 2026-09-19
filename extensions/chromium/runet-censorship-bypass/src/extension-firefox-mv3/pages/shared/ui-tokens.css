@@ -141,6 +141,32 @@ summary:focus-visible {
   background: var(--ui-color-error-surface);
 }
 
+.permission-onboarding {
+  display: grid;
+  gap: var(--ui-space-1);
+  color: var(--ui-color-text-secondary);
+}
+
+.permission-onboarding h3,
+.permission-onboarding p {
+  margin: 0;
+}
+
+.permission-onboarding h3 {
+  color: var(--ui-color-warning);
+  font-size: var(--ui-font-size-heading);
+}
+
+.permission-onboarding button {
+  justify-self: start;
+}
+
+.permission-separate-note {
+  padding-top: var(--ui-space-1);
+  border-top: 1px solid var(--ui-color-divider);
+  color: var(--ui-color-text-muted);
+}
+
 .muted {
   color: var(--ui-color-text-muted);
 }

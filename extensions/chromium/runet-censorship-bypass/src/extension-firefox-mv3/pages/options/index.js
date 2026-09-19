@@ -320,6 +320,31 @@
 
     }
 
+    async function checkPrivateAccess() {
+
+      if (state.pending) {
+        return false;
+      }
+      state.pending = true;
+      state.errorCode = null;
+      emit();
+      try {
+        const capabilities = Ui.validateCapabilities(await rpc.call({
+          type: 'firefox.capabilities.get',
+        }));
+        state.capabilities = capabilities;
+        state.editable = editableFromCapabilities(capabilities);
+        return true;
+      } catch (error) {
+        state.errorCode = Ui.safeErrorCode(error);
+        return false;
+      } finally {
+        state.pending = false;
+        emit();
+      }
+
+    }
+
     async function save(nextSettings) {
 
       if (state.pending) {
@@ -447,6 +472,7 @@
 
     return Object.freeze({
       checkHealth,
+      checkPrivateAccess,
       checkProviderUpdate,
       installProviderUpdate,
       load,
@@ -977,6 +1003,15 @@
         Ui.appendText(row, 'dt', t(labelKey), 'muted');
         Ui.appendText(row, 'dd', t(valueKey));
       }
+      Ui.renderPrivateAccessOnboarding(overview, state.capabilities, {
+        checkAgain: () => controller.checkPrivateAccess(),
+        pending: state.pending,
+        translate: t,
+      });
+      Ui.appendText(
+          overview, 'p', t('permissionRestrictedSitesInfo'),
+          'permission-separate-note',
+      );
 
       const automatic = Ui.append(form, 'section', 'card section');
       automatic.id = 'automatic-routing';
