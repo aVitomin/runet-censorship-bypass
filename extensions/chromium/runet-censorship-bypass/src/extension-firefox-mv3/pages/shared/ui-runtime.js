@@ -332,6 +332,36 @@
 
   }
 
+  function renderPrivateAccessOnboarding(parent, capabilities, options = {}) {
+
+    const value = validateCapabilities(capabilities);
+    if (value.privateWindowAccess === 'GRANTED') {
+      return null;
+    }
+    if (typeof options.translate !== 'function' ||
+        typeof options.checkAgain !== 'function') {
+      throw rpcError('UI_VALIDATION_FAILED');
+    }
+    const t = options.translate;
+    const notice = append(
+        parent, 'div', 'permission-onboarding status warning',
+    );
+    appendText(notice, 'h3', t('permissionPrivateAccessTitle'));
+    appendText(notice, 'p', t('permissionPrivateAccessExplanation'));
+    if (value.privateWindowAccess === 'UNKNOWN') {
+      appendText(notice, 'p', t('permissionPrivateAccessUnknown'));
+    }
+    appendText(notice, 'p', t('permissionPrivateAccessSteps'));
+    const check = append(notice, 'button');
+    check.type = 'button';
+    check.dataset.operational = 'true';
+    check.textContent = t('permissionCheckAgain');
+    check.disabled = options.pending === true;
+    check.addEventListener('click', options.checkAgain);
+    return Object.freeze({check, notice});
+
+  }
+
   function clone(value) {
 
     return JSON.parse(JSON.stringify(value));
@@ -355,6 +385,7 @@
     createRpc,
     hasExactKeys,
     rpcError,
+    renderPrivateAccessOnboarding,
     safeErrorCode,
     translate,
     validateCapabilities,

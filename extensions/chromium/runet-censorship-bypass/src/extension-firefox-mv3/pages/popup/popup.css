@@ -1,10 +1,5 @@
-html {
-  min-width: 380px;
-}
-
 body {
-  width: 380px;
-  max-width: 100vw;
+  width: 392px;
   min-height: 420px;
 }
 
@@ -250,19 +245,4 @@ fieldset {
 
 .message {
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 300px) {
-  html {
-    min-width: 220px;
-  }
-
-  body {
-    width: 100%;
-  }
-
-  .actions,
-  .popup-header {
-    display: grid;
-  }
 }

@@ -137,6 +137,37 @@ function deferred() {
 
 }
 
+function fakeParent() {
+
+  const document = {
+    createElement(tagName) {
+
+      return {
+        addEventListener(type, listener) {
+
+          this.listeners[type] = listener;
+
+        },
+        appendChild(child) {
+
+          this.children.push(child);
+
+        },
+        children: [],
+        className: '',
+        dataset: {},
+        listeners: {},
+        ownerDocument: document,
+        tagName,
+        textContent: '',
+      };
+
+    },
+  };
+  return document.createElement('div');
+
+}
+
 describe('Firefox production UI controllers', function() {
 
   it('renders OFF as Enable without claiming active protection', function() {
@@ -209,6 +240,120 @@ describe('Firefox production UI controllers', function() {
     Assert.strictEqual(view.helpKey, 'popupHelpPrivateBlocked');
 
   });
+
+  it('allows activation only after private access is granted', function() {
+
+    Assert.strictEqual(Popup.activationAllowed(capabilities({
+      privateWindowAccess: 'DENIED',
+    })), false);
+    Assert.strictEqual(Popup.activationAllowed(capabilities({
+      privateWindowAccess: 'UNKNOWN',
+    })), false);
+    const granted = capabilities({privateWindowAccess: 'GRANTED'});
+    Assert.strictEqual(Popup.activationAllowed(granted), true);
+    Assert.strictEqual(
+        Object.hasOwn(granted, 'restrictedSiteAccess'),
+        false,
+    );
+
+  });
+
+  it('renders permission instructions and a working Check again action',
+      function() {
+
+        const parent = fakeParent();
+        let checks = 0;
+        const rendered = Ui.renderPrivateAccessOnboarding(
+            parent,
+            capabilities({privateWindowAccess: 'DENIED'}),
+            {
+              checkAgain: () => {
+                checks += 1;
+              },
+              translate: (key) => key,
+            },
+        );
+        Assert.match(rendered.notice.className, /warning/);
+        Assert.deepStrictEqual(
+            rendered.notice.children.map((child) => child.textContent),
+            [
+              'permissionPrivateAccessTitle',
+              'permissionPrivateAccessExplanation',
+              'permissionPrivateAccessSteps',
+              'permissionCheckAgain',
+            ],
+        );
+        rendered.check.listeners.click();
+        Assert.strictEqual(checks, 1);
+        Assert.strictEqual(
+            Ui.renderPrivateAccessOnboarding(
+                fakeParent(), capabilities(), {
+                  checkAgain: () => {}, translate: (key) => key,
+                },
+            ),
+            null,
+        );
+
+      });
+
+  it('shows an explicit unknown-permission explanation', function() {
+
+    const rendered = Ui.renderPrivateAccessOnboarding(
+        fakeParent(),
+        capabilities({privateWindowAccess: 'UNKNOWN'}),
+        {checkAgain: () => {}, translate: (key) => key},
+    );
+    Assert.deepStrictEqual(
+        rendered.notice.children.map((child) => child.textContent),
+        [
+          'permissionPrivateAccessTitle',
+          'permissionPrivateAccessExplanation',
+          'permissionPrivateAccessUnknown',
+          'permissionPrivateAccessSteps',
+          'permissionCheckAgain',
+        ],
+    );
+    Assert.strictEqual(
+        Popup.userErrorKey('PRIVATE_ACCESS_CHECK_FAILED'),
+        'popupErrorPrivateAccessCheck',
+    );
+
+  });
+
+  it('rechecks popup private access without reloading unrelated state',
+      async function() {
+
+        let privateAccess = 'DENIED';
+        const calls = [];
+        const controller = popupController({rpc: {async call(message) {
+
+          calls.push(message.type);
+          if (message.type === 'firefox.capabilities.get') {
+            return capabilities({privateWindowAccess: privateAccess});
+          }
+          if (message.type === 'firefox.site.get') return siteState();
+          return operationalResult();
+
+        }}});
+        await controller.refresh();
+        Assert.strictEqual(
+            controller.snapshot().capabilities.privateWindowAccess,
+            'DENIED',
+        );
+        privateAccess = 'GRANTED';
+        Assert.strictEqual(await controller.checkPrivateAccess(), true);
+        Assert.strictEqual(
+            controller.snapshot().capabilities.privateWindowAccess,
+            'GRANTED',
+        );
+        Assert.deepStrictEqual(calls, [
+          'firefox.capabilities.get',
+          'firefox.site.get',
+          'firefox.operational.get',
+          'firefox.capabilities.get',
+        ]);
+
+      });
 
   it('runs Apply then refreshes capabilities', async function() {
 
@@ -450,6 +595,17 @@ describe('Firefox production UI controllers', function() {
 
   });
 
+  it('keeps native popup sizing on body without viewport feedback', function() {
+
+    const css = Fs.readFileSync(
+        Path.join(sourceRoot, 'pages', 'popup', 'popup.css'), 'utf8',
+    );
+    Assert.match(css, /body\s*\{[^}]*width:\s*392px;/);
+    Assert.doesNotMatch(css, /max-width:\s*100vw/);
+    Assert.doesNotMatch(css, /@media\s*\(max-width:\s*300px\)/);
+
+  });
+
   it('preserves rule text for background-authoritative normalization', function() {
 
     Assert.deepStrictEqual(
@@ -521,6 +677,45 @@ describe('Firefox production UI controllers', function() {
     Assert.strictEqual(controller.snapshot().editable, true);
 
   });
+
+  it('rechecks options private access without reloading settings',
+      async function() {
+
+        let privateAccess = 'DENIED';
+        const calls = [];
+        const rpc = {async call(message) {
+
+          calls.push(message.type);
+          if (message.type === 'firefox.capabilities.get') {
+            return capabilities({privateWindowAccess: privateAccess});
+          }
+          if (message.type === 'firefox.settings.get') {
+            return settingsResult(5);
+          }
+          if (message.type === 'firefox.operational.get') {
+            return operationalResult();
+          }
+          return providerUpdateResult();
+
+        }};
+        const controller = Options.createController({rpc});
+        await controller.load();
+        privateAccess = 'GRANTED';
+        Assert.strictEqual(await controller.checkPrivateAccess(), true);
+        Assert.strictEqual(
+            controller.snapshot().capabilities.privateWindowAccess,
+            'GRANTED',
+        );
+        Assert.strictEqual(controller.snapshot().revision, 5);
+        Assert.deepStrictEqual(calls, [
+          'firefox.capabilities.get',
+          'firefox.settings.get',
+          'firefox.operational.get',
+          'firefox.provider.update.get',
+          'firefox.capabilities.get',
+        ]);
+
+      });
 
   it('saves with the exact loaded revision', async function() {
 
