@@ -413,17 +413,16 @@ describe('Firefox production settings control plane', function() {
 
   });
 
-  it('rejects writes in ACTIVE, INITIALIZING, or recovery-blocked states', async function() {
+  it('rejects writes in INITIALIZING or recovery-blocked states', async function() {
 
     for (const state of [
-      activation({active: true, durableIntent: 'ON', runtimeState: 'READY'}),
       activation({runtimeState: 'INITIALIZING'}),
       activation({durableIntent: 'ON', runtimeState: 'FAILED'}),
     ]) {
       const store = await initialStorage();
       await rejectsCode(
           controller(store, state).replace(0, Settings.createDefaultSettings()),
-          Settings.ERRORS.SETTINGS_MUTATION_REQUIRES_OFF,
+          Settings.ERRORS.SETTINGS_STATE_UNAVAILABLE,
       );
       Assert.strictEqual(store.writes.length, 0);
     }

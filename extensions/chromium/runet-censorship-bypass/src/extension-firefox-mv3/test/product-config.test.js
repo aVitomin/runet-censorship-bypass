@@ -112,6 +112,11 @@ function durableOn(config) {
 function storage(values = {}, error = null) {
 
   return {
+    async set(update) {
+
+      Object.assign(values, structuredClone(update));
+
+    },
     async get(keys) {
 
       if (error) {
@@ -408,10 +413,12 @@ describe('Firefox production recovery configuration', function() {
         const prepared = await activationFactory(values)();
 
         Assert.deepStrictEqual(Object.keys(prepared).sort(), [
+          'checkSavedRevision',
           'datasetIdentity',
           'datasetStore',
           'providerKey',
           'resolveCredentials',
+          'retainSnapshot',
           'routingBaseInputForRequest',
           'routingDescriptor',
         ]);

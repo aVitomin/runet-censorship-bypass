@@ -197,9 +197,9 @@
   function editableFromCapabilities(value) {
 
     const capabilities = Ui.validateCapabilities(value);
-    return capabilities.durableIntent === 'OFF' &&
-      capabilities.runtimeState === 'OFF' &&
-      capabilities.recoveryStatus === 'OFF';
+    return capabilities.runtimeState === 'READY' ||
+      capabilities.durableIntent === 'OFF' &&
+      capabilities.runtimeState === 'OFF' && capabilities.recoveryStatus === 'OFF';
 
   }
 
@@ -389,6 +389,36 @@
 
     }
 
+    async function applySaved() {
+
+      if (state.pending || !state.editable || state.revision === null ||
+          state.capabilities.privateWindowAccess !== 'GRANTED') return false;
+      state.pending = true;
+      state.errorCode = null;
+      state.notice = null;
+      emit();
+      try {
+        await rpc.call({
+          type: 'firefox.activation.apply', expectedRevision: state.revision,
+        });
+        await loadNow();
+        state.notice = 'APPLIED';
+        return true;
+      } catch (error) {
+        state.errorCode = Ui.safeErrorCode(error);
+        try {
+          await loadNow();
+        } catch (_reloadError) {
+          // Retain the original sanitized activation error.
+        }
+        return false;
+      } finally {
+        state.pending = false;
+        emit();
+      }
+
+    }
+
     async function checkHealth() {
 
       if (state.pending) {
@@ -458,7 +488,7 @@
 
     function installProviderUpdate() {
 
-      if (!state.editable) {
+      if (!state.editable || state.capabilities.runtimeState !== 'OFF') {
         state.errorCode = 'SETTINGS_READ_ONLY';
         emit();
         return Promise.resolve(false);
@@ -471,6 +501,7 @@
     }
 
     return Object.freeze({
+      applySaved,
       checkHealth,
       checkPrivateAccess,
       checkProviderUpdate,
@@ -484,6 +515,9 @@
 
   function userErrorKey(code) {
 
+    if (code === 'SAVED_REVISION_CHANGED') return 'optionsRevisionConflict';
+    if (code === 'PRIVATE_ACCESS_REQUIRED') return 'popupErrorPrivateAccess';
+    if (code === 'PRIVATE_ACCESS_CHECK_FAILED') return 'popupErrorPrivateAccessCheck';
     if (code === 'SETTINGS_READ_ONLY' ||
         code === 'SETTINGS_MUTATION_REQUIRES_OFF') {
       return 'optionsErrorReadOnly';
@@ -1320,6 +1354,18 @@
       const save = Ui.append(actions, 'button', 'primary');
       save.type = 'submit';
       save.textContent = t('actionSave');
+      const apply = Ui.append(actions, 'button');
+      apply.type = 'button';
+      apply.textContent = t('optionsApplySaved');
+      apply.addEventListener('click', () => {
+        try {
+          draft = collect(form);
+          controller.applySaved();
+        } catch (_error) {
+          localError = 'UI_VALIDATION_FAILED';
+          render(controller.snapshot());
+        }
+      });
       const reload = Ui.append(actions, 'button');
       reload.type = 'button';
       reload.textContent = t('actionReload');
@@ -1334,6 +1380,9 @@
         statusClass = 'status warning';
       } else if (state.notice === 'SAVED') {
         statusKey = 'optionsSaved';
+        statusClass = 'status success';
+      } else if (state.notice === 'APPLIED') {
+        statusKey = 'optionsApplied';
         statusClass = 'status success';
       } else if (state.notice === 'UPDATE_CHECKED') {
         statusKey = 'providerUpdateChecked';
@@ -1355,7 +1404,9 @@
         state.capabilities.runtimeState !== 'READY';
       checkUpdate.disabled = state.pending || !update.trustConfigured;
       installUpdate.disabled = state.pending || !state.editable ||
-        !update.updateAvailable;
+        state.capabilities.runtimeState !== 'OFF' || !update.updateAvailable;
+      apply.disabled = disabled || state.capabilities.privateWindowAccess !== 'GRANTED' ||
+        !state.capabilities.activationSupported || !state.capabilities.providerDatasetAvailable;
       download.disabled = state.pending;
       reload.disabled = state.pending;
       form.addEventListener('submit', async (event) => {

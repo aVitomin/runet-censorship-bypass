@@ -87,6 +87,7 @@
         'PRODUCT_CONFIG_VERSION_UNSUPPORTED',
         'REQUIRED_CREDENTIAL_MISSING',
         'ROUTING_CONFIG_TOO_LARGE',
+        'EFFECTIVE_CONFIG_UNAVAILABLE',
       ]);
 
       function hasExactKeys(value, expected) {
@@ -157,7 +158,11 @@
       function validatePreparedActivation(value) {
 
         try {
-          if (!hasExactKeys(value, PREPARED_KEYS) ||
+          const hasGuards = value &&
+            typeof value.retainSnapshot === 'function' &&
+            typeof value.checkSavedRevision === 'function';
+          if (!hasExactKeys(value, hasGuards ?
+            [...PREPARED_KEYS, 'retainSnapshot', 'checkSavedRevision'] : PREPARED_KEYS) ||
               !value.datasetStore ||
               typeof value.datasetStore.loadVerifications !== 'function' ||
               !isSynchronousCallable(value.routingBaseInputForRequest) ||
@@ -174,14 +179,19 @@
               value.providerKey !== datasetIdentity.providerKey) {
             return null;
           }
-          return Object.freeze({
+          const prepared = {
             datasetIdentity: Object.freeze(datasetIdentity),
             datasetStore: value.datasetStore,
             providerKey: datasetIdentity.providerKey,
             resolveCredentials: value.resolveCredentials,
             routingBaseInputForRequest: value.routingBaseInputForRequest,
             routingDescriptor: Object.freeze(routingDescriptor),
-          });
+          };
+          if (hasGuards) {
+            prepared.retainSnapshot = value.retainSnapshot;
+            prepared.checkSavedRevision = value.checkSavedRevision;
+          }
+          return Object.freeze(prepared);
         } catch (_error) {
           return null;
         }
@@ -351,6 +361,14 @@
 
         }
 
+        function credentialResolverForRequest() {
+
+          const session = activeSession;
+          return session && currentRuntimeState() === DatasetRuntime.STATES.READY ?
+            session.resolveCredentials : () => null;
+
+        }
+
         async function buildExactRuntime(input) {
 
           let runtime;
@@ -459,6 +477,12 @@
           if (!exactRuntime.ok) {
             return exactRuntime;
           }
+          try {
+            if (prepared.retainSnapshot) await prepared.retainSnapshot();
+            if (prepared.checkSavedRevision) await prepared.checkSavedRevision();
+          } catch (error) {
+            return errorResult(error && error.code || ERRORS.ACTIVATION_FAILED);
+          }
 
           let acquired;
           try {
@@ -501,6 +525,7 @@
             if (afterFloorAcquired) {
               await afterFloorAcquired();
             }
+            if (prepared.checkSavedRevision) await prepared.checkSavedRevision();
             const persistedOn = await persistOn(prepared, acquiredFloor);
             if (!persistedOn) {
               return rollback(ERRORS.DURABLE_ON_PERSIST_FAILED);
@@ -528,6 +553,96 @@
             };
           } catch (_error) {
             return rollback(ERRORS.ACTIVATION_INTERRUPTED);
+          }
+
+        }
+
+        async function replacePreparedNow(input) {
+
+          const previousSession = activeSession;
+          const previousState = durableState;
+          if (!previousSession || currentRuntimeState() !== DatasetRuntime.STATES.READY ||
+              !previousState || previousState.intent !== OffState.ON) {
+            return errorResult(ERRORS.BOOT_NOT_READY);
+          }
+          const prepared = validatePreparedActivation(input);
+          if (!prepared) return errorResult(ERRORS.INVALID_PREPARED_ACTIVATION);
+          const exactRuntime = await buildExactRuntime(prepared);
+          if (!exactRuntime.ok) return exactRuntime;
+          try {
+            if (prepared.retainSnapshot) await prepared.retainSnapshot();
+            if (prepared.checkSavedRevision) await prepared.checkSavedRevision();
+          } catch (error) {
+            return errorResult(error && error.code || ERRORS.ACTIVATION_FAILED);
+          }
+
+          async function checkPromotionAccess() {
+
+            let privateAccess;
+            let owned;
+            try {
+              privateAccess = await floorControl.checkPrivateAccess();
+              owned = await floorControl.inspectOwnedFloor(previousState.floorIdentity);
+            } catch (_error) {
+              clearEphemeralState();
+              setUnavailable(ERRORS.ACTIVATION_FAILED);
+              return errorResult(ERRORS.ACTIVATION_FAILED);
+            }
+            if (activeSession !== previousSession || durableState !== previousState) {
+              return errorResult(ERRORS.CONTROL_LOSS);
+            }
+            if (!owned || !owned.ok) {
+              clearEphemeralState();
+              setUnavailable(ERRORS.CONTROL_LOSS, RECOVERY_STATUS.BLOCKED_CONTROL_LOSS);
+              return errorResult(ERRORS.CONTROL_LOSS);
+            }
+            if (!privateAccess || !privateAccess.ok) {
+              const code = privateAccess && privateAccess.error &&
+                privateAccess.error.code === ProxyControl.ERRORS.PRIVATE_ACCESS_REQUIRED ?
+                ProxyControl.ERRORS.PRIVATE_ACCESS_REQUIRED :
+                ProxyControl.ERRORS.PRIVATE_ACCESS_CHECK_FAILED;
+              clearEphemeralState();
+              setUnavailable(code, RECOVERY_STATUS.BLOCKED_PRIVATE_ACCESS);
+              return errorResult(code);
+            }
+            return {ok: true};
+
+          }
+
+          let writing = false;
+          try {
+            const access = await checkPromotionAccess();
+            if (!access.ok) return access;
+            if (prepared.checkSavedRevision) await prepared.checkSavedRevision();
+            if (activeSession !== previousSession ||
+                exactRuntime.runtime.getState() !== DatasetRuntime.STATES.READY) {
+              return errorResult(ERRORS.CONTROL_LOSS);
+            }
+            // Retain the owned floor throughout. The ON record is the commit
+            // point; a restart selects exactly its retained generation.
+            writing = true;
+            const nextState = await persistOn(prepared, previousState.floorIdentity);
+            if (!nextState) throw new Error(ERRORS.DURABLE_ON_PERSIST_FAILED);
+            const finalAccess = await checkPromotionAccess();
+            if (!finalAccess.ok) return finalAccess;
+            if (prepared.checkSavedRevision) await prepared.checkSavedRevision();
+            if (activeSession !== previousSession ||
+                exactRuntime.runtime.getState() !== DatasetRuntime.STATES.READY) {
+              throw new Error(ERRORS.CONTROL_LOSS);
+            }
+            durableState = nextState;
+            // One synchronous pointer swap publishes routing + credentials.
+            // Existing request authorizations retain their original resolver.
+            publishSession(exactRuntime.runtime, prepared.resolveCredentials,
+                RECOVERY_STATUS.ACTIVE);
+            return {ok: true, status: RESULTS.ACTIVE, dataset: exactRuntime.selected};
+          } catch (error) {
+            if (writing) {
+              clearEphemeralState();
+              setUnavailable(ERRORS.DURABLE_ON_PERSIST_FAILED);
+            }
+            return errorResult(writing ? ERRORS.DURABLE_ON_PERSIST_FAILED :
+              error && error.code || ERRORS.ACTIVATION_FAILED);
           }
 
         }
@@ -906,12 +1021,18 @@
             return enqueue(() => activatePreparedNow(input));
 
           },
+          replacePrepared(input) {
+
+            return enqueue(() => replacePreparedNow(input));
+
+          },
           clear() {
 
             return enqueue(clearNow);
 
           },
           currentRuntimeState,
+          credentialResolverForRequest,
           initializeFromDurable() {
 
             return enqueue(initializeFromDurableNow);

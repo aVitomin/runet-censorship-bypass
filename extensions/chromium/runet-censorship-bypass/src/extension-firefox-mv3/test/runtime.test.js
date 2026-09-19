@@ -1052,7 +1052,7 @@ describe('Firefox MV3 production control package', function() {
 
       });
 
-  it('serializes simultaneous production Apply calls into one activation',
+  it('serializes simultaneous production Apply calls without reacquiring the floor',
       async function() {
 
         const prepared = await preparedActivation();
@@ -1071,15 +1071,33 @@ describe('Firefox MV3 production control package', function() {
           eventPage.send({type: 'firefox.activation.apply'}),
         ]);
 
-        Assert.strictEqual(results.filter((result) => result.ok).length, 1);
-        Assert.deepStrictEqual(
-            results.find((result) => !result.ok),
-            {ok: false, error: {code: 'ACTIVATION_ALREADY_ACTIVE'}},
-        );
-        Assert.strictEqual(factoryCalls, 1);
+        Assert.strictEqual(results.filter((result) => result.ok).length, 2);
+        Assert.strictEqual(factoryCalls, 2);
         Assert.strictEqual(eventPage.proxySettingsCalls.set, 1);
 
       });
+
+  it('rejects an outdated Options Apply revision before preparing a candidate', async function() {
+
+    const storage = makeStorage();
+    storage.values[ProductConfig.CONFIG_STORAGE_KEY] =
+      await ProductionProvider.createProductionProductConfig(
+          async (bytes) => Helpers.sha256(Buffer.from(bytes)),
+      );
+    let calls = 0;
+    const eventPage = startEventPage({storage, activationFactory: async () => {
+
+      calls += 1;
+      return preparedActivation();
+
+    }});
+    Assert.deepStrictEqual(await eventPage.send({
+      type: 'firefox.activation.apply', expectedRevision: 2,
+    }), {ok: false, error: {code: 'SAVED_REVISION_CHANGED'}});
+    Assert.strictEqual(calls, 0);
+    Assert.strictEqual(eventPage.proxySettingsCalls.set, 0);
+
+  });
 
   it('orders Clear after an in-progress production Apply', async function() {
 
@@ -1549,7 +1567,7 @@ describe('Firefox MV3 production control package', function() {
 
       });
 
-  it('rejects settings mutation while production routing is active',
+  it('rejects Save when a legacy active identity differs from stored configuration',
       async function() {
 
         const productConfig = await ProductionProvider.createProductionProductConfig(
@@ -1575,7 +1593,7 @@ describe('Firefox MV3 production control package', function() {
 
         Assert.deepStrictEqual(result, {
           ok: false,
-          error: {code: 'SETTINGS_MUTATION_REQUIRES_OFF'},
+          error: {code: 'SETTINGS_STATE_UNAVAILABLE'},
         });
 
       });

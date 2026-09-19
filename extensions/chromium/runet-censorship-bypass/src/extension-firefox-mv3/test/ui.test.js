@@ -578,12 +578,13 @@ describe('Firefox production UI controllers', function() {
 
       });
 
-  it('permits options editing only in complete durable OFF', function() {
+  it('permits Options Saved editing while OFF or active, but not blocked', function() {
 
     Assert.strictEqual(Options.editableFromCapabilities(capabilities()), true);
+    Assert.strictEqual(Options.editableFromCapabilities(capabilities({
+      runtimeState: 'READY', durableIntent: 'ON', recoveryStatus: 'ACTIVE',
+    })), true);
     for (const value of [
-      capabilities({runtimeState: 'READY', durableIntent: 'ON',
-        recoveryStatus: 'ACTIVE'}),
       capabilities({runtimeState: 'INITIALIZING',
         recoveryStatus: 'INITIALIZING'}),
       capabilities({runtimeState: 'FAILED', durableIntent: 'ON',
@@ -782,7 +783,7 @@ describe('Firefox production UI controllers', function() {
 
   });
 
-  it('never sends settings writes while active', async function() {
+  it('saves while active without sending Apply or Clear', async function() {
 
     const calls = [];
     const rpc = {async call(message) {
@@ -807,9 +808,40 @@ describe('Firefox production UI controllers', function() {
 
     Assert.strictEqual(
         await controller.save(Settings.createDefaultSettings()),
-        false,
+        true,
     );
-    Assert.strictEqual(calls.includes('firefox.settings.replace'), false);
+    Assert.strictEqual(calls.includes('firefox.settings.replace'), true);
+    Assert.strictEqual(calls.includes('firefox.activation.apply'), false);
+    Assert.strictEqual(calls.includes('firefox.activation.clear'), false);
+
+  });
+
+  it('applies the displayed Saved revision without an implicit Save or Clear', async function() {
+
+    const calls = [];
+    const controller = Options.createController({rpc: {async call(message) {
+
+      calls.push(message);
+      if (message.type === 'firefox.capabilities.get') {
+        return capabilities({
+          runtimeState: 'READY', durableIntent: 'ON', recoveryStatus: 'ACTIVE',
+        });
+      }
+      if (message.type === 'firefox.settings.get') return settingsResult(5);
+      if (message.type === 'firefox.operational.get') return operationalResult();
+      if (message.type === 'firefox.provider.update.get') return providerUpdateResult();
+      return {intent: 'ON', status: 'ACTIVE'};
+
+    }}});
+    await controller.load();
+    Assert.strictEqual(await controller.applySaved(), true);
+    Assert.deepStrictEqual(calls[4], {
+      type: 'firefox.activation.apply', expectedRevision: 5,
+    });
+    Assert.strictEqual(controller.snapshot().notice, 'APPLIED');
+    Assert.strictEqual(calls.some((message) => [
+      'firefox.activation.clear', 'firefox.settings.replace',
+    ].includes(message.type)), false);
 
   });
 

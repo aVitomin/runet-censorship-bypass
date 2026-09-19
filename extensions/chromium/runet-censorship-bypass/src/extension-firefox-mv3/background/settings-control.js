@@ -638,7 +638,7 @@
 
         async function currentSnapshot(options = {}) {
 
-          const stored = await readStored();
+          const stored = options.records || await readStored();
           const mutation = stored[ProductConfig.SETTINGS_TRANSACTION_STORAGE_KEY];
           const promotion = stored[ProductConfig.DATASET_PROMOTION_STORAGE_KEY];
           const rawCommit = stored[ProductConfig.SETTINGS_COMMIT_STORAGE_KEY];
@@ -743,9 +743,9 @@
 
         }
 
-        async function getUnchecked() {
+        async function getUnchecked(records = null) {
 
-          const current = await currentSnapshot();
+          const current = await currentSnapshot({records});
           return Object.freeze({
             revision: current.commit.revision,
             settings: clone(current.commit.settings),
@@ -756,15 +756,26 @@
         async function replaceUnchecked(expectedRevision, proposed) {
 
           const activation = activationSnapshot();
-          if (!activation || activation.durableIntent !== 'OFF' ||
-              activation.runtimeState !== 'OFF' || activation.active === true) {
-            throw settingsError(ERRORS.SETTINGS_MUTATION_REQUIRES_OFF);
+          if (!activation || !['OFF', 'READY'].includes(activation.runtimeState)) {
+            throw settingsError(ERRORS.SETTINGS_STATE_UNAVAILABLE);
           }
           const settings = canonicalSettings(proposed, false);
           const current = await currentSnapshot();
           if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 ||
-              current.commit.revision !== expectedRevision) {
+              current.commit.revision !== expectedRevision ||
+              !Number.isSafeInteger(expectedRevision + 1)) {
             throw settingsError(ERRORS.SETTINGS_REVISION_CONFLICT);
+          }
+          // A legacy ON record must be pinned before Saved can overwrite the
+          // only provable configuration/credential snapshot for recovery.
+          try {
+            await ProductConfig.preserveLegacyEffective({
+              storageArea,
+              sha256,
+              createDatasetStore: () => ({loadVerifications: datasetIdentityAvailable}),
+            });
+          } catch (_error) {
+            throw settingsError(ERRORS.SETTINGS_STATE_UNAVAILABLE);
           }
           const nextRevision = expectedRevision + 1;
           const built = buildRoutingSnapshot(settings, {
@@ -830,7 +841,10 @@
             }
 
           }),
-          get: () => enqueue(getUnchecked),
+          get: () => enqueue(() => getUnchecked()),
+          getEffective: () => enqueue(async () => getUnchecked(
+              await ProductConfig.readEffectiveRecords(storageArea),
+          )),
           replace: (expectedRevision, settings) =>
             enqueue(() => replaceUnchecked(expectedRevision, settings)),
         });

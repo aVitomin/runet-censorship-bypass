@@ -116,8 +116,9 @@ Production health-проверки и authenticated provider-update control plan
 packaged baseline и default product config, но оставляет durable intent `OFF` и
 не меняет proxy settings.
 
-Production event page реализует строгий no-input RPC
-`{type: "firefox.activation.apply"}`. Unexpected fields отклоняются, а caller
+Production event page реализует строгий RPC
+`{type: "firefox.activation.apply"}` с необязательным числовым `expectedRevision`
+для применения показанной в Options Saved revision. Другие поля отклоняются, а caller
 не может передать routing, credentials, dataset или floor. Product activation
 factory читает одним snapshot те же записи и использует тот же parser, что и
 recovery factory. Prepared input имеет строгую
@@ -125,9 +126,10 @@ recovery factory. Prepared input имеет строгую
 descriptor, dataset store, synchronous routing-input factory и synchronous
 in-memory credential resolver. Floor identity не является caller input: её
 генерирует и возвращает proxy-control только после exact ownership confirmation.
-Credentials не сохраняются.
+Prepared functions не сериализуются; credentials сохраняются только в закрытых
+credential records и retained generation, как описано ниже.
 
-Транзакция сначала полностью проверяет exact dataset и строит lookup index,
+Первое включение из `OFF` сначала полностью проверяет exact dataset и строит lookup index,
 затем требует `READY`, приобретает и подтверждает exact fail-closed floor,
 записывает строгий durable `ON`, очищает старое request/auth ephemeral state и
 только последним синхронным присваиванием публикует immutable active session.
@@ -143,7 +145,7 @@ Durable state schema v3 различает `OFF` и строгий `ON`. `ON` с
 canonical floor identity, provider key, exact dataset identity
 (`datasetVersion` + SHA-256) и routing descriptor, который ссылается на
 отдельную версионированную конфигурацию по key/version/SHA-256. Functions,
-credentials, request IDs, auth attempts и session state не сохраняются.
+credentials, request IDs, auth attempts и session state в `ON` не сохраняются.
 Malformed или future `ON` никогда не активируется; допустимая cleanup floor
 identity сохраняется только для безопасного exact-match освобождения.
 
@@ -189,8 +191,8 @@ Clear сначала записывает `OFF` с cleanup identity, затем 
 durable `OFF` и floor identity для следующего reconciliation.
 
 Production event page передаёт controller реальные activation и recovery
-factories. Apply сначала дожидается boot initialization, требует durable/runtime
-`OFF`, загружает immutable local configuration snapshot, открывает только
+factories. Apply сначала дожидается boot initialization, допускает чистый `OFF`
+или активную `READY` session, загружает immutable Saved snapshot, открывает только
 существующий IndexedDB store и передаёт exact prepared contract в serialized
 activation controller. Успешный RPC возвращает только `ON`/`ACTIVE`; ошибки —
 только allowlisted code без raw exception или secret. Capability
@@ -199,10 +201,23 @@ activation controller. Успешный RPC возвращает только `O
 того, активна ли READY session. Первый clean-start bootstrap открывает
 IndexedDB для установки exact packaged bytes, но не активирует routing.
 
-Apply не записывает product config/credentials, не fetch-ит и не promote-ит
-dataset и не заменяет exact identity. Snapshot остаётся неизменным для всей
-попытки; concurrent storage edit может заставить последующий recovery закрыться
-fail-closed, но не меняет уже зафиксированные descriptor/dataset durable `ON`.
+Draft существует только в Options UI и не участвует в request routing.
+Save изменяет только Saved config/credentials и revision. Apply сохраняет
+immutable generation в `firefoxMv3EffectiveConfigurations`: максимум текущий
+Effective и один кандидат. Существующие descriptor key/version/hash и dataset
+identity в durable `ON` служат точной ссылкой на Effective; версия descriptor
+`settings-N` задаёт Saved revision, включая изменения только пароля.
+Apply не fetch-ит и не promote-ит dataset. Подготовка новой session идёт при
+работающей старой; перед commit повторно проверяются Saved snapshot, private
+access и exact ownership. Запись нового `ON` — durable commit point, затем
+одна синхронная замена session переключает routing и credential resolver.
+Floor не очищается и не переустанавливается. Ошибка подготовки сохраняет старую
+session; неоднозначная запись или утрата prerequisite оставляет blocked/fail-closed
+состояние. После записи проверяются prerequisites ещё раз, до публикации `READY`.
+Рестарт выбирает только generation из durable `ON`, даже при более новой Saved
+revision или незавершённой Saved transaction. Для legacy 0.0.4.0 запись
+фиксируется лишь после проверки совпадения всех durable bindings с прежней
+config/credentials; несовпадение блокирует recovery и Save вместо угадывания.
 Concurrent Apply/Clear сохраняют порядок RPC через control queue, а proxy/durable
 мутации дополнительно сериализуются activation-controller queue. Поэтому
 подготовка Apply не обгоняет Clear и второй floor/session не создаётся.
@@ -226,7 +241,10 @@ Configuration содержит только `authRef`; credential record сод�
 в durable `ON`, routing descriptor, dataset metadata, RPC/status/errors/logs
 или diagnostics. Settings RPC может записывать эту запись, но никогда не
 возвращает password: ответ использует явные `NONE`/`KEEP`, а новый секрет
-принимается только как `SET` внутри полного OFF-only replace.
+принимается только как `SET` внутри полного revision-checked Saved replace.
+Retained generations содержат необходимые credential records, но не выходят
+через RPC/diagnostics. In-flight auth context держит resolver своей generation
+до terminal event; Apply не сбрасывает retry budget и не подменяет её пароли.
 Missing/malformed/future config, descriptor/provider/dataset
 mismatch, missing credential, hash failure или недоступный dataset store
 оставляют session недоступной, а exact floor — fail-closed до Clear.
@@ -234,8 +252,8 @@ mismatch, missing credential, hash failure или недоступный dataset
 Production settings control plane предоставляет только строгие
 `firefox.settings.get` и `firefox.settings.replace`. Get не раскрывает
 provider/dataset identity, routing descriptor/hash, `authRef` или floor.
-Replace принимает complete schema v1 и разрешён только при одновременных
-durable/runtime `OFF`; Apply, Clear и settings writes проходят через одну
+Replace принимает complete schema v1 и разрешён в `OFF` и активном `READY`;
+initializing/blocked состояния остаются read-only. Apply, Clear и Saved writes проходят через одну
 event-page queue. Optimistic numeric revision отклоняет stale concurrent save.
 
 Public schema хранит Direct/Proxy/whitelist patterns, own proxies, отдельные
@@ -250,7 +268,8 @@ pattern — только с exact host. В отличие от Chromium UI, Fire
 
 Сохранение использует write-ahead marker, затем один `storage.local.set` для
 descriptor-bound product config, credential record и redacted settings commit.
-Apply/recovery отказываются читать snapshot, пока marker существует. После
+Apply отказывается читать Saved snapshot, пока marker существует; recovery
+читает отдельный ранее зафиксированный Effective snapshot. После
 crash завершённый exact commit может быть reconciled, а partial/mismatched
 config остаётся fail-closed; новая config никогда не принимается вместе со
 старыми credentials. RPC caller не выбирает provider или dataset identity и не
@@ -383,9 +402,11 @@ Firefox CSP разрешает `connect-src http: https:` для этой явн
 нормализован до origin, не отправляет cookies/referrer, не следует
 redirects и не читает response body. Проверка не меняет rules, dataset,
 credentials или proxy ownership и не использует отдельный telemetry endpoint.
-Изменение доступно только при полном
-durable/runtime `OFF`, не
-запускает Clear автоматически и использует exact revision. Conflict приводит к
+Options позволяет редактировать и сохранять при `OFF` или активном `READY`.
+Save не применяет правки; отдельная кнопка «Применить сохранённое» передаёт
+ожидаемую Saved revision, не сохраняет UI draft и не запускает Clear.
+Unified Apply UX и редактирование popup при ON остаются следующей фазой.
+Conflict приводит к
 перезагрузке current settings без overwrite. Stored password никогда не
 загружается в DOM: unchanged value использует `KEEP`, новый password передаётся
 только явным `SET`, удаление — явным `NONE`. Pages строят DOM через text nodes и

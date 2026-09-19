@@ -20,6 +20,7 @@
 
       const CONFIG_STORAGE_KEY = 'firefoxMv3ProductRoutingConfig';
       const CREDENTIALS_STORAGE_KEY = 'firefoxMv3ProxyCredentials';
+      const GENERATIONS_STORAGE_KEY = 'firefoxMv3EffectiveConfigurations';
       const SETTINGS_COMMIT_STORAGE_KEY = 'firefoxMv3SettingsCommit';
       const SETTINGS_TRANSACTION_STORAGE_KEY = 'firefoxMv3SettingsMutation';
       const DATASET_PROMOTION_STORAGE_KEY =
@@ -115,6 +116,8 @@
           'PRODUCT_CONFIG_VERSION_UNSUPPORTED',
         REQUIRED_CREDENTIAL_MISSING: 'REQUIRED_CREDENTIAL_MISSING',
         ROUTING_CONFIG_TOO_LARGE: 'ROUTING_CONFIG_TOO_LARGE',
+        SAVED_REVISION_CHANGED: 'SAVED_REVISION_CHANGED',
+        EFFECTIVE_CONFIG_UNAVAILABLE: 'EFFECTIVE_CONFIG_UNAVAILABLE',
       });
 
       function configError(code) {
@@ -492,6 +495,143 @@
 
       }
 
+      const SAVED_KEYS = Object.freeze([
+        CONFIG_STORAGE_KEY, CREDENTIALS_STORAGE_KEY,
+        SETTINGS_COMMIT_STORAGE_KEY, SETTINGS_TRANSACTION_STORAGE_KEY,
+        DATASET_PROMOTION_STORAGE_KEY,
+      ]);
+
+      async function readStorage(storageArea, keys) {
+
+        try {
+          const value = await storageArea.get(keys);
+          if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            throw new Error('INVALID_STORAGE_RESULT');
+          }
+          return value;
+        } catch (_error) {
+          throw configError(ERRORS.PRODUCT_CONFIG_STORAGE_UNAVAILABLE);
+        }
+
+      }
+
+      function matchesEffective(config, state) {
+
+        return Boolean(config && state && config.providerKey === state.providerKey &&
+          sameDatasetIdentity(config.datasetIdentity, state.datasetIdentity) &&
+          sameDescriptor(config.routingDescriptor, state.routingDescriptor));
+
+      }
+
+      function snapshotRecords(stored) {
+
+        const result = {};
+        for (const key of SAVED_KEYS) {
+          if (Object.prototype.hasOwnProperty.call(stored, key)) {
+            result[key] = stored[key];
+          }
+        }
+        return result;
+
+      }
+
+      function sameRecords(left, right) {
+
+        return JSON.stringify(snapshotRecords(left)) ===
+          JSON.stringify(snapshotRecords(right));
+
+      }
+
+      function retainedRecords(stored, state) {
+
+        const generations = stored[GENERATIONS_STORAGE_KEY];
+        if (!hasExactKeys(generations, ['schemaVersion', 'records']) ||
+            generations.schemaVersion !== 1 ||
+            !Array.isArray(generations.records) ||
+            generations.records.length > 2) {
+          throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+        }
+        const matches = generations.records.filter((record) =>
+          matchesEffective(record && record[CONFIG_STORAGE_KEY], state));
+        if (matches.length !== 1) {
+          throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+        }
+        return matches[0];
+
+      }
+
+      // The existing durable ON descriptor + dataset identity is the Effective
+      // reference. Retain at most that immutable generation and one candidate.
+      // Saved writes never update these records.
+      async function retainGeneration(storageArea, record) {
+
+        const stored = await storageArea.get([
+          GENERATIONS_STORAGE_KEY, OffState.STORAGE_KEY,
+        ]);
+        const state = stored[OffState.STORAGE_KEY];
+        const records = [];
+        if (state && state.intent === OffState.ON) {
+          if (!OffState.isCanonicalOnState(state)) {
+            throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+          }
+          const effective = stored[GENERATIONS_STORAGE_KEY] === undefined ?
+            record : retainedRecords(stored, state);
+          if (!matchesEffective(effective[CONFIG_STORAGE_KEY], state)) {
+            throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+          }
+          records.push(effective);
+        }
+        if (records.some((existing) => matchesEffective(
+            existing[CONFIG_STORAGE_KEY], record[CONFIG_STORAGE_KEY],
+        ))) {
+          if (!sameRecords(records[0], record)) {
+            throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+          }
+        } else {
+          records.push(snapshotRecords(record));
+        }
+        await storageArea.set({
+          [GENERATIONS_STORAGE_KEY]: {schemaVersion: 1, records},
+        });
+
+      }
+
+      async function preserveLegacyEffective(options) {
+
+        const stored = await options.storageArea.get([
+          ...SAVED_KEYS, GENERATIONS_STORAGE_KEY, OffState.STORAGE_KEY,
+        ]);
+        const state = stored[OffState.STORAGE_KEY];
+        if (!state || state.intent !== OffState.ON) return;
+        if (!OffState.isCanonicalOnState(state)) {
+          throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+        }
+        const record = stored[GENERATIONS_STORAGE_KEY] === undefined ?
+          snapshotRecords(stored) : retainedRecords(stored, state);
+        const prepared = await createProductSnapshotLoader(options)(record);
+        if (!matchesEffective(prepared, state)) {
+          throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+        }
+        if (stored[GENERATIONS_STORAGE_KEY] === undefined) {
+          await retainGeneration(options.storageArea, record);
+        }
+
+      }
+
+      async function readEffectiveRecords(storageArea) {
+
+        const stored = await storageArea.get([
+          GENERATIONS_STORAGE_KEY, OffState.STORAGE_KEY,
+        ]);
+        const state = stored[OffState.STORAGE_KEY];
+        if (!state || state.intent !== OffState.ON) return null;
+        if (!OffState.isCanonicalOnState(state)) {
+          throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+        }
+        return retainedRecords(stored, state);
+
+      }
+
       function createProductSnapshotLoader(options = {}) {
 
         const storageArea = options.storageArea;
@@ -502,17 +642,11 @@
             typeof sha256 !== 'function') {
           throw configError(ERRORS.INVALID_PRODUCT_CONFIG_DEPENDENCIES);
         }
-        return async function loadProductSnapshot() {
+        return async function loadProductSnapshot(records = null) {
 
           let stored;
           try {
-            stored = await storageArea.get([
-              CONFIG_STORAGE_KEY,
-              CREDENTIALS_STORAGE_KEY,
-              SETTINGS_COMMIT_STORAGE_KEY,
-              SETTINGS_TRANSACTION_STORAGE_KEY,
-              DATASET_PROMOTION_STORAGE_KEY,
-            ]);
+            stored = records || await storageArea.get(SAVED_KEYS);
           } catch (_error) {
             throw configError(ERRORS.PRODUCT_CONFIG_STORAGE_UNAVAILABLE);
           }
@@ -609,10 +743,32 @@
       function createActivationFactory(options = {}) {
 
         const loadProductSnapshot = createProductSnapshotLoader(options);
-        return async function prepareProductActivation() {
+        return async function prepareProductActivation(expectedRevision = null) {
 
           try {
-            return await loadProductSnapshot();
+            const records = snapshotRecords(await readStorage(options.storageArea, SAVED_KEYS));
+            const commit = records[SETTINGS_COMMIT_STORAGE_KEY];
+            if (expectedRevision !== null &&
+                (commit ? commit.revision : 0) !== expectedRevision) {
+              throw configError(ERRORS.SAVED_REVISION_CHANGED);
+            }
+            const prepared = await loadProductSnapshot(records);
+            return Object.freeze(Object.assign({}, prepared, {
+              async retainSnapshot() {
+
+                await preserveLegacyEffective(options);
+                await retainGeneration(options.storageArea, records);
+
+              },
+              async checkSavedRevision() {
+
+                const current = await options.storageArea.get(SAVED_KEYS);
+                if (!sameRecords(records, current)) {
+                  throw configError(ERRORS.SAVED_REVISION_CHANGED);
+                }
+
+              },
+            }));
           } catch (error) {
             if (error && Object.values(ERRORS).includes(error.code)) {
               throw error;
@@ -626,10 +782,16 @@
 
       function createRecoveryFactory(options = {}) {
 
-        const prepareProductActivation = createActivationFactory(options);
+        const loadProductSnapshot = createProductSnapshotLoader(options);
         return async function recoverProductConfiguration(durableState) {
 
-          const prepared = await prepareProductActivation();
+          const stored = await readStorage(options.storageArea, [
+            ...SAVED_KEYS, GENERATIONS_STORAGE_KEY,
+          ]);
+          const legacy = stored[GENERATIONS_STORAGE_KEY] === undefined;
+          const records = legacy ? snapshotRecords(stored) :
+            retainedRecords(stored, durableState);
+          const prepared = await loadProductSnapshot(records);
           if (prepared.providerKey !== durableState.providerKey) {
             throw configError(ERRORS.PRODUCT_CONFIG_PROVIDER_MISMATCH);
           }
@@ -644,6 +806,10 @@
               durableState.routingDescriptor,
           )) {
             throw configError(ERRORS.PRODUCT_CONFIG_DESCRIPTOR_MISMATCH);
+          }
+          if (legacy) {
+            // Pin only after all legacy durable bindings have been proven.
+            await retainGeneration(options.storageArea, records);
           }
           return Object.freeze({
             datasetStore: prepared.datasetStore,
@@ -684,6 +850,7 @@
       return Object.freeze({
         CONFIG_STORAGE_KEY,
         CREDENTIALS_STORAGE_KEY,
+        GENERATIONS_STORAGE_KEY,
         DATASET_PROMOTION_STORAGE_KEY,
         SETTINGS_COMMIT_STORAGE_KEY,
         SETTINGS_TRANSACTION_STORAGE_KEY,
@@ -699,6 +866,8 @@
         createCredentialResolver,
         createProductConfig,
         createRecoveryFactory,
+        preserveLegacyEffective,
+        readEffectiveRecords,
         routingConfigBytes,
         verifyProductConfig,
       });
