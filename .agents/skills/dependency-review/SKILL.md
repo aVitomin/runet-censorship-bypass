@@ -1,38 +1,35 @@
 ---
 name: dependency-review
-description: Review package.json or package-lock changes, new or updated dependencies, vendored third-party code, GitHub Action additions or updates, or dependency-manager configuration in this repository.
+description: Review package/lock or dependency-manager changes, vendored third-party code, and GitHub Action additions or updates; do not use for ordinary source or prose changes.
 ---
 
 # Dependency review
 
-Read root and scoped instructions, then identify the exact package, lockfile,
-vendored-code, Action, or manager-config delta before installing anything. The
-repository has one npm root; historical MV2 tooling must not be reconstructed.
+Identify the exact dependency boundary before installing anything. The only npm
+root is the extension tooling package.
 
-## Decision path
+## Review
 
-1. Prefer platform or existing APIs. Explain why a new dependency is necessary;
-   do not reimplement a mature security primitive merely to avoid a dependency.
-2. Before installation, prove the registry identity, selected version, source
-   repository correspondence, license, and publication time. A new direct
-   version must be at least 168 hours old. A younger emergency version requires
-   explicit user approval; the agent cannot approve its own exception.
-3. Review maintainer/source ownership changes, advisories or malware reports,
-   tarball contents and size, integrity/signatures, provenance, maintenance
-   history, and transitive growth. Popularity and Scorecard are signals, not
-   proof.
-4. Inspect every newly introduced direct or transitive lifecycle script and
-   record exactly why it is safe. Review the complete lock delta: resolved URLs,
-   integrity, lifecycle flags, unexpected packages, and git/file/URL sources.
-5. For Actions, verify the full SHA belongs to the official repository/version,
-   inspect executable contents/dependencies, preserve least privilege, and keep
-   checkout credentials disabled unless write access is explicitly required.
-6. Review vendored code to the same identity, license, source-correspondence,
-   executable-content, and update-provenance standard.
+1. Establish why an existing/platform API is insufficient.
+2. Verify package/Action/vendor identity, official source, license, ownership
+   history, advisories, maintenance, and provenance. A new direct package
+   version must be at least 168 hours old; otherwise return
+   `NEEDS USER APPROVAL` with the emergency rationale.
+3. Inspect tarball or vendored contents, size, executable files, lifecycle
+   scripts, signatures/integrity, and transitive growth. Reject unexplained
+   git/file/URL sources, registry changes, or integrity churn.
+4. Review the complete lockfile delta, including resolved URLs, integrity,
+   lifecycle flags, optional packages, and additions/removals.
+5. For Actions, prove the full SHA belongs to the official release, inspect its
+   executable bundle/dependencies, keep permissions minimal, and keep checkout
+   credentials disabled unless explicitly needed.
 
-## Evidence
+Do not install before identity review, hide accepted dev-only findings, or run
+`npm audit fix --force`.
 
-Run the applicable subset from the repository root:
+## Evidence and stopping rule
+
+For package/lock changes, run:
 
 ```powershell
 $Project = '.\extensions\chromium\runet-censorship-bypass'
@@ -44,12 +41,12 @@ npm audit --prefix $Project
 npm audit signatures --prefix $Project
 ```
 
-Also run the canonical gate for each affected browser target. Record production
-and full audit results separately, registry/provenance tool limitations, direct
-versus transitive scope, and whether a dependency enters a shipped package.
-Never use `npm audit fix --force`, install before identity review, or hide an
-unexplained transitive/lifecycle change.
+For Action or vendored-code changes, run the two supply-chain checks and the
+applicable source/bundle verification. Then run the final gate for every
+affected target; a tooling-root package/lock change defaults to full `verify`
+unless evidence confines its effect to tooling. Record production versus full
+audit results, registry/provenance limitations, package impact, and lifecycle
+behavior.
 
-Return `APPROVE`, `REJECT`, or `NEEDS USER APPROVAL`, with concise evidence and
-unresolved risks. Use the last result for a young-version exception, unusual
-lifecycle code, or unresolved source/maintainer identity.
+Return `APPROVE`, `REJECT`, or `NEEDS USER APPROVAL`. Stop on unresolved source,
+ownership, integrity, lifecycle, or young-version risk.

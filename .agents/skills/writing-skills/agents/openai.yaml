@@ -1,0 +1,7 @@
+interface:
+  display_name: "Writing Skills"
+  short_description: "Design and validate project-scoped Codex skills"
+  default_prompt: "Use $writing-skills to design or revise a project-scoped Codex skill and validate its behavior."
+
+policy:
+  allow_implicit_invocation: false

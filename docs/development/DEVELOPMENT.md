@@ -32,25 +32,83 @@ npm ci --prefix .\extensions\chromium\runet-censorship-bypass
 
 ```powershell
 $Project = '.\extensions\chromium\runet-censorship-bypass'
-
-node .\scripts\verify-docs.mjs
-npm --prefix $Project run test:tooling
-npm --prefix $Project run test:pac
-npm --prefix $Project run verify:mv3
-npm --prefix $Project run verify:firefox
-npm --prefix $Project run verify
 ```
 
-`verify:mv3` и `verify:firefox` — канонические target gates: каждый запускает
-свои lint, deterministic tests, build и package-integrity ровно один раз.
-`verify` проверяет tooling и оба browser source одним ESLint process, запускает
-все deterministic tests одним Mocha process, затем строит оба пакета. Фокусные
-команды полезны во время разработки, но их не
-нужно повторять рядом с уже выбранным каноническим gate.
+| Этап | Команда | Когда нужна |
+| --- | --- | --- |
+| Документация | `node .\scripts\verify-docs.mjs` | Любое изменение документации или инструкций |
+| Фокусная обратная связь | `npm --prefix $Project run test:pac` | Во время изменения PAC-семантики |
+| Финальная Chromium-проверка | `npm --prefix $Project run verify:mv3` | Только Chromium runtime/UI |
+| Финальная Firefox-проверка | `npm --prefix $Project run verify:firefox` | Только Firefox runtime/UI |
+| Финальная общая проверка | `npm --prefix $Project run verify` | Shared runtime, templates, Gulp или общий packaged input |
+
+`verify:mv3` и `verify:firefox` запускают target lint, deterministic tests и
+проверенную сборку. `test:pac` входит в `test:mv3`, а тот — в `verify:mv3`.
+`verify` выполняет все maintained deterministic suites и обе сборки один раз.
+Фокусную команду можно использовать во время разработки, но после неизменённого
+финального gate повторять её не нужно.
 `scripts/required-checks.mjs` выдаёт advisory-план по
 изменённым путям; CI и правила `AGENTS.md` остаются авторитетными.
 Dependency-free docs verifier запускается из корня и не требует корневого
 `package.json` или `npm install`.
+
+## Опциональный Chrome DevTools MCP
+
+Project-конфигурация в `.codex/config.toml` объявляет
+`chrome-devtools-mcp@1.9.0`, установленный отдельно в игнорируемом каталоге
+`.local/agent-tools`, и по умолчанию держит сервер выключенным. Это не
+зависимость расширения: конфигурация не использует `npx`, не скачивает браузер и
+не меняет tooling package или его lockfile.
+
+Если локального пакета ещё нет, установите только проверенную версию в
+игнорируемый tool cache:
+
+```powershell
+npm install --prefix .\.local\agent-tools\chrome-devtools-mcp\1.9.0 --cache .\.local\agent-tools\npm-cache --registry=https://registry.npmjs.org/ --ignore-scripts --save-exact --package-lock=true --audit=false --fund=false chrome-devtools-mcp@1.9.0
+```
+
+Включайте сервер только для отдельной локальной сессии из корня репозитория:
+
+```powershell
+codex -C . -c 'mcp_servers.chrome_devtools.enabled=true'
+```
+
+Закройте эту Codex CLI-сессию, чтобы остановить сервер; следующая обычная
+сессия снова использует `enabled = false`. Opt-in проверен в CLI, но перезапуск
+VS Code/IDE с этой конфигурацией отдельно не проверялся.
+
+Сессия запускает установленный stable Chrome с временным изолированным профилем
+и pipe transport. Телеметрия, CrUX, проверка обновлений и JavaScript-evaluation
+tools выключены; доступны только навигация/осмотр страницы, screenshot, console
+и network inspection. Если локальный пакет удалён, opt-in завершится ошибкой и
+не должен заменяться глобальной установкой или запуском `@latest`.
+
+## Опциональный Context7
+
+Remote MCP `https://mcp.context7.com/mcp` объявлен в `.codex/config.toml`, по
+умолчанию выключен и проверен с anonymous access. Для одной CLI-сессии:
+
+```powershell
+codex -C . -c 'mcp_servers.context7.enabled=true'
+```
+
+Разрешены только `resolve-library-id` и `query-docs`. Отправляйте сервису лишь
+публичное имя библиотеки и общий несекретный вопрос: сформированный query
+обрабатывается удалённо и может сохраняться для оценки поиска. Версия считается
+точной только при явно возвращённом versioned library ID; иначе результат —
+общая документация. Выход из сессии снова оставляет MCP выключенным. Для полного
+удаления удалите таблицу `mcp_servers.context7` и этот раздел; API key не нужен
+для проверенного базового доступа.
+
+## Опциональное локальное QA-окружение
+
+Необязательные machine-specific пути и наблюдения хранятся только в
+игнорируемом `.local/qa/environment.json`. Агент может свериться с ним перед
+явно запрошенной проверкой реального сервиса, но должен заново проверить время,
+process и listener: эти данные быстро устаревают, а `null` означает неизвестное.
+Ни один существующий test script не загружает файл автоматически. Синтетические
+тесты от этих приложений не зависят; real-service проверки всегда включаются
+явно. Tor Browser не является обычным Firefox executable для browser QA.
 
 ## Пути исходников и сборки
 
@@ -68,9 +126,9 @@ Dependency-free docs verifier запускается из корня и не т�
 | Firefox unpacked-сборка | `extensions/chromium/runet-censorship-bypass/build/extension-firefox-mv3` |
 
 MV2 удалён из maintained `main`; его исходники и сборочные инструкции доступны
-через Git history и frozen development branch. В `extension-common` остались
-только пять явно перечисленных статических page-library assets, которые входят
-в Chromium MV3. Nested legacy Options package отсутствует. Chromium и Firefox
+через Git history и frozen development branch. Chromium рекурсивно включает в
+пакет всё содержимое `extension-common/pages/lib`, поэтому новый файл там меняет
+packaged bytes. Nested legacy Options package отсутствует. Chromium и Firefox
 build очищают только собственные output-каталоги и не зависят от порядка запуска.
 
 ## Загрузка локальной сборки
@@ -88,13 +146,16 @@ Git.
 
 ## Локализация
 
-Пользовательская строка должна появиться в обоих файлах:
+Пользовательская строка должна появиться в `en` и `ru` затронутой цели:
 
 - `src/extension-chromium-mv3/_locales/en/messages.json`;
-- `src/extension-chromium-mv3/_locales/ru/messages.json`.
+- `src/extension-chromium-mv3/_locales/ru/messages.json`;
+- `src/extension-firefox-mv3/_locales/en/messages.json`;
+- `src/extension-firefox-mv3/_locales/ru/messages.json`.
 
 Сохраняйте одинаковые ключи и формы placeholders. После изменения проверьте обе
-локали в popup/options и выполните `lint:mv3`, `test:mv3`, `build:mv3`.
+локали в затронутом интерфейсе и выполните `verify:mv3` для Chromium либо
+`verify:firefox` для Firefox; если затронуты оба, нужны оба соответствующих gate.
 Интерфейс создаёт DOM через безопасные текстовые API; не добавляйте HTML injection
 sinks для сохранённых значений.
 
@@ -128,7 +189,9 @@ request artifacts не создаются.
   без необходимости.
 - Не коммитьте generated output, браузерные профили, секреты или локальные
   отчёты.
-- Выполните `node .\scripts\verify-docs.mjs`; если изменение затрагивает
+- Выполните docs integrity, `git diff --check` и один финальный gate для
+  затронутой области; не повторяйте уже включённые фокусные тесты. Если
+  изменение затрагивает
   установку, поведение, browser support, privacy/security, команды, архитектуру
   или выпуск, обновите соответствующий текущий документ.
 - Опишите влияние на безопасность, маршрутизацию и требуемую браузерную QA.

@@ -1,11 +1,26 @@
-# MV3 background instructions
+# Chromium MV3 background
 
-These files form one service-worker runtime. Preserve the top-level `importScripts` dependency order and register lifecycle, alarm, proxy, auth, error, and message listeners synchronously. In-memory promises/maps disappear on worker suspension; durable behavior must come from `mv3State`, IndexedDB artifacts, Chromium proxy state, and alarms.
+Preserve top-level `importScripts` order and register lifecycle, alarm, proxy,
+auth, error, and message listeners synchronously.
 
-- Keep downloaded PAC as text. Validate/hash/store/cook it without extension-side execution. Apply only a current cooked artifact whose provider, raw hash, modifier hash, and live proxy-control checks agree.
-- Store new PAC bodies in `mv3PacArtifacts`; keep only summaries/references in normal state and RPC results. Do not delete legacy inline data unless its artifact write succeeded.
-- Normalize settings through the module APIs. State reads and whole-state writers are serialized per active worker, with each queued mutation rereading storage. Do not bypass that queue or derive same-field updates across separate state calls when concurrent callers can intervene; the queue itself does not survive worker restart.
-- Never serialize valid own-proxy username/password fields into PAC. Auth challenges must be proxy challenges for an exact host/port, bounded by retry limits. Persist only redacted auth/health/migration events.
-- Sanitize request URLs before state, notifications, or logs. Treat custom URL query strings as sensitive. Validate custom input URLs before fetch and revalidate the final URL after followed redirects before accepting a PAC body. Permission, redirect, provider fallback, and error-listener changes require security review.
+- Treat worker memory as disposable. Reconstruct from `mv3State`, IndexedDB
+  artifacts, Chromium proxy state, and alarms. Serialize whole-state writes and
+  reread storage inside each queued mutation; the queue does not survive a
+  worker restart.
+- Keep downloaded PAC as text. Apply only a current cooked artifact whose
+  provider, raw hash, modifier hash, and live proxy-control checks agree. Write
+  new bodies to `mv3PacArtifacts`; keep PAC bodies out of ordinary state and RPC
+  results, exposing summaries/references only. Remove legacy inline data only
+  after its artifact write succeeds.
+- Never place usable own-proxy credentials in PAC or persisted events. Accept
+  auth only for a matching proxy host/port and enforce retry bounds.
+- Sanitize request URLs before state, notification, or logging. Validate custom
+  input before fetch and the final redirect URL before accepting bytes.
+- Use module APIs and the state queue; do not split same-field updates across
+  calls when concurrent writers can intervene.
 
-Run `test:pac` for routing changes; run `lint:mv3`, `test:mv3`, and `build:mv3` for any background change. Add browser QA for PAC parse/runtime fallback, real proxies/auth, external takeover, worker interruption, alarms, IndexedDB, or offscreen migration.
+Use `$mv3-security-review` for the boundaries named in its trigger and
+`$pac-regression` when routing semantics change. `test:pac` is optional focused
+feedback; the final Chromium gate is `verify:mv3`, which already includes it.
+Add targeted browser QA when behavior depends on real proxy/auth, PAC parsing or
+fallback, ownership, worker interruption, alarms, IndexedDB, or migration.

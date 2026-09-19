@@ -1,11 +1,23 @@
-# MV3 page instructions
+# Chromium MV3 pages
 
-MV3 pages communicate through `pages/shared/rpc-client.js`; do not reach into background globals or add remote scripts. Build DOM with text nodes/`textContent` and existing helpers, not HTML injection sinks.
+Use `pages/shared/rpc-client.js`; do not reach into background globals or load
+remote scripts. Build DOM with text nodes/`textContent` and existing helpers,
+not HTML injection sinks.
 
-- Background state may contain structured proxy credentials. Display a password only as `***`, restore the original value when that placeholder is saved unchanged, and keep credentials out of DOM attributes, errors, diagnostics, and logs. Treat full custom provider URLs as sensitive outside the dedicated provider input, especially in errors, diagnostics, and logs.
-- Keep popup and options routing language aligned: Auto removes the applicable override, Proxy requires a candidate, and Direct is explicit. Exact-host and domain/subdomain controls need both forms tested; current domain scope uses bundled `tldts` public-suffix data with private domains enabled, while legacy two-label wildcards are recognized only for compatibility.
-- Migration UI stays collapsed/explicit, requires field selection and confirmation, and must not imply that it applied browser proxy settings.
-- Add every normal user-facing string to both `_locales/en/messages.json` and `_locales/ru/messages.json`. Preserve keys and placeholder shapes.
-- These pages are the maintained Chromium UI; historical MV2 page sources are available through repository history rather than the current source tree.
+- Display stored passwords only as `***` and restore the original when that
+  placeholder is saved unchanged. Keep credentials out of DOM attributes,
+  errors, diagnostics, and logs; show full custom provider URLs only in their
+  dedicated input.
+- Keep popup/options routing language aligned: Auto removes the applicable
+  override, Proxy requires a candidate, and Direct is explicit. Test exact-host
+  and base/subdomain forms; `tldts` uses private domains, while legacy two-label
+  wildcards are compatibility-only.
+- Migration UI stays collapsed and explicit, requires field selection and
+  confirmation, and must not imply browser proxy settings were applied.
+- Add normal user-facing strings to both English and Russian locales without
+  changing placeholder shapes.
 
-After page changes, run `lint:mv3`, `test:mv3`, and `build:mv3`, then inspect the affected page in Chromium. Manually verify the behaviors the change can affect, including secret masking, keyboard/form behavior, both languages, and routing actions as applicable.
+The final Chromium gate is `verify:mv3`. Inspect affected pages in Chromium and
+manually cover the behavior changed: masking, keyboard/forms, both locales, and
+routing actions as applicable. Styling-only work does not trigger security or
+PAC skills unless it changes one of their named boundaries.

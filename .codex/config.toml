@@ -1,0 +1,46 @@
+[mcp_servers.chrome_devtools]
+command = "node"
+args = [
+  ".local/agent-tools/chrome-devtools-mcp/1.9.0/node_modules/chrome-devtools-mcp/build/src/bin/chrome-devtools-mcp.js",
+  "--channel=stable",
+  "--isolated",
+  "--headless",
+  "--no-usage-statistics",
+  "--no-performance-crux",
+  "--no-javascript-evaluation",
+  "--no-source-maps",
+  "--redact-network-headers",
+  "--filesystem-root=.local/mcp-output",
+  "--screenshot-max-width=1280",
+  "--screenshot-max-height=720",
+  "--no-category-input",
+  "--no-category-emulation",
+  "--no-category-performance",
+  "--no-category-memory",
+  "--no-category-extensions",
+  "--no-category-experimental-third-party",
+  "--no-category-experimental-webmcp",
+  "--no-category-pwa",
+]
+env = { CHROME_DEVTOOLS_MCP_NO_UPDATE_CHECKS = "1", CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS = "1" }
+env_vars = []
+enabled = false
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+enabled_tools = [
+  "list_pages",
+  "navigate_page",
+  "take_snapshot",
+  "take_screenshot",
+  "list_console_messages",
+  "get_console_message",
+  "list_network_requests",
+  "get_network_request",
+]
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+enabled = false
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+enabled_tools = ["resolve-library-id", "query-docs"]

@@ -1,52 +1,49 @@
 ---
 name: mv3-security-review
-description: Perform a focused MV3 security review after changes to permissions, host permissions, the service worker, PAC download/validation/cooking/storage/application, proxy authentication or credentials, migration, IndexedDB or persistent state, external requests, or browser error handling; do not trigger for isolated prose, styling, or tests that cannot affect these boundaries.
+description: Review changes to permissions, background lifecycle, PAC/provider downloads or application, routing precedence or Direct/fail-open behavior, auth/credentials, migration, IndexedDB/persistent state, external requests, proxy ownership/errors, or browser error handling; exclude prose, styling, and tests with no boundary effect.
 ---
 
 # MV3 security review
 
-Read root instructions and only the scoped `AGENTS.md` for paths actually
-affected. Review the complete relevant diff plus enough callers to prove the
-boundary. Never print secrets, credential-bearing strings, full custom provider
-URLs, browsing data, or profile contents.
+Read root instructions and only scoped instructions for changed paths. Review
+the complete relevant diff and enough callers to prove each affected boundary.
+Never print credentials, browsing data, full custom URLs, or profile contents.
 
-If package/lock, vendored code, dependency configuration, or an Action changed,
-also use `$dependency-review`; do not repeat its generic supply-chain analysis.
+If dependencies, Actions, or vendored code changed, also use
+`$dependency-review` for that delta rather than repeating it here.
 
-## Select the browser scope
+## Scope and final gate
 
-- Chromium runtime only: review Chromium semantics and run `verify:mv3`.
-- Firefox runtime only: review Firefox semantics and run `verify:firefox`.
-- Browser-neutral runtime, shared packaged input, manifest template, or Gulp:
-  review both targets, run full `verify`, and compare both packages.
-- Documentation/tests with no executable or security-boundary effect: do not run
-  this skill ceremonially.
+- Chromium-only: review Chromium semantics; final gate `verify:mv3`.
+- Firefox-only: review Firefox semantics; final gate `verify:firefox`.
+- Shared runtime, manifest/template, Gulp, or common packaged input: review both
+  targets; final gate `verify` plus both package-tree comparisons.
+- Prose/tests without executable or boundary effect: stop; this skill does not
+  apply.
 
-An isolated Firefox change does not require Chromium execution unless it changes
-a shared input. PAC execution is Chromium-specific; Firefox declarative dataset
-and fail-closed routing require their own tests.
+Use focused `test:pac` only while developing changed Chromium PAC semantics;
+the final gates already include deterministic PAC coverage.
 
-## Review applicable boundaries
+## Boundaries
 
-1. Permission/host-access or CSP expansion and remote script execution.
-2. PAC/dataset trust: untrusted bytes stay data; exact hashing, signature/trust
-   assignment, schema/size limits, and package provenance occur before use.
-3. Fetch URL, credentials, redirects/final origin, streaming bounds, deadlines,
+Check only those affected:
+
+1. Permission/host/CSP expansion and executable-code provenance.
+2. Untrusted PAC/dataset validation, hashing/signature, schema/size bounds, and
+   trust assignment before use.
+3. Input/final URLs, credentials, redirects, streaming bounds, deadlines,
    referrer policy, fallback, and disabled-by-default network paths.
-4. Credential flow to proxy auth and redaction from PAC/datasets, UI, DOM,
-   storage metadata, RPC, errors, health, notifications, and diagnostics.
-5. IndexedDB/storage atomicity, pointer/journal consistency, concurrent writes,
-   restart/alarm reconstruction, and safe destructive cleanup.
-6. Direct/fail-open paths, callback authorization, live proxy ownership, control
-   loss, private access, proxy/listener errors, and Clear behavior.
-7. Packaged-code allowlists, runtime/source correspondence, inactive production
+4. Credential routing and redaction across PAC/datasets, UI/DOM, storage, RPC,
+   events, errors, notifications, and diagnostics.
+5. IndexedDB/storage atomicity, journals/pointers, concurrent writers, restart
+   reconstruction, alarms, and destructive cleanup.
+6. Direct/fail-open paths, callback authorization, live proxy ownership,
+   control loss, private access, and proxy/listener errors.
+7. Package allowlists, source/runtime correspondence, inactive production
    paths, and unreferenced executable code.
 
-Use `test:pac` in addition to the selected gate only when Chromium PAC semantics
-changed. Add real-browser QA when platform behavior matters: proxy/auth,
-ownership, lifecycle/recovery, permissions, IndexedDB, alarms, or browser-level
-fallback.
-
-Report findings first by severity with repository-relative locations. Then list
-verified invariants, checks, package impact, and unresolved browser QA. Do not
-call Chromium PAC browser-level fail-closed while it uses `mandatory:false`.
+Add real-browser QA only where platform behavior matters: permissions,
+proxy/auth, ownership, lifecycle/recovery, IndexedDB, alarms, or browser-level
+fallback. Report findings first, then verified invariants, final-gate evidence,
+package impact, and unresolved QA. Never describe Chromium PAC as browser-level
+fail-closed while it uses `mandatory:false`.

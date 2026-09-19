@@ -1,159 +1,129 @@
-# Карта документации и инвентаризация репозитория
+# Карта документации и репозитория
 
-Дата актуализации: 2026-08-20. Базовая ревизия актуального `main`:
-`275ba91d32adfe593a266b42a150f8cd689432ad`.
+Этот файл — навигатор, а не снимок числа файлов или полный каталог дерева.
+Текущий состав определяет Git; при изменении структуры проверяйте реальные
+пути и их потребителей, а не старые количественные оценки.
 
-На базовой ревизии было 229 tracked файлов. Этот refresh добавляет только
-`docs/release-current.json` и dependency-free `scripts/verify-docs.mjs`; runtime
-и packaged bytes не меняются. Точные меняющиеся counts следует получать из Git,
-а не поддерживать вручную в классификации ниже.
+## Куда идти
 
-## Классификация полного дерева
-
-| Категория | Пути и назначение |
+| Задача | Основной документ |
 | --- | --- |
-| Current public product documentation | `README.md`, `docs/README.md`, `docs/user/*`, `docs/assets/readme/*`, `docs/release-current.json`, `CONTRIBUTING.md`, `SECURITY.md`, `.github/ISSUE_TEMPLATE/*`, `.github/PULL_REQUEST_TEMPLATE.md` |
-| Current maintainer/developer documentation | `docs/development/*`, `docs/maintainers/DOCUMENTATION_MAP.md`, `AGENTS.md`, `.agents/skills/*`, MV3 nested `AGENTS.md`, tooling-root и asset attribution README |
-| Legacy upstream documentation | `docs/legacy/*`, включая исторический README, compatibility pointer для его исходной относительной ссылки, store description, MV2 reviewer/options notes, старые architecture/migration audits, beta RC snapshot и архив исходников icon font |
-| Runtime source | Chromium MV3, Firefox MV3, browser-neutral MV3 common modules, пять явно разрешённых `extension-common/pages/lib` assets и Chromium `src/templates-data.js` |
-| Build and verification tooling | Extension `package.json`/lockfile, `gulpfile.js`, ESLint/Git attributes, tools, `scripts/verify-docs.mjs`, workflow и tooling `.gitignore` |
-| Required legal/license material | Корневой `LICENSE` (GPL-3.0); дополнительные vendor license копируются из установленной pinned зависимости при сборке |
-| Obsolete or unreferenced candidate | Корневой `package.json` удалён как obsolete donation tooling после отдельного решения сопровождающего |
-| Uncertain/supporting repository content | `.gitignore`, `.rgignore` и `.vscode/settings.json` |
-| Generated output | `build/`, `dist/`, `coverage/`, `.tmp/`, profiles и logs игнорируются и не tracked |
-| Internal/local reports | Локальные отчёты находятся в ignored `.local/project-reports/` |
+| Понять продукт и скачать выпуск | [`README.md`](../../README.md) |
+| Установить, обновить или удалить | [установка](../user/INSTALLATION.md) |
+| Настроить Авто / Прокси / Напрямую | [руководство пользователя](../user/USER_GUIDE.md) |
+| Устранить обычную проблему | [решение проблем](../user/TROUBLESHOOTING.md) |
+| Проверить границы приватности | [приватность и безопасность](../user/PRIVACY_AND_SECURITY.md) |
+| Подготовить среду разработки | [разработка](../development/DEVELOPMENT.md) |
+| Понять устройство поддерживаемого кода | [архитектура](../development/ARCHITECTURE.md) и [Firefox MV3](../development/FIREFOX_MV3_ARCHITECTURE.md) |
+| Выбрать проверки | [тестирование](../development/TESTING.md) |
+| Подготовить выпуск | [процесс выпуска](../development/RELEASE_PROCESS.md) |
+| Сообщить об уязвимости | [`SECURITY.md`](../../SECURITY.md) |
 
-MV2-only `extension-full`, `extension-mini` и legacy части `extension-common`
-удалены из maintained `main`. Историческое дерево сохраняется в Git history и
-frozen development branch. Текущий `extension-common` содержит только пять
-статических page-library assets, явно включаемых в Chromium MV3 package.
+[`docs/README.md`](../README.md) связывает пользовательские, инженерные и
+исторические разделы. Обычному пользователю не нужно читать материалы для
+разработчиков или архив.
 
-## Канонические публичные документы
+## Поддерживаемое дерево
 
-| Тема | Единственный основной документ |
-| --- | --- |
-| Продукт и краткий старт | [`README.md`](../../README.md) |
-| Последний опубликованный release | [`docs/release-current.json`](../release-current.json) |
-| Установка/обновление/удаление | [`docs/user/INSTALLATION.md`](../user/INSTALLATION.md) |
-| Повседневная работа | [`docs/user/USER_GUIDE.md`](../user/USER_GUIDE.md) |
-| Решение проблем | [`docs/user/TROUBLESHOOTING.md`](../user/TROUBLESHOOTING.md) |
-| Privacy/security для пользователя | [`docs/user/PRIVACY_AND_SECURITY.md`](../user/PRIVACY_AND_SECURITY.md) |
-| Подготовка разработки | [`docs/development/DEVELOPMENT.md`](../development/DEVELOPMENT.md) |
-| Архитектура | [`docs/development/ARCHITECTURE.md`](../development/ARCHITECTURE.md) |
-| Тестирование | [`docs/development/TESTING.md`](../development/TESTING.md) |
-| Выпуск | [`docs/development/RELEASE_PROCESS.md`](../development/RELEASE_PROCESS.md) |
-| Совместимость и legacy migration | [`docs/development/LEGACY_MIGRATION.md`](../development/LEGACY_MIGRATION.md) |
-| Участие | [`CONTRIBUTING.md`](../../CONTRIBUTING.md) |
-| Security reporting | [`SECURITY.md`](../../SECURITY.md) |
-
-Tooling-root README только направляет к этим документам и не дублирует команды
-или пользовательскую установку.
-
-## Текущие инженерные материалы
-
-- `docs/development/LEGACY_MIGRATION.md` — актуальная совместимость хранения и
-  явная недеструктивная миграция, а не инструкция по установке MV2.
-- `docs/development/audits/PERFORMANCE_AUDIT.md` — публичный актуальный
-  performance audit после исправлений.
-- `docs/development/qa/*` — пять узких real-browser чек-листов для action,
-  PAC freshness/download/failure и credential redaction.
-- `AGENTS.md`, `.agents/skills/*` и nested `AGENTS.md` — локальные правила
-  сопровождения исходников; они остаются рядом с областью действия.
-- `scripts/verify-docs.mjs` — dependency-free structural/metadata gate; network
-  audit доступен отдельно и не делает обычный CI зависимым от внешних сайтов.
-- `extensions/chromium/runet-censorship-bypass/assets/README.md` — происхождение,
-  copyright и лицензия используемых графических assets; пять нереференсных SVG
-  authoring sources сохранены в `docs/legacy/assets/icon-font-sources/`.
-
-## Архив
-
-- `docs/legacy/UPSTREAM_README.md` содержит архивный header и неизменённое тело
-  прежнего корневого README, включая upstream credit, links, contributors,
-  sponsors/backers и GPL lineage.
-- `docs/legacy/extensions/chromium/runet-censorship-bypass/README.md` сохраняет
-  работоспособность исходной относительной ссылки внутри неизменённого тела.
-- `docs/legacy/UPSTREAM_STORE_DESCRIPTION.md` — старая store copy.
-- `docs/legacy/FOR_REVIEWERS.md` и
-  `docs/legacy/LEGACY_OPTIONS_BUNDLE_README.md` — инструкции MV2.
-- `docs/legacy/CHROMIUM_READINGS.txt` — upstream reference links.
-- `docs/legacy/audits/ARCHITECTURE_AUDIT_2026-07-17.md` — point-in-time audit,
-  основные находки которого исправлены до beta 1.
-- `docs/legacy/audits/MV3_LEGACY_MIGRATION_PHASE_NOTES.md` — фазовый snapshot,
-  заменённый поддерживаемым руководством без внутренних RC-этапов.
-- `docs/legacy/releases/V0.0.2.0_BETA1_RC_NOTES.md` — pre-release snapshot с
-  историческими test counts и pending items; GitHub Release остаётся
-  пользовательским источником статуса.
-
-Каждый архивный документ явно предупреждает, что старые store/MV2/Firefox
-инструкции не являются текущим руководством.
-
-## Классификация upstream links
-
-Все ссылки на upstream после текущего аудита относятся к одной из разрешённых
-категорий:
-
-1. `README.md` ссылается на
-   `anticensority/runet-censorship-bypass` только как на происхождение и
-   attribution.
-2. `docs/legacy/**` сохраняет исходные repository/wiki/store/community links
-   как историю; архивные headers прямо запрещают использовать их как текущую
-   установку или support claim.
-3. `src/extension-chromium-mv3/background/pac-providers.js` намеренно использует
-   опубликованные upstream PAC resources. `src/templates-data.js` содержит
-   только version values Chromium MV3 manifest template.
-
-Старых upstream release links в текущих installation docs нет. Это правило
-проверяет `scripts/verify-docs.mjs`; изменение runtime upstream resources требует
-отдельной продуктовой/security проверки и не является задачей documentation
-refresh.
-
-## Локальные и generated материалы
-
-`.local/project-reports/` хранит локальные рабочие отчёты и целиком игнорируется
-Git. `.tmp/` содержит QA profiles, screenshots и release checks;
-только четыре отобранных, проверенных изображения скопированы в
-`docs/assets/readme/`. `build/`, `dist/` и browser profiles также ignored и не
-должны попадать в историю или extension ZIP.
-
-## Полный список кандидатов на очистку
-
-| Кандидат | Действие | Обоснование |
+| Область | Где находится | Граница |
 | --- | --- | --- |
-| Старый корневой README | Archive under legacy + replace | Содержал текущими старые Web Store/Edge/Firefox/MINI/upstream release links; тело сохранено для attribution. |
-| Tooling-root README | Move content to current docs; keep pointer | Дублировал build/release/user instructions; путь полезен как вход в tooling. |
-| `description.md` | Archive under legacy | Нереференсная MV2 store copy со старым upstream release URL. |
-| `extensions/chromium/readings.txt` | Archive under legacy | Исторические upstream links, не текущая инструкция. |
-| Legacy options README | Archive body; remove maintained source pointer | Boilerplate `yarn/npm install` и весь MV2 Options tree принадлежат истории, а не текущему workflow. |
-| Старые reviewer notes | Archive under legacy | Нужны для provenance/Ace verification, но описывают MV2 packaging. |
-| Beta 1 RC notes | Archive under legacy | Point-in-time test counts и pending items не должны конкурировать с Release. |
-| Architecture audit 2026-07-17 | Archive under legacy | Четыре основные проблемы уже исправлены; audit сохраняет историческую ценность. |
-| Performance audit | Move to current development docs | Описывает текущие оптимизации и ещё полезные browser measurements. |
-| Пять browser QA документов | Move to current development docs | Актуальны сопровождающим, не должны лежать в tooling root. |
-| Legacy migration notes | Archive phase snapshot; replace with current guide | Runtime migration остаётся текущей совместимостью, но старые phase/RC notes не должны быть канонической инструкцией. |
-| `.github/FUNDING.yml` | Remove | Показывал donation link upstream как настройку этого standalone fork; sponsor history сохранена в archived README. |
-| Корневой `package.json` | Remove (completed) | Не использовался CI/build/test/release; удаление устраняет obsolete lifecycle, риск случайной root-установки, путаницу для contributors и неоднозначную ISC metadata внутри GPL-репозитория. Атрибуция и sponsor history сохранены отдельно. |
-| `grep.sh` | Remove (completed) | Нереференсный non-executable POSIX helper дублировал `rg`, не входил в docs, CI или npm scripts и требовал явного shell запуска. |
-| Пять SVG в tooling `assets/` | Move to legacy (completed) | HTML/CSS/manifest/tests/build их не используют; архив сохраняет исходники, commit provenance и MIT attribution для по-прежнему используемого `emoji.woff`. |
-| `.vscode/settings.json`, `.rgignore` | Keep in place | Активно исключают generated/vendor noise и соответствуют рабочему процессу. |
-| MV2-only `extension-common/full/mini` и Ace vendor | Remove from maintained main (completed) | Текущие MV3 packages их не потребляют; история сохраняет исходники и provenance. Пять реально используемых common assets оставлены явно. |
-| MV3 placeholder pages | Remove (completed) | Четыре недоступные из manifest/UI страницы показывали только migration-era текст через отдельный `getPageStatus` RPC; страницы, shared placeholder assets и RPC удалены вместе. |
-| Локальные project reports | Keep local/ignored | Внутренние планы/reviews не являются публичной документацией и не входят в package. |
+| Chromium MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3/` | Фоновая часть начинается в `background/service-worker.js`; локальные требования находятся в scoped `AGENTS.md`. |
+| Firefox MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-firefox-mv3/` | Фоновая часть начинается в `background/event-page.js`; отдельная архитектура описана в документации Firefox. |
+| Общий MV3-код | `extensions/chromium/runet-censorship-bypass/src/extension-mv3-common/` | Используется обоими поддерживаемыми браузерными целями. |
+| Общие статические страницы | `extensions/chromium/runet-censorship-bypass/src/extension-common/pages/lib/` | Рекурсивный Gulp glob включает всё содержимое каталога. Новый файл изменит пакет и требует проверки packaged bytes. |
+| Сборка и версии | tooling package, `gulpfile.js`, `src/templates-data.js`, manifest templates | Корневого npm-пакета нет; команды npm запускаются только с `--prefix` для tooling package. |
+| Проверки документации | `scripts/verify-docs.mjs`, `docs/release-current.json` | Проверяются навигация, локальные цели и метаданные опубликованного выпуска. |
+| Локальные инструкции | корневой и scoped `AGENTS.md`, `.agents/skills/` | Читайте только применимые инструкции; внешние helper skills вызываются явно. |
 
-В documentation refresh из tooling удалялся только `.github/FUNDING.yml`.
-Корневой donation package позже удалён отдельным maintenance-изменением;
-housekeeping удалил нереференсный `grep.sh` и перенёс пять SVG source assets в
-legacy archive без удаления attribution. После отдельного file-level dependency
-audit unsupported MV2 source/build surface также удалён из maintained `main`.
+Поддерживаемая ветка не собирает MV2. Историческое MV2-дерево доступно через
+Git history, frozen development branch и явно помеченные архивные документы.
 
-## Удалённый корневой package.json
+## Текущая документация
 
-Удалённый файл объявлял пакет `subjective-good-is-evil`, лицензию ISC, единственный
-`postinstall` через `opencollective` и ссылку на upstream collective. Поиск всего
-дерева не нашёл использования в GitHub Actions, Gulp, тестах, сборке, упаковке
-или выпуске. У него не было корневого lockfile; поддерживаемого корневого
-npm-пакета теперь нет, а все команды направляются в extension tooling package.
+- `docs/user/` — установка, повседневное использование, решение проблем,
+  приватность и безопасность.
+- `docs/development/` — среда, архитектура, тестирование, миграция, выпуск и
+  узкие QA-материалы. Point-in-time документы должны быть помечены как такие и
+  не заменяют текущий процесс.
+- `docs/release-current.json` — машинно-читаемые данные последнего
+  опубликованного выпуска; README описывает именно этот выпуск.
+- `CONTRIBUTING.md` и `SECURITY.md` — участие и приватное сообщение об
+  уязвимостях.
+- `extensions/chromium/runet-censorship-bypass/assets/README.md` — происхождение
+  и лицензии графических и шрифтовых материалов.
 
-Файл удалён из-за obsolete lifecycle, риска случайной root-установки, путаницы
-для contributors и неоднозначной ISC package metadata внутри GPL-3.0
-репозитория. Корневой `LICENSE`, upstream-атрибуция и исторические сведения о
-спонсорах сохранены независимо в текущем README и legacy-документации.
+## История и происхождение
+
+- `docs/legacy/**` сохраняет старые upstream/MV2/store/reviewer материалы,
+  прежние снимки аудитов и исходники авторских SVG. Это история и атрибуция, а
+  не инструкция для текущего продукта.
+- `docs/development/release-drafts/` хранит опубликованные заметки выпуска как
+  evidence его границ; пользовательский статус берётся из GitHub Release и
+  `docs/release-current.json`.
+- Корневой `LICENSE`, архивный upstream README и asset attribution сохраняют
+  лицензионную и авторскую цепочку независимо от текущего runtime.
+- Upstream PAC-адреса в Chromium runtime являются действующими источниками
+  маршрутизации, а не случайными устаревшими ссылками. Их изменение требует
+  продуктовой и security-проверки.
+
+Архив не нужно включать в обычное чтение или текущую QA-матрицу, но отсутствие
+текстовых ссылок само по себе не делает provenance-файл кандидатом на удаление.
+
+## Generated и локальные материалы
+
+Корневой [`.gitignore`](../../.gitignore) и tooling `.gitignore` исключают
+`node_modules`, `build`, `dist`, coverage, кэши, логи, временные каталоги,
+browser profiles и локальные отчёты. [Настройки VS Code](../../.vscode/settings.json)
+отдельно скрывают и не отслеживают `node_modules`, `build`, `dist`, coverage,
+`.tmp`, `.cache` и browser-profile patterns. Git дополнительно игнорирует
+`.local`, package-manager caches, логи и environment-файлы.
+
+Отдельный `.rgignore` не нужен: поддерживаемые исходники, тесты, fixtures,
+skills, lockfiles и security evidence должны оставаться доступными обычному
+поиску. Узкие исключения допустимы только для реально существующего шума,
+который не покрыт общими generated-правилами.
+
+Локальные `.local/`, `.tmp/`, tooling `node_modules/`, `build/` и `dist/` могут
+существовать в рабочем дереве. Они не tracked и не являются основанием для
+репозиторной очистки; содержимое отчётов, профилей и кэшей не следует
+просматривать или удалять без отдельной задачи.
+
+## Завершённая историческая очистка
+
+- Аудит от 2026-07-17 сохранён в
+  `docs/legacy/audits/ARCHITECTURE_AUDIT_2026-07-17.md`; исправленные находки не
+  являются текущим списком задач.
+- Refresh документации от 2026-08-20 был выполнен относительно
+  `275ba91d32adfe593a266b42a150f8cd689432ad`. Эта ревизия сохраняется как
+  датированное свидетельство, но не называется текущей базой и не задаёт
+  ожидаемое число файлов.
+- В том цикле старые upstream/store/reviewer/Options материалы и RC/audit
+  snapshots были перенесены в `docs/legacy/`; актуальные performance и browser
+  QA-материалы остались в `docs/development/`.
+- Последующая maintenance-работа удалила неиспользуемые корневой donation
+  package и `grep.sh`, вынесла авторские SVG в архив и убрала неподдерживаемую
+  MV2/placeholder поверхность. История и атрибуция сохранены в Git и архиве.
+- Hygiene-pass от 2026-09-19 удалил исключение отсутствующего Ace debug/vendor
+  дерева и избыточное исключение legacy Options `dist`; общие правила `dist/`
+  продолжают скрывать локальный generated output.
+
+## Открытые границы и будущие решения
+
+Подтверждённых кандидатов на удаление поддерживаемого кода, тестов, assets,
+datasets, migration-материалов или provenance-документов у этой карты нет.
+
+- При публикации следующего выпуска обновляйте GitHub Release,
+  `docs/release-current.json`, README и release notes согласованно.
+- При изменении package layout заново проверяйте Gulp/manifest allowlists и
+  editor exclusions; не переносите старые пути автоматически.
+- Для нового кандидата сначала проверяйте manifest/build references,
+  динамическую загрузку, тесты и fixtures, документацию, упаковку и атрибуцию.
+  Отсутствие результата текстового поиска — только один сигнал, не доказательство
+  неиспользования.
+- Удаление локальных generated-каталогов, отчётов, профилей или кэшей не входит
+  в документационную очистку и требует отдельного явного решения.
+
+Для независимой от editor/search exclusions проверки используйте Git (`git
+ls-files`, `git grep`) и `git check-ignore -v` для конкретного generated-пути.
+После изменения навигации запускайте `node .\scripts\verify-docs.mjs` и
+`git diff --check`.
