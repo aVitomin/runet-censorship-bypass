@@ -1,0 +1,7 @@
+interface:
+  display_name: "Requesting Code Review"
+  short_description: "Request a bounded, findings-first code review"
+  default_prompt: "Use $requesting-code-review to review the current working-tree changes against their requirements."
+
+policy:
+  allow_implicit_invocation: false

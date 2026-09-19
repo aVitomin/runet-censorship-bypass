@@ -19,8 +19,7 @@
     "**/.cache/**": true,
     "**/.browser-profile/**": true,
     "**/browser-profile/**": true,
-    "**/*-browser-profile/**": true,
-    "**/src/extension-common/pages/debug/vendor/**": true
+    "**/*-browser-profile/**": true
   },
   "files.watcherExclude": {
     "**/node_modules/**": true,
@@ -31,7 +30,6 @@
     "**/.cache/**": true,
     "**/.browser-profile/**": true,
     "**/browser-profile/**": true,
-    "**/*-browser-profile/**": true,
-    "**/src/extension-common/pages/options/dist/**": true
+    "**/*-browser-profile/**": true
   }
 }

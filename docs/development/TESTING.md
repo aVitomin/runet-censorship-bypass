@@ -8,6 +8,21 @@ $Project = '.\extensions\chromium\runet-censorship-bypass'
 npm ci --prefix $Project
 ```
 
+## Выбор уровня проверки
+
+| Уровень | Назначение | Примеры |
+| --- | --- | --- |
+| Фокусный | Быстрая обратная связь во время изменения; не доказывает готовность всего target | `test:pac`, `test:mv3`, `test:firefox`, `test:tooling` |
+| Финальный локальный | Один канонический gate для итогового дерева | `verify:mv3`, `verify:firefox` или общий `verify` |
+| CI | Независимые policy, supply-chain, tooling, browser и Chrome smoke jobs | GitHub Actions после push/PR |
+| Release | Воспроизводимые архивы, addons-linter, trusted-main provenance и browser QA | Только процесс выпуска |
+
+Не запускайте фокусный тест повторно после неизменённого финального gate,
+который уже его включает. `test:pac` входит в `test:mv3`; `verify:mv3` включает
+`test:mv3`; общий `verify` запускает все maintained deterministic suites один
+раз. `scripts/required-checks.mjs` — advisory mapper, а не замена правилам
+`AGENTS.md` или CI.
+
 ## Автоматические проверки
 
 ### Documentation integrity
@@ -67,6 +82,9 @@ Mocha не входят в production gate и не блокируют CI.
 npm --prefix $Project run test:pac
 ```
 
+Это фокусная команда для разработки. Финальная Chromium-проверка выполняется
+через `verify:mv3`, поэтому рядом с ней `test:pac` не повторяется.
+
 Тесты исполняют итоговый `FindProxyForURL` и проверяют exact/wildcard scope,
 Auto/Proxy/Direct, порядок кандидатов, provider fallback, safe defaults и
 конфликтующие правила. Изменение строк генератора без проверки наблюдаемого
@@ -98,8 +116,9 @@ aggregate `npm test`/`verify`, но не дублируются внутри bro
 npm --prefix $Project run lint:mv3
 ```
 
-Используйте сфокусированный MV3 lint. Whole-tree legacy lint имеет отдельный
-исторический baseline и не должен вызывать массовое форматирование.
+Используйте сфокусированный lint только для быстрой обратной связи. Финальный
+target gate уже запускает его; не используйте lint как замену tests/build и не
+начинайте массовое форматирование соседнего кода.
 
 ### Build, package integrity и runtime icons
 
@@ -204,6 +223,15 @@ npm --prefix $Project run verify:mv3
 
 `test:pac` уже входит в `test:mv3`; рядом с `verify:mv3` повторять его не нужно.
 CI проверяет `git diff --exit-code` после target gate.
+
+### Полная Firefox verification
+
+```powershell
+npm --prefix $Project run verify:firefox
+```
+
+Gate запускает Firefox lint, deterministic tests и проверенную сборку. Он не
+требует Chromium gate, если изменение не затрагивает shared input.
 
 ### Aggregate maintained verification
 

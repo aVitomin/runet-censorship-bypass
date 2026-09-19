@@ -1,29 +1,42 @@
 # Документация Runet Censorship Bypass
 
-Начните с [установки](user/INSTALLATION.md), затем откройте popup расширения и
-нажмите **Apply / Enable**. Для текущего сайта можно выбрать **Auto**, **Proxy**
-или **Direct**; подробности есть в [руководстве](user/USER_GUIDE.md).
+Это вход в актуальную документацию. Для обычной работы не нужно читать разделы
+для разработчиков: выберите свою задачу ниже.
 
 Текущий опубликованный стабильный выпуск —
 [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0) —
-первый общий выпуск Chromium и Firefox. Chromium устанавливается из
-опубликованного ZIP, Firefox 154+ — из Mozilla-подписанного XPI того же GitHub
-Release. Публичной AMO-страницы для нового Firefox ID пока нет.
+первый общий выпуск Chromium и Firefox. Для Chromium опубликован ZIP, для
+Firefox 154.0+ — Mozilla-подписанный XPI. Публичной страницы расширения в
+каталоге Mozilla Add-ons (AMO) пока нет.
 
 ## Пользователям
 
-- [Установка, обновление и удаление](user/INSTALLATION.md) — Chromium ZIP,
-  Firefox signed-XPI/AMO boundary и первый запуск.
-- [Руководство пользователя](user/USER_GUIDE.md) — Auto / Proxy / Direct,
-  правила сайтов, прокси, Tor, Tor Browser, WARP, health и диагностика.
-- [Решение проблем](user/TROUBLESHOOTING.md) — действия по наблюдаемому симптому.
-- [Приватность и безопасность](user/PRIVACY_AND_SECURITY.md) — локальные данные,
-  сетевые стороны, разрешения и границы защиты.
+- **Хочу установить или обновить:**
+  [установка, обновление и удаление](user/INSTALLATION.md).
+- **Хочу включить маршрутизацию или выбрать Авто / Прокси / Напрямую:**
+  [руководство пользователя](user/USER_GUIDE.md).
+- **Что-то не работает:**
+  [решение проблем по симптомам](user/TROUBLESHOOTING.md).
+- **Какие данные видит и хранит расширение:**
+  [приватность и безопасность](user/PRIVACY_AND_SECURITY.md).
 
-Для выпуска `0.0.4.0` проверены Google Chrome, Microsoft Edge, Brave и
-Firefox 154+. Яндекс Браузер, Opera, Vivaldi и другие современные Chromium-
-браузеры с необходимыми MV3 API ожидаются совместимыми, но отдельно не
-тестировались.
+Расширение не предоставляет собственный VPN или прокси. Оно применяет правила
+и использует подключения выбранного источника, настроенный вами прокси либо
+запущенное локальное приложение. Требования различаются между источниками и
+браузерами; они перечислены в руководстве.
+
+Выпуск проверен в Chrome 153.0.8010.37, Edge 153.0.4234.32, Brave 1.95.101 и
+Firefox 154.0.1. Другие современные Chromium-браузеры могут работать, но для
+этого выпуска отдельно не проверялись.
+
+## English summary
+
+Start with [Installation](user/INSTALLATION.md), then use the
+[User guide](user/USER_GUIDE.md) to enable routing and understand Auto, Proxy,
+and Direct. The extension does not provide a VPN or proxy service; connection
+requirements depend on the selected browser and routing source. See
+[Troubleshooting](user/TROUBLESHOOTING.md) and
+[Privacy and security](user/PRIVACY_AND_SECURITY.md) when needed.
 
 ## Разработчикам и участникам
 

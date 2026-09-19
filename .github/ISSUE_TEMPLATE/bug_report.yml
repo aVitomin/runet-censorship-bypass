@@ -1,5 +1,5 @@
 name: Сообщить об ошибке
-description: Воспроизводимая проблема текущей Chromium MV3 beta
+description: Воспроизводимая проблема опубликованного расширения для Chromium или Firefox
 title: "[Bug]: "
 labels:
   - bug
@@ -7,64 +7,101 @@ body:
   - type: markdown
     attributes:
       value: |
-        Спасибо за отчёт. Не публикуйте passwords, private proxy credentials/endpoints, tokens, cookies, credential-bearing URLs, raw private PAC или browsing history.
+        Спасибо за отчёт. Сначала проверьте [решение частых проблем](https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/docs/user/TROUBLESHOOTING.md).
+
+        Не публикуйте профили браузера, HAR/NetLog, пароли, токены, cookies, приватные адреса прокси или источников PAC, URL без очистки, содержимое приватного PAC и историю посещений. Об уязвимости сообщайте только через [приватную форму GitHub](https://github.com/aVitomin/runet-censorship-bypass-mv3/security/advisories/new); безопасный запасной способ описан в [SECURITY.md](https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/SECURITY.md).
   - type: input
     id: version
     attributes:
-      label: Версия расширения или commit
-      placeholder: v0.0.2.1-beta3
+      label: Версия расширения
+      description: Укажите номер со страницы расширения; если он неизвестен, напишите «Неизвестно».
+      placeholder: "Например: 0.x.y или Неизвестно"
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Браузер
+      options:
+        - Google Chrome
+        - Microsoft Edge
+        - Brave
+        - Другой браузер на Chromium
+        - Firefox
+        - Неизвестно
     validations:
       required: true
   - type: input
-    id: browser
+    id: browser_version
     attributes:
-      label: Браузер и версия
-      placeholder: Brave 1.x / Chromium 1xx
+      label: Версия браузера
+      placeholder: "Номер версии или Неизвестно"
     validations:
       required: true
   - type: input
     id: os
     attributes:
       label: Операционная система
-      placeholder: Windows 11, Ubuntu 24.04, macOS …
+      placeholder: "Например: Windows 11, Ubuntu 24.04, macOS или Неизвестно"
     validations:
       required: true
   - type: dropdown
-    id: install_type
+    id: install_method
     attributes:
-      label: Тип установки
+      label: Как установлено расширение
       options:
-        - Чистая unpacked-установка
-        - Обновление существующей unpacked-установки
-        - Локальная сборка из исходников
+        - Chromium — опубликованный ZIP, первая установка из распакованной папки
+        - Chromium — обновление из той же распакованной папки
+        - Chromium — локальная сборка из исходников
+        - Firefox — опубликованный подписанный XPI, первая установка
+        - Firefox — обновление подписанным XPI
+        - Firefox — временная установка для разработки
+        - Другой способ или неизвестно
+    validations:
+      required: true
+  - type: dropdown
+    id: global_state
+    attributes:
+      label: Общее состояние расширения
+      options:
+        - Active — настройки применены
+        - Требуется первоначальная настройка
+        - Есть сохранённые, но ещё не применённые изменения
+        - Выключено
+        - Прокси контролирует другое расширение или приложение
+        - Показано предупреждение или идёт загрузка
+        - Неизвестно
+    validations:
+      required: true
+  - type: dropdown
+    id: site_route
+    attributes:
+      label: Маршрут проблемного сайта
+      options:
+        - Auto
+        - Proxy
+        - Direct
+        - Индикатор маршрута не показан
+        - Неизвестно
     validations:
       required: true
   - type: input
-    id: provider_method
+    id: routing_source
     attributes:
-      label: Источник и метод прокси
-      description: Не указывайте приватный endpoint или учётные данные.
-      placeholder: Antizapret + Tor Browser; custom provider + own HTTPS proxy
-    validations:
-      required: true
-  - type: dropdown
-    id: current_route
+      label: Источник маршрутов и способ подключения
+      description: Не указывайте приватные адреса или учётные данные. Если не знаете технических деталей, напишите «Неизвестно».
+      placeholder: "Например: Antizapret; собственный прокси; Tor Browser; Неизвестно"
+  - type: textarea
+    id: symptom
     attributes:
-      label: Текущий маршрут
-      options:
-        - Auto (A)
-        - Proxy (P)
-        - Direct (D)
-        - Off (OFF)
-        - External control (EXT)
-        - Loading / warning (… / !)
-        - Неизвестно
+      label: Что произошло
+      description: Опишите видимый симптом и когда он возникает.
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Шаги воспроизведения
+      label: Как воспроизвести
       placeholder: |
         1. …
         2. …
@@ -78,17 +115,17 @@ body:
     validations:
       required: true
   - type: textarea
-    id: sanitized_logs
+    id: safe_observations
     attributes:
-      label: Очищенные logs или screenshots
-      description: Удалите локальные пути, private URLs, PAC body, extension/profile IDs и любые секреты.
+      label: Дополнительные безопасные наблюдения
+      description: Вставьте только короткий очищенный текст. Не прикладывайте профиль, HAR/NetLog, приватные адреса, URL без очистки или секреты.
       render: text
   - type: checkboxes
     id: privacy
     attributes:
       label: Проверка приватности
       options:
-        - label: Я проверил(а), что отчёт не содержит passwords, private proxy credentials/endpoints, tokens, cookies, credential-bearing URLs, raw private PAC или browsing history.
+        - label: Я проверил(а), что отчёт не содержит профилей браузера, HAR/NetLog, паролей, учётных данных, токенов, cookies, приватных адресов или URL без очистки.
           required: true
-        - label: Это не приватный security report; для уязвимости я использую SECURITY.md.
+        - label: Я сообщаю об обычной ошибке либо оставляю только запрос `[Security contact]` без деталей уязвимости.
           required: true
