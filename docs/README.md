@@ -49,7 +49,6 @@ requirements depend on the selected browser and routing source. See
 - [Firefox AMO reviewer notes](development/FIREFOX_AMO_REVIEW.md)
 - [Опубликованный release 0.0.4.0](development/release-drafts/0.0.4.0.md) —
   архивная ссылка и границы выпуска.
-- [Совместимость старых настроек](development/LEGACY_MIGRATION.md)
 - [Правила участия](../CONTRIBUTING.md) и
   [политика безопасности](../SECURITY.md)
 

@@ -585,9 +585,6 @@
   "optionsStatusSkipped": {
     "message": "пропущено"
   },
-  "optionsYes": {
-    "message": "да"
-  },
   "optionsNo": {
     "message": "нет"
   },
@@ -699,9 +696,6 @@
   "optionsRemoveDirectFallbacks": {
     "message": "Удалять fallback DIRECT"
   },
-  "optionsLegacyMigration": {
-    "message": "Миграция из MV2"
-  },
   "optionsNotifications": {
     "message": "Уведомления"
   },
@@ -792,62 +786,11 @@
   "optionsNextRun": {
     "message": "Следующий запуск"
   },
-  "optionsScanLegacySettings": {
-    "message": "Сканировать старые настройки MV2"
-  },
-  "optionsScanning": {
-    "message": "Сканирование..."
-  },
-  "optionsLegacyAuditCompleted": {
-    "message": "Аудит миграции MV2 завершен."
-  },
   "optionsLoading": {
     "message": "Загрузка..."
   },
-  "optionsClearMigrationAudit": {
-    "message": "Очистить аудит миграции"
-  },
-  "optionsLegacyAuditCleared": {
-    "message": "Аудит миграции MV2 очищен."
-  },
-  "optionsAuditStatus": {
-    "message": "Статус аудита"
-  },
   "optionsApplyStatus": {
     "message": "Статус применения"
-  },
-  "optionsLastAudit": {
-    "message": "Последний аудит"
-  },
-  "optionsDetectedLegacyData": {
-    "message": "Найдены старые данные"
-  },
-  "optionsSettingsAvailableForMigration": {
-    "message": "Настройки, доступные для миграции"
-  },
-  "optionsPacUpdatePeriod": {
-    "message": "Период обновления PAC"
-  },
-  "optionsPacModifiers": {
-    "message": "Модификаторы PAC"
-  },
-  "optionsNotificationPrefs": {
-    "message": "Настройки уведомлений"
-  },
-  "optionsStrategy": {
-    "message": "Стратегия"
-  },
-  "optionsFillMissingOnly": {
-    "message": "Заполнить только отсутствующее"
-  },
-  "optionsOverwriteSelectedMv3": {
-    "message": "Перезаписать выбранные настройки MV3"
-  },
-  "optionsMigrationConfirmation": {
-    "message": "Я понимаю, что выбранные старые настройки MV2 будут скопированы в настройки MV3. Старые данные MV2 не будут удалены, и прокси не будет применен."
-  },
-  "optionsApplySelectedMigration": {
-    "message": "Применить выбранную миграцию"
   },
   "optionsSaveNotifications": {
     "message": "Сохранить уведомления"
@@ -1102,7 +1045,7 @@
     "message": "Обновляйте данные автоматической маршрутизации, проверяйте прокси-подключение и просматривайте сведения для диагностики."
   },
   "optionsAdvancedDescriptionNew": {
-    "message": "Управляйте редкими политиками маршрутизации, уведомлениями, миграцией из MV2 и экспертными операциями."
+    "message": "Управляйте редкими политиками маршрутизации, уведомлениями и экспертными операциями."
   },
   "optionsAboutDescription": {
     "message": "Просмотрите сведения о версии, выпуске, проекте, лицензии и авторах."
@@ -1710,21 +1653,6 @@
   },
   "optionsPreparedRulesActivated": {
     "message": "Подготовленные правила маршрутизации активированы."
-  },
-  "optionsLegacyMigrationSafeHelp": {
-    "message": "Сначала выполняется аудит; переносятся только выбранные поля без удаления старых данных. Миграция не применяет настройки прокси."
-  },
-  "optionsConfirmClearMigrationAudit": {
-    "message": "Очистить сохранённый результат аудита миграции? Старые данные удалены не будут."
-  },
-  "optionsMigrationFieldUnavailable": {
-    "message": "Для этого поля не найдено значение, которое можно безопасно перенести."
-  },
-  "optionsMigrationDoesNotApplyHelp": {
-    "message": "Перенесённые настройки только сохраняются. Проверьте и примените их отдельно."
-  },
-  "optionsMigrationAppliedSafely": {
-    "message": "Выбранные старые настройки перенесены. Настройки прокси не применялись."
   },
   "optionsConfigurationActions": {
     "message": "Состояние и действия с конфигурацией"

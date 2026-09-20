@@ -52,7 +52,6 @@ gate не проверяет эти новые изменения.
 | Manual/periodic provider refresh | No-input manual check и 12-hour alarm | EQUIVALENT | Оба stage-ят проверенные данные. Firefox никогда не promote-ит автоматически и требует release-pinned URL/key; эти внешние значения пока отсутствуют. |
 | Proxy health и diagnostics | Maintenance check и redacted report/export | EQUIVALENT | Отчёт содержит только версии, состояния, public dataset version и proxy type/count; URL, endpoints, authRef, hashes, floor и credentials исключены. |
 | Advanced Direct policy | replaceDirectWithProxy / noDirect | PARITY | Общий routing contract остаётся авторитетным. |
-| Legacy MV2 migration | Нет | INTENTIONAL_PLATFORM_DIFFERENCE | MV2 исторический и отсутствует в maintained main. |
 | Notifications | Критические control-loss/recovery/health alerts | EQUIVALENT | Фиксированный локализованный текст, cooldown и переход в Maintenance; обычные background events не создают уведомления. |
 | About/version | About с package version и local-code statement | PARITY | Никаких remote assets. |
 | EN/RU | Firefox browser i18n EN/RU | PARITY | Firefox следует выбранной locale браузера. |
@@ -74,8 +73,8 @@ gate не проверяет эти новые изменения.
 
 В этой матрице больше нет `MISSING` user-visible классов. До release остаётся
 внешний blocker включения update flow: fixed HTTPS manifest endpoint и pinned
-raw Ed25519 public key/stable keyId. Произвольный PAC, browser-driven locale, OFF-only mutation,
-fail-closed terminal proxy exhaustion и отсутствие MV2 migration остаются явно
+raw Ed25519 public key/stable keyId. Произвольный PAC, browser-driven locale, OFF-only mutation и
+fail-closed terminal proxy exhaustion остаются явно
 зафиксированными `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытыми parity.
 
 Cross-browser visual gate дополнительно проверил все popup states и семь

@@ -528,7 +528,6 @@ function createSnapshot(patch = {}) {
         controlledByThisExtension: true,
         rawValue: {mode: 'pac_script'},
       },
-      legacyMigration: {},
     },
     proxy: {
       proxyApply: {status: 'applied'},
@@ -1109,7 +1108,7 @@ describe('MV3 options UI', function() {
         expect(harness.root.textContent).to.include('Automatic routing');
         expect(harness.root.textContent).to.include('0.0.3.00');
         expect(harness.root.textContent).to.include('Stable release');
-        expect(harness.root.textContent).not.to.include('MV3 migration:');
+        expect(harness.root.textContent).not.to.include('Legacy MV2 migration');
         const navigation = harness.root.querySelectorAll('.options-nav a');
         expect(navigation.map((link) => link.textContent)).to.deep.equal([
           'Overview',
@@ -1265,7 +1264,6 @@ describe('MV3 options UI', function() {
         const rules = getSection(harness.root, 'site-rules');
         const proxies = getSection(harness.root, 'proxy-methods');
         const maintenance = getSection(harness.root, 'maintenance');
-        const advanced = getSection(harness.root, 'advanced');
         const about = getSection(harness.root, 'about');
 
         expect(routing.textContent).to.include('Built-in sources');
@@ -1275,9 +1273,6 @@ describe('MV3 options UI', function() {
         expect(findButton(maintenance, 'Update routing rules')).to.exist;
         expect(findButton(maintenance, 'Check proxy')).to.exist;
         expect(maintenance.querySelector('#diagnostics')).to.exist;
-        expect(advanced.querySelector(
-            '[data-disclosure-key="legacy-migration"]',
-        )).to.exist;
         expect(about.querySelectorAll('.about-links a')).to.have.length(5);
 
         [
@@ -2275,71 +2270,6 @@ describe('MV3 options UI', function() {
 
       });
 
-  it('preserves migration choices across refresh and discards explicitly',
-      async function() {
-
-        const first = createSnapshot();
-        const second = createSnapshot();
-        second.state.legacyMigration = {
-          auditStatus: 'success',
-          lastAuditAt: Date.now(),
-          detectedLegacyData: true,
-        };
-        let current = first;
-        const plan = {
-          proposedMigration: {
-            canMigrate: {
-              currentPacProviderKey: {available: true},
-            },
-          },
-        };
-        const harness = await createHarness({
-          snapshot: first,
-          rpcHandler(method) {
-
-            if (method === 'getState') {
-              return current;
-            }
-            if (method === 'runLegacyMigrationAudit') {
-              return plan;
-            }
-            return {ok: true};
-
-          },
-        });
-        await findButton(harness.root, 'Scan legacy MV2 settings').onclick();
-        const strategy = getInput(harness.root, 'migration.strategy');
-        const confirm = getInput(harness.root, 'migration.confirm');
-        strategy.value = 'overwriteSelected';
-        strategy.dispatch('change');
-        confirm.checked = true;
-        confirm.dispatch('change');
-        current = second;
-        harness.dispatchStorageChange();
-        await flush();
-        expect(getInput(harness.root, 'migration.strategy').value)
-            .to.equal('overwriteSelected');
-        expect(getInput(harness.root, 'migration.confirm').checked)
-            .to.equal(true);
-        expect(harness.root.textContent).to.include(
-            'Saved settings changed while you were editing',
-        );
-        await findButton(harness.root, 'Discard all').onclick();
-        expect(getInput(harness.root, 'migration.strategy').value)
-            .to.equal('fillMissing');
-        expect(getInput(harness.root, 'migration.confirm').checked)
-            .to.equal(false);
-        const acceptedConfirm = getInput(harness.root, 'migration.confirm');
-        acceptedConfirm.checked = true;
-        acceptedConfirm.dispatch('change');
-        await findButton(harness.root, 'Apply selected migration').onclick();
-        expect(harness.calls.some((call) =>
-          call.method === 'applyLegacyMigration',
-        )).to.equal(true);
-        expect(getInput(harness.root, 'migration.confirm')).to.equal(null);
-
-      });
-
   it('renders hostile text as text and keeps diagnostics redacted',
       async function() {
 
@@ -2531,7 +2461,7 @@ describe('MV3 options UI', function() {
   it('keeps English and Russian options localization complete', function() {
 
     const keys = Array.from(OPTIONS_SOURCE.matchAll(
-        /['"]((?:options|popup|provider|proxyHealth|migrationField)[A-Z][A-Za-z0-9]+)['"]/g,
+        /['"]((?:options|popup|provider|proxyHealth)[A-Z][A-Za-z0-9]+)['"]/g,
     ))
         .map((match) => match[1]);
     const enKeys = Object.keys(CATALOGS.en).sort();

@@ -16,8 +16,6 @@ const MODULE_FILES = Object.freeze([
   'pac-providers.js',
   'state.js',
   'action-status.js',
-  'legacy-migration-audit.js',
-  'legacy-migration-apply.js',
   'periodic-update.js',
   'hash.js',
   'pac-download.js',
