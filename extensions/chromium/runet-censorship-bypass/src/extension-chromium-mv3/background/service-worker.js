@@ -1,6 +1,6 @@
 'use strict';
 
-/* global importScripts, mv3LegacyMigrationApply, mv3LegacyMigrationAudit */
+/* global importScripts */
 /* global mv3ActionStatus, mv3Hash, mv3PacArtifacts, mv3PacCook, mv3PacDownload */
 /* global mv3PacMods, mv3PeriodicUpdate, mv3SiteScope */
 /* global mv3Providers, mv3ProxyAuth, mv3ProxyHealth, mv3ProxySettings */
@@ -16,8 +16,6 @@ importScripts(
     'pac-providers.js',
     'state.js',
     'action-status.js',
-    'legacy-migration-audit.js',
-    'legacy-migration-apply.js',
     'periodic-update.js',
     'hash.js',
     'pac-download.js',
@@ -48,14 +46,12 @@ const PHASE_TEN_STATUS = Object.freeze({
     'proxy-apply',
     'proxy-auth',
     'periodic-pac-updates',
-    'legacy-migration-audit',
-    'legacy-migration-apply',
     'proxy-pac-modifier-controls',
     'local-tor-pac-support',
   ],
   pac: {
     implemented: true,
-    status: 'PAC download, cooking, artifact storage, explicit proxy application, proxy auth, periodic updates, legacy MV2 migration, and structured proxy/Tor settings are implemented.',
+    status: 'PAC download, cooking, artifact storage, explicit proxy application, proxy auth, periodic updates, and structured proxy/Tor settings are implemented.',
   },
 });
 
@@ -638,7 +634,6 @@ function createOptionsStateForRpc(state) {
     cookedPacCache,
     proxyApply,
     proxyControl: cloneRpcRecord(state.proxyControl),
-    legacyMigration: cloneRpcRecord(state.legacyMigration),
   };
 
 }
@@ -1322,55 +1317,6 @@ const RPC_METHODS = Object.freeze({
 
   },
 
-  runLegacyMigrationAudit(params = {}) {
-
-    return runLegacyMigrationAuditAndPersist(params);
-
-  },
-
-  async getLegacyMigrationAuditStatus() {
-
-    return mv3State.getLegacyMigrationState();
-
-  },
-
-  getLegacyMigrationPlan(params = {}) {
-
-    return mv3LegacyMigrationAudit.runAudit({
-      includeValues: params.includeValues === true,
-    });
-
-  },
-
-  clearLegacyMigrationAudit() {
-
-    return mv3State.clearLegacyMigrationAudit();
-
-  },
-
-  async applyLegacyMigration(params = {}) {
-
-    if (
-      Array.isArray(params.fields) &&
-      params.fields.some((field) =>
-        ['currentPacProviderKey', 'pacMods'].includes(field),
-      )
-    ) {
-      cancelActiveProxyHealthCheck('legacy-proxy-configuration-changed');
-      await invalidatePacWorkflowFreshness();
-    }
-    const result = await mv3LegacyMigrationApply.applyLegacyMigration(params);
-    const state = await reconcileProxyHealthSupervisor({startupDelay: true});
-    await requestActionStatusRefresh({state});
-    return result;
-
-  },
-
-  async getLegacyMigrationApplyStatus() {
-
-    return mv3State.getLegacyMigrationState();
-
-  },
 });
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -1583,68 +1529,6 @@ async function scheduleAutomaticPacUpdateCheck(trigger) {
     ok: true,
     trigger,
   };
-
-}
-
-async function runLegacyMigrationAuditAndPersist(params = {}) {
-
-  const startedAt = Date.now();
-  await mv3State.setLegacyMigrationState({
-    auditStatus: 'running',
-    lastAuditAt: startedAt,
-    lastError: null,
-  });
-  try {
-    const plan = await mv3LegacyMigrationAudit.runAudit({
-      includeValues: params.includeValues === true,
-    });
-    const summary = mv3LegacyMigrationAudit.summarizePlan(plan);
-    await mv3State.setLegacyMigrationState({
-      auditStatus: 'success',
-      lastAuditAt: summary.checkedAt,
-      detectedLegacyData: summary.detected,
-      lastSummary: summary,
-      lastError: null,
-      warnings: plan.proposedMigration && plan.proposedMigration.warnings || [],
-    });
-    return plan;
-  } catch (err) {
-    const error = {
-      code: err && err.code || 'LEGACY_MIGRATION_AUDIT_FAILED',
-      message: err && err.message || 'Legacy migration audit failed.',
-      details: err && err.details === undefined ? null : err && err.details,
-    };
-    await mv3State.setLegacyMigrationState({
-      auditStatus: 'error',
-      lastAuditAt: Date.now(),
-      detectedLegacyData: false,
-      lastError: error,
-      warnings: [],
-    });
-    return {
-      detected: false,
-      sources: {
-        chromeStorageLocal: {
-          checked: false,
-          keysFound: [],
-          warnings: [],
-        },
-        localStorage: {
-          checked: false,
-          keysFound: [],
-          warnings: [],
-        },
-      },
-      proposedMigration: {
-        canMigrate: {},
-        cannotMigrate: [],
-        conflicts: [],
-        warnings: [],
-      },
-      sensitiveFieldsRedacted: true,
-      error,
-    };
-  }
 
 }
 
@@ -2883,7 +2767,7 @@ let configurationApplying = false;
 const CONFIGURATION_MUTATIONS = new Set([
   'setPacMods', 'setCurrentPacProvider', 'addCustomPacProvider',
   'updateCustomPacProvider', 'deleteCustomPacProvider', 'setProxyAuthEnabled',
-  'applyLegacyMigration', 'updatePopupDraft', 'setCurrentSiteMode',
+  'updatePopupDraft', 'setCurrentSiteMode',
   'applyPopupChanges', 'applyCookedPac',
   'applySavedConfiguration', 'applySiteConfiguration',
   'importConfiguration',

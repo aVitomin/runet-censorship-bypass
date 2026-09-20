@@ -3,7 +3,7 @@
 (function() {
 
   const savedMethods = new Set(['setPacMods', 'setCurrentPacProvider', 'addCustomPacProvider',
-    'updateCustomPacProvider', 'deleteCustomPacProvider', 'setProxyAuthEnabled', 'applyLegacyMigration']);
+    'updateCustomPacProvider', 'deleteCustomPacProvider', 'setProxyAuthEnabled']);
   const rpc = {
     callBackground(method, params = {}) {
 
@@ -44,12 +44,6 @@
       openDisclosure: 'diagnostics-expert',
     }),
   });
-  const LEGACY_MIGRATION_FIELDS = Object.freeze([
-    ['currentPacProviderKey', 'popupPacProvider'],
-    ['pacUpdatePeriodInMinutes', 'optionsPacUpdatePeriod'],
-    ['pacMods', 'optionsPacModifiers'],
-    ['notificationPrefs', 'optionsNotificationPrefs'],
-  ]);
   const state = {
     snapshot: null,
     requestSerial: 0,
@@ -59,7 +53,6 @@
     activeSection: 'overview',
     message: null,
     retry: null,
-    latestMigrationPlan: null,
     listenersInstalled: false,
     setupEligibilityInitialized: false,
     setupEligible: false,
@@ -221,11 +214,6 @@
     if (key === 'notifications') {
       return JSON.stringify(
           snapshot.state && snapshot.state.notificationPrefs || {},
-      );
-    }
-    if (key === 'migration') {
-      return JSON.stringify(
-          snapshot.state && snapshot.state.legacyMigration || {},
       );
     }
     return null;
@@ -3895,7 +3883,6 @@
     renderAdvancedPacRules(section);
     renderNotificationSettings(section);
     renderExpertOperations(section);
-    renderMigration(section);
 
   }
 
@@ -4207,193 +4194,6 @@
     );
     if (result) {
       await refresh({message, tone: 'success'});
-    }
-
-  }
-
-  function renderMigration(parent) {
-
-    const disclosure = createDetails(
-        parent,
-        'legacy-migration',
-        t('optionsLegacyMigration'),
-    );
-    appendText(
-        disclosure.content,
-        'p',
-        t('optionsLegacyMigrationSafeHelp'),
-        'section-description',
-    );
-    const actions = append(disclosure.content, 'div', 'action-row');
-    const scan = createButton(
-        actions,
-        t('optionsScanLegacySettings'),
-        '',
-        t('optionsScanning'),
-    );
-    scan.onclick = () => runMigrationAudit(scan);
-    const clear = createButton(
-        actions,
-        t('optionsClearMigrationAudit'),
-        'danger quiet',
-        t('popupClearing'),
-    );
-    clear.onclick = () => clearMigrationAudit(clear);
-    renderMigrationStatus(disclosure.content);
-    if (state.latestMigrationPlan) {
-      renderMigrationPlan(disclosure.content, state.latestMigrationPlan);
-    }
-
-  }
-
-  function renderMigrationStatus(parent) {
-
-    const migration = state.snapshot.state.legacyMigration || {};
-    const list = append(parent, 'dl', 'technical-list');
-    appendDefinition(
-        list,
-        t('optionsAuditStatus'),
-        localizeStatusValue(migration.auditStatus),
-    );
-    appendDefinition(
-        list,
-        t('optionsApplyStatus'),
-        localizeStatusValue(migration.applyStatus),
-    );
-    appendDefinition(
-        list,
-        t('optionsLastAudit'),
-        formatTime(migration.lastAuditAt),
-    );
-    appendDefinition(
-        list,
-        t('optionsDetectedLegacyData'),
-        migration.detectedLegacyData ? t('optionsYes') : t('optionsNo'),
-    );
-
-  }
-
-  async function runMigrationAudit(button) {
-
-    const result = await runOperation(
-        'migration:audit',
-        button,
-        () => rpc.callBackground('runLegacyMigrationAudit', {
-          includeValues: false,
-        }),
-    );
-    if (result) {
-      state.latestMigrationPlan = result;
-      state.openDisclosures.add('legacy-migration');
-      await refresh({
-        message: t('optionsLegacyAuditCompleted'),
-        tone: 'success',
-      });
-    }
-
-  }
-
-  async function clearMigrationAudit(button) {
-
-    if (!window.confirm(t('optionsConfirmClearMigrationAudit'))) {
-      return;
-    }
-    const result = await runOperation(
-        'migration:clear',
-        button,
-        () => rpc.callBackground('clearLegacyMigrationAudit', {}),
-    );
-    if (result) {
-      state.latestMigrationPlan = null;
-      state.drafts.delete('migration');
-      await refresh({
-        message: t('optionsLegacyAuditCleared'),
-        tone: 'success',
-      });
-    }
-
-  }
-
-  function renderMigrationPlan(parent, plan) {
-
-    const proposed = plan.proposedMigration || {};
-    const available = proposed.canMigrate || {};
-    const card = append(parent, 'div', 'editor-panel');
-    appendText(card, 'h3', t('optionsSettingsAvailableForMigration'));
-    const form = append(card, 'form');
-    LEGACY_MIGRATION_FIELDS.forEach(([key, labelKey]) => {
-      const ifAvailable = available[key] !== null &&
-        available[key] !== undefined;
-      const input = appendCheckbox(
-          form,
-          `migration.${key}`,
-          t(labelKey),
-          ifAvailable,
-          ifAvailable ? '' : t('optionsMigrationFieldUnavailable'),
-      );
-      input.disabled = !ifAvailable;
-    });
-    const strategy = appendSelect(
-        form,
-        'migration.strategy',
-        t('optionsStrategy'),
-        [
-          ['fillMissing', t('optionsFillMissingOnly')],
-          ['overwriteSelected', t('optionsOverwriteSelectedMv3')],
-        ],
-        'fillMissing',
-        {full: true},
-    );
-    const confirm = appendCheckbox(
-        form,
-        'migration.confirm',
-        t('optionsMigrationConfirmation'),
-        false,
-        t('optionsMigrationDoesNotApplyHelp'),
-    );
-    const apply = createButton(
-        form,
-        t('optionsApplySelectedMigration'),
-        'primary',
-        t('optionsApplying'),
-    );
-    const updateEnabled = () => {
-      const selected = LEGACY_MIGRATION_FIELDS.some(([key]) =>
-        getChecked(form, `migration.${key}`),
-      );
-      apply.disabled = !confirm.checked || !selected;
-    };
-    form.addEventListener('change', updateEnabled);
-    bindDraftForm(form, 'migration');
-    updateEnabled();
-    apply.onclick = () => applyMigration(form, strategy, apply);
-    renderDraftConflict(form, 'migration');
-
-  }
-
-  async function applyMigration(form, strategy, button) {
-
-    const fields = LEGACY_MIGRATION_FIELDS
-        .filter(([key]) => getChecked(form, `migration.${key}`))
-        .map(([key]) => key);
-    if (!getChecked(form, 'migration.confirm') || !fields.length) {
-      return;
-    }
-    const result = await runOperation(
-        'migration:apply',
-        button,
-        () => rpc.callBackground('applyLegacyMigration', {
-          strategy: strategy.value,
-          fields,
-        }),
-    );
-    if (result) {
-      state.latestMigrationPlan = null;
-      state.drafts.delete('migration');
-      await refresh({
-        message: t('optionsMigrationAppliedSafely'),
-        tone: 'success',
-      });
     }
 
   }

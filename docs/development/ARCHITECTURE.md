@@ -217,7 +217,7 @@ Tor, Tor Browser, WARP.
 - Popup — глобальное включение/выключение, текущий сайт, краткий status и
   переход в настройки.
 - Options — семь секций, draft handling, применение конфигурации, diagnostics,
-  maintenance и legacy migration.
+  maintenance и ручной импорт/экспорт конфигурации.
 - Action icon — вычисляемая модель A/P/D, OFF, EXT, busy и warning для активной
   вкладки.
 
@@ -231,9 +231,6 @@ Tor, Tor Browser, WARP.
 - Диагностика скрывает PAC body, приватные source URL и reusable credentials.
 - Auth применяется только к proxy challenge точного host/port и имеет retry
   limit.
-- Миграция MV2 запускается явно, ограничена полями, не удаляет старые данные и
-  не применяет proxy settings автоматически.
-
 Исторический аудит, предшествующий исправлениям beta 1, сохранён в
 [`docs/legacy/audits/`](../legacy/audits/). Актуальный performance audit находится
 в [`audits/PERFORMANCE_AUDIT.md`](audits/PERFORMANCE_AUDIT.md).

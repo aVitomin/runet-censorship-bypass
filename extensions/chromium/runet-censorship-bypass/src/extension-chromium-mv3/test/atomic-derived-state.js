@@ -2,17 +2,8 @@
 
 
 const Chai = require('chai');
-const Fs = require('fs');
 const Mocha = require('mocha');
-const Path = require('path');
-const Vm = require('vm');
 const {createRuntimeHarness} = require('./runtime-performance-harness');
-
-function clone(value) {
-
-  return JSON.parse(JSON.stringify(value));
-
-}
 
 function getHostRules(state) {
 
@@ -302,105 +293,6 @@ Mocha.describe('MV3 atomic derived-state callers', function() {
 
         Chai.expect(result.status).to.equal('inconclusive');
         Chai.expect(harness.getState().proxyHealth.status).to.equal('unknown');
-
-      });
-
-  Mocha.it('rechecks fill-missing migration against the latest durable state',
-      async function() {
-
-        const harness = await createRuntimeHarness();
-        const gate = createGate();
-        let durableState = {
-          currentPacProviderKey: null,
-          pacUpdatePeriodInMinutes: 12,
-          pacMods: clone(harness.context.mv3PacMods.DEFAULT_PAC_MODS),
-          notificationPrefs: {
-            pacError: true,
-            extError: true,
-            noControl: true,
-          },
-          legacyMigration: {},
-        };
-        const fakeState = {
-          async loadState() {
-
-            return clone(durableState);
-
-          },
-          async setLegacyMigrationState(patch) {
-
-            durableState.legacyMigration = Object.assign(
-                {},
-                durableState.legacyMigration,
-                clone(patch),
-            );
-            return clone(durableState.legacyMigration);
-
-          },
-          async updateStateAtomically(mutator) {
-
-            const patch = mutator(clone(durableState));
-            durableState = Object.assign({}, durableState, clone(patch));
-            return clone(durableState);
-
-          },
-        };
-        const fakeAudit = {
-          async runAudit() {
-
-            gate.markStarted();
-            await gate.promise;
-            return {
-              detected: true,
-              proposedMigration: {
-                applyValues: {currentPacProviderKey: 'Антизапрет'},
-                cannotMigrate: [],
-                warnings: [],
-              },
-            };
-
-          },
-          sanitizeValue(value) {
-
-            return value;
-
-          },
-        };
-        const context = Vm.createContext({
-          JSON,
-          Object,
-          Promise,
-          TypeError,
-          mv3LegacyMigrationAudit: fakeAudit,
-          mv3PacMods: harness.context.mv3PacMods,
-          mv3State: fakeState,
-        });
-        context.self = context;
-        const sourcePath = Path.resolve(
-            __dirname,
-            '..',
-            'background',
-            'legacy-migration-apply.js',
-        );
-        Vm.runInContext(Fs.readFileSync(sourcePath, 'utf8'), context, {
-          filename: sourcePath,
-        });
-
-        const apply = context.mv3LegacyMigrationApply.applyLegacyMigration({
-          strategy: 'fillMissing',
-          fields: ['currentPacProviderKey'],
-        });
-        await gate.started;
-        durableState.currentPacProviderKey = 'onlyOwnSites';
-        gate.release();
-        const result = await apply;
-
-        Chai.expect(result).to.deep.include({ok: true, status: 'partial'});
-        Chai.expect(durableState.currentPacProviderKey).to.equal('onlyOwnSites');
-        Chai.expect(result.appliedFields).to.deep.equal([]);
-        Chai.expect(result.skippedFields.some((item) =>
-          item.field === 'currentPacProviderKey',
-        )).to.equal(true);
 
       });
 

@@ -585,9 +585,6 @@
   "optionsStatusSkipped": {
     "message": "skipped"
   },
-  "optionsYes": {
-    "message": "yes"
-  },
   "optionsNo": {
     "message": "no"
   },
@@ -699,9 +696,6 @@
   "optionsRemoveDirectFallbacks": {
     "message": "Remove DIRECT fallbacks"
   },
-  "optionsLegacyMigration": {
-    "message": "Legacy MV2 migration"
-  },
   "optionsNotifications": {
     "message": "Notifications"
   },
@@ -792,62 +786,11 @@
   "optionsNextRun": {
     "message": "Next run"
   },
-  "optionsScanLegacySettings": {
-    "message": "Scan legacy MV2 settings"
-  },
-  "optionsScanning": {
-    "message": "Scanning..."
-  },
-  "optionsLegacyAuditCompleted": {
-    "message": "Legacy MV2 migration audit completed."
-  },
   "optionsLoading": {
     "message": "Loading..."
   },
-  "optionsClearMigrationAudit": {
-    "message": "Clear migration audit"
-  },
-  "optionsLegacyAuditCleared": {
-    "message": "Legacy MV2 migration audit cleared."
-  },
-  "optionsAuditStatus": {
-    "message": "Audit status"
-  },
   "optionsApplyStatus": {
     "message": "Apply status"
-  },
-  "optionsLastAudit": {
-    "message": "Last audit"
-  },
-  "optionsDetectedLegacyData": {
-    "message": "Detected legacy data"
-  },
-  "optionsSettingsAvailableForMigration": {
-    "message": "Settings available for migration"
-  },
-  "optionsPacUpdatePeriod": {
-    "message": "PAC update period"
-  },
-  "optionsPacModifiers": {
-    "message": "PAC modifiers"
-  },
-  "optionsNotificationPrefs": {
-    "message": "Notification preferences"
-  },
-  "optionsStrategy": {
-    "message": "Strategy"
-  },
-  "optionsFillMissingOnly": {
-    "message": "Fill missing only"
-  },
-  "optionsOverwriteSelectedMv3": {
-    "message": "Overwrite selected MV3 settings"
-  },
-  "optionsMigrationConfirmation": {
-    "message": "I understand this will copy selected legacy MV2 settings into MV3 settings. It will not delete old MV2 data and will not apply proxy settings."
-  },
-  "optionsApplySelectedMigration": {
-    "message": "Apply selected migration"
   },
   "optionsSaveNotifications": {
     "message": "Save notifications"
@@ -1102,7 +1045,7 @@
     "message": "Refresh automatic routing data, check a proxy connection, and review support diagnostics."
   },
   "optionsAdvancedDescriptionNew": {
-    "message": "Manage uncommon routing policies, notifications, legacy migration, and expert operations."
+    "message": "Manage uncommon routing policies, notifications, and expert operations."
   },
   "optionsAboutDescription": {
     "message": "View version, release, project, license, and attribution information."
@@ -1710,21 +1653,6 @@
   },
   "optionsPreparedRulesActivated": {
     "message": "Prepared routing rules activated."
-  },
-  "optionsLegacyMigrationSafeHelp": {
-    "message": "Migration is audit-first, selected-field-only, and non-destructive. It neither deletes legacy data nor applies proxy settings."
-  },
-  "optionsConfirmClearMigrationAudit": {
-    "message": "Clear the saved migration audit result? Legacy data will not be deleted."
-  },
-  "optionsMigrationFieldUnavailable": {
-    "message": "No safely migratable value was found for this field."
-  },
-  "optionsMigrationDoesNotApplyHelp": {
-    "message": "Migrated settings are saved only. Review and apply them separately."
-  },
-  "optionsMigrationAppliedSafely": {
-    "message": "Selected legacy settings were migrated. Proxy settings were not applied."
   },
   "optionsConfigurationActions": {
     "message": "Configuration status and actions"

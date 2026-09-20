@@ -22,9 +22,6 @@ const REVIEWED_RPC_METHODS = Object.freeze([
   'testProxyAuthConfig', 'getPeriodicUpdateStatus',
   'setPeriodicUpdateEnabled', 'setPeriodicUpdateInterval',
   'runPeriodicUpdateNow', 'clearPeriodicUpdateEvents',
-  'runLegacyMigrationAudit', 'getLegacyMigrationAuditStatus',
-  'getLegacyMigrationPlan', 'clearLegacyMigrationAudit',
-  'applyLegacyMigration', 'getLegacyMigrationApplyStatus',
 ]);
 
 function createCredentialPacMods(secret, overrides = {}) {
@@ -183,12 +180,6 @@ Mocha.describe('MV3 RPC credential redaction', function() {
         const proxyStatus = await harness.callRpc('getProxyStatus');
         const proxyHealth = await harness.callRpc('getProxyHealth');
         const periodicUpdate = await harness.callRpc('getPeriodicUpdateStatus');
-        const migrationAudit = await harness.callRpc(
-            'getLegacyMigrationAuditStatus',
-        );
-        const migrationApply = await harness.callRpc(
-            'getLegacyMigrationApplyStatus',
-        );
         const responses = [
           settings,
           popup,
@@ -207,8 +198,6 @@ Mocha.describe('MV3 RPC credential redaction', function() {
           proxyStatus,
           proxyHealth,
           periodicUpdate,
-          migrationAudit,
-          migrationApply,
         ];
         responses.forEach((response) =>
           expectNoCredentialExposure(response, [secret]),
@@ -243,7 +232,6 @@ Mocha.describe('MV3 RPC credential redaction', function() {
             Object.keys(settings.state).sort().join(',') === [
               'cookedPacCache',
               'currentPacProviderKey',
-              'legacyMigration',
               'notificationPrefs',
               'pacCache',
               'pacCook',
@@ -1230,7 +1218,7 @@ Mocha.describe('MV3 RPC credential redaction', function() {
 
       });
 
-  Mocha.it('sanitizes legacy and migrated credential formats',
+  Mocha.it('sanitizes legacy proxy-list credential formats',
       async function() {
 
         const secret = ['legacy', 'credential', 'fixture'].join('-');
@@ -1243,17 +1231,8 @@ Mocha.describe('MV3 RPC credential redaction', function() {
         });
 
         const stateResponse = await harness.callRpc('getState');
-        const migrationResponse = harness.context.mv3State.sanitizeRpcValue({
-          ok: true,
-          result: {
-            proposedMigration: {
-              applyValues: {pacMods: legacyPacMods},
-            },
-          },
-        });
         expectNoCredentialExposure(legacySaveResponse, [secret]);
         expectNoCredentialExposure(stateResponse, [secret]);
-        expectNoCredentialExposure(migrationResponse, [secret]);
         expectChecks({
           legacyUsernameAvailableForEditing:
             stateResponse.state.pacMods.ownProxies[0].username === 'legacy-user',
@@ -1261,9 +1240,6 @@ Mocha.describe('MV3 RPC credential redaction', function() {
             stateResponse.state.pacMods.ownProxies[0].hasPassword === true,
           legacyExplicitPasswordPersisted:
             harness.getState().pacMods.ownProxies[0].password === secret,
-          migrationUsesSafeProxyModel:
-            migrationResponse.result.proposedMigration.applyValues
-                .pacMods.ownProxies[0].hasPassword === true,
         });
 
       });

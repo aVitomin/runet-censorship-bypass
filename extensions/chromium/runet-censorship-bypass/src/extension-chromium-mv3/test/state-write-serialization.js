@@ -433,18 +433,25 @@ Mocha.describe('MV3 state write serialization', function() {
 
     await Promise.all([
       global.mv3State.updateStateAtomically((state) => ({
-        legacyMigration: {
-          warnings: state.legacyMigration.warnings.concat('first'),
+        periodicUpdate: {
+          lastEvents: state.periodicUpdate.lastEvents.concat({
+            type: 'first',
+            at: 1,
+          }),
         },
       })),
       global.mv3State.updateStateAtomically((state) => ({
-        legacyMigration: {
-          warnings: state.legacyMigration.warnings.concat('second'),
+        periodicUpdate: {
+          lastEvents: state.periodicUpdate.lastEvents.concat({
+            type: 'second',
+            at: 2,
+          }),
         },
       })),
     ]);
 
-    Chai.expect(storage.getStoredState().legacyMigration.warnings)
+    Chai.expect(storage.getStoredState().periodicUpdate.lastEvents
+        .map((event) => event.type))
         .to.deep.equal(['first', 'second']);
 
   });
@@ -481,25 +488,34 @@ Mocha.describe('MV3 state write serialization', function() {
     global.mv3Storage = storage;
     loadBackgroundModules();
     await global.mv3State.saveStatePatch({
-      legacyMigration: {warnings: ['remove-me', 'keep-me']},
+      periodicUpdate: {
+        lastEvents: [
+          {type: 'remove-me', at: 1},
+          {type: 'keep-me', at: 2},
+        ],
+      },
     });
 
     await Promise.all([
       global.mv3State.updateStateAtomically((state) => ({
-        legacyMigration: {
-          warnings: state.legacyMigration.warnings.filter(
-              (warning) => warning !== 'remove-me',
+        periodicUpdate: {
+          lastEvents: state.periodicUpdate.lastEvents.filter(
+              (event) => event.type !== 'remove-me',
           ),
         },
       })),
       global.mv3State.updateStateAtomically((state) => ({
-        legacyMigration: {
-          warnings: state.legacyMigration.warnings.concat('append-me'),
+        periodicUpdate: {
+          lastEvents: state.periodicUpdate.lastEvents.concat({
+            type: 'append-me',
+            at: 3,
+          }),
         },
       })),
     ]);
 
-    Chai.expect(storage.getStoredState().legacyMigration.warnings)
+    Chai.expect(storage.getStoredState().periodicUpdate.lastEvents
+        .map((event) => event.type))
         .to.deep.equal(['keep-me', 'append-me']);
 
   });
@@ -512,14 +528,17 @@ Mocha.describe('MV3 state write serialization', function() {
 
     const operations = Promise.all([
       global.mv3State.updateStateAtomically((state) => ({
-        legacyMigration: {
-          warnings: state.legacyMigration.warnings.concat('remove-me'),
+        periodicUpdate: {
+          lastEvents: state.periodicUpdate.lastEvents.concat({
+            type: 'remove-me',
+            at: 1,
+          }),
         },
       })),
       global.mv3State.updateStateAtomically((state) => ({
-        legacyMigration: {
-          warnings: state.legacyMigration.warnings.filter(
-              (warning) => warning !== 'remove-me',
+        periodicUpdate: {
+          lastEvents: state.periodicUpdate.lastEvents.filter(
+              (event) => event.type !== 'remove-me',
           ),
         },
       })),
@@ -527,7 +546,7 @@ Mocha.describe('MV3 state write serialization', function() {
     storage.releaseReads();
     await operations;
 
-    Chai.expect(storage.getStoredState().legacyMigration.warnings)
+    Chai.expect(storage.getStoredState().periodicUpdate.lastEvents)
         .to.deep.equal([]);
 
   });

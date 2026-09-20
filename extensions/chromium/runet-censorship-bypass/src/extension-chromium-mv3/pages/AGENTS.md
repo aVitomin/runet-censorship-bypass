@@ -12,8 +12,6 @@ not HTML injection sinks.
   override, Proxy requires a candidate, and Direct is explicit. Test exact-host
   and base/subdomain forms; `tldts` uses private domains, while legacy two-label
   wildcards are compatibility-only.
-- Migration UI stays collapsed and explicit, requires field selection and
-  confirmation, and must not imply browser proxy settings were applied.
 - Add normal user-facing strings to both English and Russian locales without
   changing placeholder shapes.
 

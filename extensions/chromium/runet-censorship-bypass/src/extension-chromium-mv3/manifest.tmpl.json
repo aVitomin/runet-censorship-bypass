@@ -19,7 +19,6 @@
     , "alarms"
     , "storage"
     , "notifications"
-    , "offscreen"
     , "webRequest"
     , "webRequestAuthProvider"
     , "activeTab"

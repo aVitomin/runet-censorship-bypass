@@ -49,22 +49,8 @@
     'error',
     'skipped',
   ]);
-  const LEGACY_MIGRATION_STATUSES = Object.freeze([
-    'idle',
-    'running',
-    'success',
-    'error',
-  ]);
-  const LEGACY_MIGRATION_APPLY_STATUSES = Object.freeze([
-    'idle',
-    'running',
-    'success',
-    'error',
-    'partial',
-  ]);
   const MAX_PROXY_AUTH_EVENTS = 20;
   const MAX_PERIODIC_UPDATE_EVENTS = 20;
-  const MAX_LEGACY_MIGRATION_WARNINGS = 20;
   const MIN_PERIODIC_UPDATE_INTERVAL_MINUTES = 1;
   const MAX_PERIODIC_UPDATE_INTERVAL_MINUTES = 24 * 60;
   const ATOMIC_NO_CHANGE = Object.freeze({});
@@ -212,21 +198,6 @@
       lastError: null,
       consecutiveFailures: 0,
       lastEvents: Object.freeze([]),
-    }),
-    legacyMigration: Object.freeze({
-      auditStatus: 'idle',
-      applyStatus: 'idle',
-      lastAuditAt: null,
-      lastApplyAt: null,
-      detectedLegacyData: false,
-      applied: false,
-      appliedFields: Object.freeze([]),
-      skippedFields: Object.freeze([]),
-      conflicts: Object.freeze([]),
-      lastSummary: null,
-      lastApplySummary: null,
-      lastError: null,
-      warnings: Object.freeze([]),
     }),
   });
 
@@ -548,98 +519,6 @@
       message: message || 'Periodic update failed.',
       details: cloneWithoutPacText(value.details),
     };
-
-  }
-
-  function normalizeLegacyMigrationError(value) {
-
-    if (!isObject(value)) {
-      return null;
-    }
-    const code = normalizeNullableString(value.code);
-    const message = normalizeNullableString(value.message);
-    if (!code && !message) {
-      return null;
-    }
-    return {
-      code: code || 'LEGACY_MIGRATION_AUDIT_FAILED',
-      message: message || 'Legacy migration audit failed.',
-      details: cloneWithoutPacText(value.details),
-    };
-
-  }
-
-  function redactSensitiveText(value) {
-
-    return String(value || '').replace(
-        /([^\s:@;]+):([^\s@;]+)@/g,
-        (match, username) => {
-          const name = String(username || '');
-          const redactedName = name.length <= 2 ?
-            '*'.repeat(name.length) :
-            `${name[0]}***${name[name.length - 1]}`;
-          return `${redactedName}:***@`;
-        },
-    );
-
-  }
-
-  function sanitizeLegacyMigrationValue(value, key = '') {
-
-    const loweredKey = String(key || '').toLowerCase();
-    if (
-      loweredKey.includes('password') ||
-      loweredKey.includes('rawpacdata') ||
-      loweredKey.includes('cookedpacdata') ||
-      loweredKey.includes('pac-data')
-    ) {
-      return '[redacted]';
-    }
-    if (typeof value === 'string') {
-      return redactSensitiveText(value);
-    }
-    if (Array.isArray(value)) {
-      return value.map((item) => sanitizeLegacyMigrationValue(item, key));
-    }
-    if (isObject(value)) {
-      return Object.keys(value).sort().reduce((acc, childKey) => {
-        acc[childKey] = sanitizeLegacyMigrationValue(value[childKey], childKey);
-        return acc;
-      }, {});
-    }
-    return value === undefined ? null : value;
-
-  }
-
-  function normalizeLegacyMigrationItems(value) {
-
-    if (!Array.isArray(value)) {
-      return [];
-    }
-    return value
-        .map((item) => sanitizeLegacyMigrationValue(item))
-        .slice(-MAX_LEGACY_MIGRATION_WARNINGS);
-
-  }
-
-  function normalizeLegacyMigrationApplySummary(value) {
-
-    if (!isObject(value)) {
-      return null;
-    }
-    return sanitizeLegacyMigrationValue({
-      status: normalizeNullableString(value.status),
-      strategy: normalizeNullableString(value.strategy),
-      appliedFields: normalizeStringArray(
-          value.appliedFields,
-          'appliedFields',
-          false,
-      ),
-      skippedFields: normalizeLegacyMigrationItems(value.skippedFields),
-      conflicts: normalizeLegacyMigrationItems(value.conflicts),
-      warnings: normalizeStringArray(value.warnings, 'warnings', false)
-          .slice(-MAX_LEGACY_MIGRATION_WARNINGS),
-    });
 
   }
 
@@ -1029,81 +908,6 @@
 
   }
 
-  function normalizeLegacyMigrationSourceSummary(value) {
-
-    const source = isObject(value) ? value : {};
-    return {
-      checked: source.checked === true,
-      keysFound: normalizeStringArray(source.keysFound, 'keysFound', false),
-      warnings: normalizeStringArray(source.warnings, 'warnings', false)
-          .slice(-MAX_LEGACY_MIGRATION_WARNINGS),
-    };
-
-  }
-
-  function normalizeLegacyMigrationSummary(value) {
-
-    if (!isObject(value)) {
-      return null;
-    }
-    const sources = isObject(value.sources) ? value.sources : {};
-    return {
-      detected: value.detected === true,
-      checkedAt: normalizeNullableNumber(value.checkedAt),
-      installType: normalizeNullableString(value.installType) || 'unknown',
-      sources: {
-        chromeStorageLocal: normalizeLegacyMigrationSourceSummary(
-            sources.chromeStorageLocal,
-        ),
-        localStorage: normalizeLegacyMigrationSourceSummary(
-            sources.localStorage,
-        ),
-      },
-      proposedKeys: normalizeStringArray(value.proposedKeys, 'proposedKeys', false),
-      cannotMigrateCount: normalizeNullableNumber(value.cannotMigrateCount) || 0,
-      conflictCount: normalizeNullableNumber(value.conflictCount) || 0,
-      warningCount: normalizeNullableNumber(value.warningCount) || 0,
-      sensitiveFieldsRedacted: value.sensitiveFieldsRedacted !== false,
-    };
-
-  }
-
-  function normalizeLegacyMigration(value) {
-
-    const source = isObject(value) ? value : {};
-    const status = LEGACY_MIGRATION_STATUSES.includes(source.auditStatus) ?
-      source.auditStatus :
-      DEFAULT_STATE.legacyMigration.auditStatus;
-    const applyStatus = LEGACY_MIGRATION_APPLY_STATUSES.includes(
-        source.applyStatus,
-    ) ?
-      source.applyStatus :
-      DEFAULT_STATE.legacyMigration.applyStatus;
-    return {
-      auditStatus: status,
-      applyStatus,
-      lastAuditAt: normalizeNullableNumber(source.lastAuditAt),
-      lastApplyAt: normalizeNullableNumber(source.lastApplyAt),
-      detectedLegacyData: source.detectedLegacyData === true,
-      applied: source.applied === true,
-      appliedFields: normalizeStringArray(
-          source.appliedFields,
-          'appliedFields',
-          false,
-      ),
-      skippedFields: normalizeLegacyMigrationItems(source.skippedFields),
-      conflicts: normalizeLegacyMigrationItems(source.conflicts),
-      lastSummary: normalizeLegacyMigrationSummary(source.lastSummary),
-      lastApplySummary: normalizeLegacyMigrationApplySummary(
-          source.lastApplySummary,
-      ),
-      lastError: normalizeLegacyMigrationError(source.lastError),
-      warnings: normalizeStringArray(source.warnings, 'warnings', false)
-          .slice(-MAX_LEGACY_MIGRATION_WARNINGS),
-    };
-
-  }
-
   function normalizeUiLanguage(value) {
 
     const language = String(value || DEFAULT_STATE.uiLanguage).toLowerCase();
@@ -1174,7 +978,6 @@
       artifactMigration: normalizeArtifactMigration(source.artifactMigration),
       proxyAuth: normalizeProxyAuth(source.proxyAuth),
       periodicUpdate,
-      legacyMigration: normalizeLegacyMigration(source.legacyMigration),
     };
 
   }
@@ -1431,13 +1234,6 @@
       if (Array.isArray(patch.periodicUpdate.lastEvents)) {
         mergedState.periodicUpdate.lastEvents = patch.periodicUpdate.lastEvents;
       }
-    }
-    if (isObject(patch.legacyMigration)) {
-      mergedState.legacyMigration = Object.assign(
-          {},
-          currentState.legacyMigration,
-          patch.legacyMigration,
-      );
     }
     const nextState = normalizeState(mergedState);
     if (savedConfigurationIdentity(currentState) !== savedConfigurationIdentity(nextState)) {
@@ -1990,41 +1786,9 @@
 
   }
 
-  async function getLegacyMigrationState() {
-
-    const state = await loadState();
-    return state.legacyMigration;
-
-  }
-
-  async function setLegacyMigrationState(legacyMigration) {
-
-    assertObject(legacyMigration, 'legacyMigration');
-    const state = await saveStatePatch({legacyMigration});
-    return state.legacyMigration;
-
-  }
-
-  async function clearLegacyMigrationAudit() {
-
-    const state = await saveStatePatch({
-      legacyMigration: clone(DEFAULT_STATE.legacyMigration),
-    });
-    return state.legacyMigration;
-
-  }
-
   function selfTest() {
 
     const samplePassword = ['sec', 'ret'].join('');
-    const applySummaryText = JSON.stringify(normalizeLegacyMigrationApplySummary({
-      status: 'success',
-      strategy: 'overwriteSelected',
-      conflicts: [{
-        field: 'pacMods',
-        legacySummary: `HTTPS user:${samplePassword}@proxy.example:8443`,
-      }],
-    }));
     const normalized = normalizeState({
       schemaVersion: 5,
       pacCache: {
@@ -2059,6 +1823,10 @@
             urls: ['https://example.com/proxy.pac'],
           }],
         }).customPacProviders[0].label === 'State provider',
+      obsoleteMigrationStatusDropped: !Object.prototype.hasOwnProperty.call(
+          normalizeState({legacyMigration: {auditStatus: 'success'}}),
+          'legacyMigration',
+      ),
       legacyUseTorMapsToTorBrowserOnly:
         normalizePacMods({useTor: true}).localTor.enabled === false &&
         normalizePacMods({useTor: true}).torBrowser.enabled === true,
@@ -2113,23 +1881,6 @@
       periodicUpdateEventsCapped: normalizePeriodicUpdateEvents(
           new Array(MAX_PERIODIC_UPDATE_EVENTS + 1).fill({type: 'event'}),
       ).length === MAX_PERIODIC_UPDATE_EVENTS,
-      legacyMigrationDefaultsIdle:
-        normalized.legacyMigration.auditStatus === 'idle' &&
-        normalized.legacyMigration.applyStatus === 'idle',
-      legacyMigrationSummarySanitized: normalizeLegacyMigrationSummary({
-        detected: true,
-        installType: 'legacy-data-detected',
-        sources: {
-          chromeStorageLocal: {
-            checked: true,
-            keysFound: ['antiCensorRu'],
-          },
-        },
-        cannotMigrateCount: 1,
-      }).sources.chromeStorageLocal.keysFound[0] === 'antiCensorRu',
-      legacyMigrationApplySummaryRedactsPasswords:
-        applySummaryText.includes('***') &&
-        !applySummaryText.includes(`${samplePassword}@`),
     };
 
   }
@@ -2179,9 +1930,6 @@
     setPeriodicUpdateInterval,
     recordPeriodicUpdateEvent,
     clearPeriodicUpdateEvents,
-    getLegacyMigrationState,
-    setLegacyMigrationState,
-    clearLegacyMigrationAudit,
     sanitizeRpcValue,
     selfTest,
   });

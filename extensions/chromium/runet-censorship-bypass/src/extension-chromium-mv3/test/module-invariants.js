@@ -35,8 +35,6 @@ const SELF_TEST_EXPORTS = Object.freeze([
   'mv3PacCook',
   'mv3PacArtifacts',
   'mv3State',
-  'mv3LegacyMigrationAudit',
-  'mv3LegacyMigrationApply',
 ]);
 
 Mocha.describe('MV3 background module invariants', function() {
@@ -273,62 +271,5 @@ Mocha.describe('MV3 background module invariants', function() {
         }
 
       });
-
-  Mocha.it('makes a selected migration idempotent and leaves its plan intact', function() {
-
-    const password = ['migration', 'credential'].join('-');
-    const desiredPacMods = global.mv3PacMods.normalizePacMods({
-      ownProxies: [{
-        type: 'HTTPS',
-        host: 'proxy.example',
-        port: 443,
-        username: 'migration-user',
-        password,
-      }],
-    });
-    const plan = {
-      detected: true,
-      proposedMigration: {
-        canMigrate: {
-          pacMods: global.mv3PacMods.redactPacMods(desiredPacMods),
-        },
-        applyValues: {pacMods: desiredPacMods},
-        cannotMigrate: [],
-        warnings: [],
-      },
-    };
-    const originalPlan = JSON.stringify(plan);
-    const currentState = {
-      currentPacProviderKey: null,
-      pacUpdatePeriodInMinutes: 12,
-      pacMods: global.mv3PacMods.normalizePacMods({}),
-      notificationPrefs: {
-        pacError: true,
-        extError: true,
-        noControl: true,
-      },
-    };
-    const first = global.mv3LegacyMigrationApply.createApplyPlan({
-      plan,
-      currentState,
-      strategy: 'overwriteSelected',
-      fields: ['pacMods'],
-    });
-    const second = global.mv3LegacyMigrationApply.createApplyPlan({
-      plan,
-      currentState: Object.assign({}, currentState, first.patch),
-      strategy: 'overwriteSelected',
-      fields: ['pacMods'],
-    });
-
-    Chai.expect(first.ok).to.equal(true);
-    Chai.expect(first.appliedFields).to.deep.equal(['pacMods']);
-    Chai.expect(first.patch).not.to.have.property('proxyApply');
-    Chai.expect(second.ok).to.equal(true);
-    Chai.expect(second.appliedFields).to.deep.equal([]);
-    Chai.expect(second.patch).to.deep.equal({});
-    Chai.expect(JSON.stringify(plan)).to.equal(originalPlan);
-
-  });
 
 });
