@@ -3,10 +3,10 @@
   "version": "0.0.19",
   "description": "Development tools for Chromium and Firefox MV3 extensions",
   "scripts": {
-    "lint:mv3": "eslint ./src/extension-chromium-mv3/**/*.js",
-    "lint:firefox": "eslint ./src/extension-firefox-mv3/**/*.js",
+    "lint:mv3": "eslint ./src/extension-chromium-mv3/**/*.js ./src/extension-mv3-common/**/*.js",
+    "lint:firefox": "eslint ./src/extension-firefox-mv3/**/*.js ./src/extension-mv3-common/**/*.js",
     "lint:tooling": "eslint ./gulpfile.js ./build-cleanup.js ./scripts/*.js ./src/tooling/**/*.js",
-    "lint": "eslint ./gulpfile.js ./build-cleanup.js ./scripts/*.js ./src/tooling/**/*.js ./src/extension-chromium-mv3/**/*.js ./src/extension-firefox-mv3/**/*.js",
+    "lint": "eslint ./gulpfile.js ./build-cleanup.js ./scripts/*.js ./src/tooling/**/*.js ./src/extension-chromium-mv3/**/*.js ./src/extension-firefox-mv3/**/*.js ./src/extension-mv3-common/**/*.js",
     "build:mv3": "node ./node_modules/gulp/bin/gulp.js buildChromiumMv3 && node ./src/extension-chromium-mv3/test/verify-runtime-icons.js && node ./src/extension-chromium-mv3/test/verify-package-integrity.js",
     "build:firefox": "node ./node_modules/gulp/bin/gulp.js buildFirefoxMv3 && node ./src/extension-firefox-mv3/test/verify-package.js",
     "audit:prod": "npm audit --omit=dev",

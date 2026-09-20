@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import {execFileSync} from 'node:child_process';
 
 import {
   AUTHORITATIVE_PACKAGE,
@@ -10,6 +11,8 @@ import {
   SupplyChainVerificationError,
   changedDirectSelections,
   inspectRepository,
+  readBasePackage,
+  resolveBasePackageRoot,
   verifyPublicationAges,
 } from './verify-supply-chain.mjs';
 
@@ -218,4 +221,67 @@ test('fails closed on malformed publication metadata', async () => {
       return true;
     },
   );
+});
+
+test('reports a moved current root explicitly without adopting it', () => {
+  withFixture(packageDocuments(), (root) => {
+    const moved = path.join(root, 'future-tooling');
+    fs.renameSync(path.join(root, AUTHORITATIVE_PACKAGE), moved);
+    assertSupplyChainFailure(() => inspectRepository(root), /discovered roots: future-tooling.*automatic root adoption is forbidden/u);
+  });
+});
+
+test('reports a partial manifest/lock pair without confusing JSON read errors', () => {
+  withFixture(packageDocuments(), (root) => {
+    fs.unlinkSync(path.join(root, AUTHORITATIVE_PACKAGE, 'package-lock.json'));
+    assertSupplyChainFailure(() => inspectRepository(root), /must both be present/u);
+  });
+});
+
+test('uses explicit paired rename evidence for a relocated PR base package', () => {
+  const names = ['package.json', 'package-lock.json'];
+  const baseFiles = names.map((name) => `old-tooling/${name}`);
+  const changes = names.map((name) => `R100\0old-tooling/${name}\0${AUTHORITATIVE_PACKAGE}/${name}\0`).join('');
+  assert.equal(resolveBasePackageRoot(AUTHORITATIVE_PACKAGE, baseFiles, changes), 'old-tooling');
+  assert.equal(resolveBasePackageRoot(AUTHORITATIVE_PACKAGE,
+    names.map((name) => `${AUTHORITATIVE_PACKAGE}/${name}`), ''), AUTHORITATIVE_PACKAGE);
+});
+
+for (const [label, changes] of [
+  ['missing history', ''],
+  ['copy, not rename', `C100\0old/package.json\0${AUTHORITATIVE_PACKAGE}/package.json\0C100\0old/package-lock.json\0${AUTHORITATIVE_PACKAGE}/package-lock.json\0`],
+  ['partial move', `R100\0old/package.json\0${AUTHORITATIVE_PACKAGE}/package.json\0`],
+  ['split origins', `R100\0old/package.json\0${AUTHORITATIVE_PACKAGE}/package.json\0R100\0other/package-lock.json\0${AUTHORITATIVE_PACKAGE}/package-lock.json\0`],
+]) {
+  test(`rejects ambiguous base path selection: ${label}`, () => {
+    assertSupplyChainFailure(() => resolveBasePackageRoot(AUTHORITATIVE_PACKAGE,
+      ['old/package.json', 'old/package-lock.json', 'other/package-lock.json'], changes),
+    /paired.*Git rename.*cannot skip dependency age review/u);
+  });
+}
+
+test('compares actual Git-renamed base documents and still detects newly selected versions', () => {
+  withFixture(packageDocuments(), (root) => {
+    const git = (...args) => execFileSync('git', [
+      '-c', 'core.autocrlf=false', '-c', `core.hooksPath=${path.join(root, '.no-hooks')}`, ...args,
+    ], {cwd: root, encoding: 'utf8'}).trim();
+    git('init', '--quiet'); git('add', '--', '.');
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+      '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'fixture');
+    const baseSha = git('rev-parse', 'HEAD');
+    git('mv', '--', AUTHORITATIVE_PACKAGE, 'future-tooling');
+    const current = packageDocuments({directSpecifier: '1.2.4', selectedVersion: '1.2.4',
+      resolved: 'https://registry.npmjs.org/safe-package/-/safe-package-1.2.4.tgz'});
+    writeJson(root, 'future-tooling/package.json', current.manifest);
+    writeJson(root, 'future-tooling/package-lock.json', current.lockfile);
+    const base = readBasePackage(baseSha, current.manifest, root, 'future-tooling');
+    assert.equal(base.directory, AUTHORITATIVE_PACKAGE);
+    assert.deepEqual(changedDirectSelections(current.manifest, current.lockfile, base.manifest, base.lockfile), [
+      {name: 'safe-package', version: '1.2.4', section: 'dependencies'},
+    ]);
+    assertSupplyChainFailure(() => readBasePackage(baseSha, {...current.manifest, name: 'impostor'},
+      root, 'future-tooling'), /package identity does not match/u);
+    assertSupplyChainFailure(() => readBasePackage('f'.repeat(40), current.manifest,
+      root, 'future-tooling'), /fetch the base commit/u);
+  });
 });
