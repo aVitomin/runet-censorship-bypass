@@ -23,6 +23,18 @@ npm ci --prefix $Project
 раз. `scripts/required-checks.mjs` — advisory mapper, а не замена правилам
 `AGENTS.md` или CI.
 
+Без аргументов mapper учитывает staged/unstaged изменения относительно `HEAD`,
+удаления, обе стороны переименований и неигнорируемые untracked-файлы. Он выдаёт
+финальные gates без включённых в них фокусных suites; shared icons выбирают оба
+browser packages независимо от названия родительского каталога. Неизвестные
+пути требуют проверки ownership и консервативно выбирают aggregate gate.
+Tooling-пути собраны в `scripts/repository-paths.mjs`; это не замена Gulp/CI
+и не автоматическая поддержка перемещения файлов. Проверки mapper/ownership:
+
+```powershell
+node --test .\scripts\required-checks.test.mjs
+```
+
 ## Автоматические проверки
 
 ### Documentation integrity
@@ -53,6 +65,13 @@ boundary. На PR registry
 publication time запрашивается только для новых выбранных direct versions;
 граница равна 168 часам и ошибка registry/metadata блокирует change. Эти gates
 дают defense in depth, но не доказывают безопасность package.
+
+Перенос npm-root требует отдельного review и явного обновления tooling/CI/build
+путей. Verifier не принимает обнаруженный root автоматически. Для сравнения
+зависимостей с PR base допускается парное Git-переименование `package.json` и
+`package-lock.json` из одного прежнего root с неизменной package identity;
+частичный, неоднозначный или нераспознанный Git перенос блокирует age review,
+а не пропускает его.
 
 Pull request дополнительно использует официальный
 `actions/dependency-review-action` v5.0.0, pinned на signed commit
@@ -109,6 +128,8 @@ npm --prefix $Project run test:tooling
 Эти тесты отдельно проверяют безопасное удаление build output, строгий renderer
 manifest template и детерминированный Firefox provider generator. Они входят в
 aggregate `npm test`/`verify`, но не дублируются внутри browser target gates.
+Также проверяется фактическое применение ESLint rules к shared modules и
+сохранение browser-specific lint coverage.
 
 ### Lint
 
@@ -119,6 +140,13 @@ npm --prefix $Project run lint:mv3
 Используйте сфокусированный lint только для быстрой обратной связи. Финальный
 target gate уже запускает его; не используйте lint как замену tests/build и не
 начинайте массовое форматирование соседнего кода.
+
+`lint:mv3`, `lint:firefox` и общий `lint` включают
+`src/extension-mv3-common/**/*.js`. Для shared modules включены correctness
+rules с поддержкой существующего ES2018-синтаксиса, без переноса browser UI
+style rules. Два input validator намеренно используют regex для отбрасывания
+управляющих символов; исключение `no-control-regex` ограничено этими файлами.
+Browser-specific rules не изменены.
 
 ### Build, package integrity и runtime icons
 

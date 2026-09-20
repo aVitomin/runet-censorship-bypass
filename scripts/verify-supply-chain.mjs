@@ -5,9 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TOOLING_ROOT } from './repository-paths.mjs';
 
 export const MIN_VERSION_AGE_MS = 168 * 60 * 60 * 1000;
-export const AUTHORITATIVE_PACKAGE = 'extensions/chromium/runet-censorship-bypass';
+export const AUTHORITATIVE_PACKAGE = TOOLING_ROOT;
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const expectedPackageRoots = new Set([AUTHORITATIVE_PACKAGE]);
@@ -270,7 +271,8 @@ export function inspectRepository(rootDirectory = repoRoot) {
   for (const directory of expectedPackageRoots.keys()) {
     const record = inventory.get(directory);
     if (!record?.manifest || !record?.lockfile) {
-      errors.push(`${directory}: expected package.json and package-lock.json are missing`);
+      const discovered = [...inventory.keys()].sort().join(', ') || 'none';
+      errors.push(`${directory}: expected package.json and package-lock.json are missing; discovered roots: ${discovered}. If moved, review repository-paths.mjs, build/CI paths and paired manifest/lockfile history; automatic root adoption is forbidden`);
     }
   }
 
@@ -390,10 +392,10 @@ export async function verifyPublicationAges(selections, {
   return results;
 }
 
-function gitJson(baseSha, relativePath) {
+function gitJson(baseSha, relativePath, rootDirectory) {
   try {
     const content = execFileSync('git', ['show', `${baseSha}:${relativePath}`], {
-      cwd: repoRoot,
+      cwd: rootDirectory,
       encoding: 'utf8',
       maxBuffer: 20 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore'],
@@ -404,6 +406,54 @@ function gitJson(baseSha, relativePath) {
       `${relativePath}: unable to read the PR base version; dependency age review cannot continue`,
     ]);
   }
+}
+
+// A moved tooling root must have explicit Git rename evidence for BOTH documents.
+// Never select a similarly named package, accept a copy, or skip the base age check.
+export function resolveBasePackageRoot(packageRoot, baseFiles, nameStatus) {
+  const filenames = ['package.json', 'package-lock.json'];
+  if (filenames.every((name) => baseFiles.includes(`${packageRoot}/${name}`))) return packageRoot;
+  const tokens = nameStatus.split('\0');
+  const sources = new Map();
+  for (let index = 0; index < tokens.length && tokens[index];) {
+    const status = tokens[index++];
+    const before = tokens[index++];
+    const after = /^[RC]\d+$/u.test(status) ? tokens[index++] : null;
+    if (/^R\d+$/u.test(status) && after) sources.set(after, before);
+  }
+  const roots = filenames.map((name) => {
+    const source = sources.get(`${packageRoot}/${name}`);
+    return source && source.endsWith(`/${name}`) && baseFiles.includes(source)
+      ? source.slice(0, -name.length - 1) : null;
+  });
+  if (roots[0] && roots[0] === roots[1]) return roots[0];
+  throw new SupplyChainVerificationError([
+    `${packageRoot}: PR base package pair is absent; a paired package.json/package-lock.json Git rename from one root is required. Partial, copied or ambiguous moves cannot skip dependency age review`,
+  ]);
+}
+
+export function readBasePackage(baseSha, currentManifest, rootDirectory = repoRoot,
+  packageRoot = AUTHORITATIVE_PACKAGE) {
+  if (!/^[0-9a-f]{40}$/u.test(baseSha)) {
+    throw new SupplyChainVerificationError(['SUPPLY_CHAIN_BASE_SHA must be a lowercase 40-character Git SHA']);
+  }
+  const options = {cwd: rootDirectory, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'ignore']};
+  let baseFiles;
+  let changes;
+  try {
+    baseFiles = execFileSync('git', ['ls-tree', '-r', '--name-only', '-z', baseSha], options).split('\0');
+    changes = execFileSync('git', ['diff', '--name-status', '-z', '--find-renames', baseSha, '--'], options);
+  } catch {
+    throw new SupplyChainVerificationError(['Unable to inspect PR base/path history; fetch the base commit before dependency review']);
+  }
+  const directory = resolveBasePackageRoot(packageRoot, baseFiles, changes);
+  const manifest = gitJson(baseSha, `${directory}/package.json`, rootDirectory);
+  const lockfile = gitJson(baseSha, `${directory}/package-lock.json`, rootDirectory);
+  if (manifest.name !== currentManifest.name || lockfile.packages?.['']?.name !== manifest.name) {
+    throw new SupplyChainVerificationError(['PR base package identity does not match the current tooling package; explicit dependency review is required']);
+  }
+  return {directory, manifest, lockfile};
 }
 
 async function main() {
@@ -423,13 +473,15 @@ async function main() {
       throw new SupplyChainVerificationError(['SUPPLY_CHAIN_BASE_SHA must be a lowercase 40-character Git SHA']);
     }
     const authoritative = summary.documents.get(AUTHORITATIVE_PACKAGE);
-    const baseManifest = gitJson(baseSha, `${AUTHORITATIVE_PACKAGE}/package.json`);
-    const baseLockfile = gitJson(baseSha, `${AUTHORITATIVE_PACKAGE}/package-lock.json`);
+    const base = readBasePackage(baseSha, authoritative.manifest);
+    if (base.directory !== AUTHORITATIVE_PACKAGE) {
+      console.log(`Reviewed package path comparison: ${base.directory} -> ${AUTHORITATIVE_PACKAGE}.`);
+    }
     const changedSelections = changedDirectSelections(
       authoritative.manifest,
       authoritative.lockfile,
-      baseManifest,
-      baseLockfile,
+      base.manifest,
+      base.lockfile,
     );
     if (changedSelections.length === 0) {
       console.log('Dependency age verification passed: no newly selected direct versions; registry was not queried.');

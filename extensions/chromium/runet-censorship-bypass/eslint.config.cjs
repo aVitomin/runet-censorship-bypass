@@ -74,6 +74,35 @@ module.exports = [
     },
   },
   {
+    // First lint coverage for browser-neutral modules: correctness rules only.
+    // Do not reformat existing shared sources to adopt browser UI style rules.
+    name: 'project/shared-mv3',
+    files: ['src/extension-mv3-common/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2018,
+      sourceType: 'script',
+      globals: {
+        ...globals.browser,
+        ...globals.es2015,
+        globalThis: 'readonly',
+        module: 'readonly',
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-unused-vars': ['error', {args: 'none', caughtErrors: 'none'}],
+    },
+  },
+  {
+    name: 'project/shared-input-validation',
+    files: [
+      'src/extension-mv3-common/configuration-transfer.js',
+      'src/extension-mv3-common/provider-dataset.js',
+    ],
+    // These validators deliberately reject control characters in untrusted strings.
+    rules: {'no-control-regex': 'off'},
+  },
+  {
     name: 'project/firefox-runtime-compatibility',
     files: ['src/extension-firefox-mv3/background/**/*.js'],
     languageOptions: {
