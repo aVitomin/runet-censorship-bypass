@@ -6,6 +6,7 @@ const Mocha = require('mocha');
 const {createRuntimeHarness} = require('./runtime-performance-harness');
 
 const REVIEWED_RPC_METHODS = Object.freeze([
+  'exportConfiguration', 'previewConfigurationImport', 'importConfiguration',
   'getConfigurationStatus', 'applySavedConfiguration', 'applySiteConfiguration',
   'getState', 'getPacProviders', 'getPacMods', 'setPacMods',
   'getPopupState', 'setCurrentSiteMode', 'updatePopupDraft',
@@ -120,6 +121,22 @@ async function seedCredentialState(harness, secret, overrides = {}) {
 }
 
 Mocha.describe('MV3 RPC credential redaction', function() {
+
+  Mocha.it('keeps configuration/support export and import responses credential-free', async function() {
+    const harness = await createRuntimeHarness();
+    const secret = 'transfer-redaction-fixture';
+    await seedCredentialState(harness, secret);
+    const exported = await harness.callRpc('exportConfiguration');
+    const support = await harness.callRpc('exportConfiguration', {support: true});
+    const text = JSON.stringify(exported);
+    const preview = await harness.callRpc('previewConfigurationImport', {text});
+    const saved = await harness.callRpc('importConfiguration', {
+      text, expectedRevision: preview.expectedRevision,
+    });
+    for (const value of [exported, support, preview, saved]) {
+      expectNoCredentialExposure(value, [secret, 'rpc-user']);
+    }
+  });
 
   Mocha.it('keeps the reviewed RPC exposure inventory explicit',
       async function() {

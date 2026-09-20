@@ -705,6 +705,13 @@
             }
           }
           const entries = credentialConfig ? credentialConfig.entries : [];
+          const savedSettings = stored[SETTINGS_COMMIT_STORAGE_KEY] &&
+            stored[SETTINGS_COMMIT_STORAGE_KEY].settings;
+          if (savedSettings && Array.isArray(savedSettings.ownProxies) &&
+              savedSettings.ownProxies.some((proxy) => proxy.enabled &&
+                proxy.credentials && proxy.credentials.mode === 'MISSING')) {
+            throw configError(ERRORS.REQUIRED_CREDENTIAL_MISSING);
+          }
           const entriesByAuthRef = new Map(entries.map((entry) => [
             entry.authRef,
             entry,

@@ -858,6 +858,12 @@ describe('Firefox production UI controllers', function() {
 
   });
 
+  it('keeps imported credentials missing until explicitly replaced or removed', function() {
+    Assert.deepStrictEqual(Options.credentialPayload({mode: 'MISSING'}, 'MISSING', '', ''),
+        {mode: 'MISSING'});
+    Assert.strictEqual(Options.userErrorKey('REQUIRED_CREDENTIAL_MISSING'), 'transferCredentialsRequired');
+  });
+
   it('encodes password KEEP without a password value', function() {
 
     Assert.deepStrictEqual(

@@ -152,7 +152,7 @@
     if (!host || !port) {
       return null;
     }
-    return {
+    return Object.assign({
       enabled: normalizeBoolean(source.enabled, true),
       type: normalizeProxyType(source.type),
       host,
@@ -164,7 +164,8 @@
           false,
       ),
       note: String(source.note || ''),
-    };
+    }, source.credentialsRequired === true && !(source.username && source.password) ?
+      {credentialsRequired: true} : {});
 
   }
 
@@ -556,6 +557,7 @@
       useAsDirectReplacement: normalized.useAsDirectReplacement,
       note: normalized.note,
     };
+    if (normalized.credentialsRequired) serialized.credentialsRequired = true;
     if (Number.isSafeInteger(credentialRevision) && credentialRevision >= 0) {
       serialized.credentialRef = createCredentialRef(
           normalized,

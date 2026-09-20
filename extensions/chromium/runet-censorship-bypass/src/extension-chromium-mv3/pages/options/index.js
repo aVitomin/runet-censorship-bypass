@@ -25,6 +25,7 @@
     ['site-rules', 'optionsNavSiteRules'],
     ['proxy-methods', 'optionsNavProxyMethods'],
     ['maintenance', 'optionsNavMaintenance'],
+    ['import-export', 'transferTitle'],
     ['advanced', 'optionsNavAdvanced'],
     ['about', 'optionsAbout'],
   ]);
@@ -66,6 +67,16 @@
   let fieldId = 0;
   let proxyEditorId = 0;
   let statusId = 0;
+  let renderTransfer = () => {};
+  const transferUi = window.rucbConfigurationTransferUi;
+  const transferModel = transferUi && transferUi.createController({
+    hasDraft: hasDirtyDrafts,
+    call: (action, params) => rpc.callBackground({export: 'exportConfiguration',
+      preview: 'previewConfigurationImport', import: 'importConfiguration'}[action], params),
+    changed: () => renderTransfer(),
+    onImported: () => refresh(),
+    download: (value, support) => transferUi.download(document, value, support),
+  });
 
   function t(key, substitutions) {
 
@@ -147,6 +158,7 @@
       CUSTOM_PROVIDER_NOT_FOUND: 'optionsProviderNotFound',
       BUILT_IN_PROVIDER_READ_ONLY: 'optionsProviderBuiltInReadOnly',
       PROXY_RULE_NO_CANDIDATE: 'popupNoProxyCandidate',
+      CREDENTIALS_REQUIRED: 'transferCredentialsRequired',
       PAC_APPLY_STALE: 'optionsConflictError',
     };
     if (keys[code]) {
@@ -746,6 +758,13 @@
     renderSiteRulesSection(main);
     renderProxyMethodsSection(main);
     renderMaintenanceSection(main);
+    if (transferModel) {
+      const section = createPageSection(main, 'import-export', 'transferTitle', 'transferHelp');
+      transferUi.mount(append(section, 'div'), {t, heading: false, model: transferModel,
+        bind: (render) => {
+          renderTransfer = render;
+        }});
+    }
     renderAdvancedSection(main);
     renderAboutSection(main);
     renderGlobalActionBar(main);
@@ -3165,7 +3184,11 @@
         editor,
         'proxy.passwordMode',
         t('optionsPasswordAction'),
-        proxy.hasPassword ? [
+        proxy.credentialsRequired ? [
+          ['missing', t('transferCredentialsMissingLabel')],
+          ['replace', t('optionsSetPassword')],
+          ['none', t('optionsNoPassword')],
+        ] : proxy.hasPassword ? [
           ['preserve', t('optionsKeepSavedPassword')],
           ['replace', t('optionsReplacePassword')],
           ['remove', t('optionsRemovePassword')],
@@ -3173,7 +3196,7 @@
           ['none', t('optionsNoPassword')],
           ['replace', t('optionsSetPassword')],
         ],
-        proxy.hasPassword ? 'preserve' : 'none',
+        proxy.credentialsRequired ? 'missing' : proxy.hasPassword ? 'preserve' : 'none',
         {help: t('optionsPasswordIntentHelp')},
     );
     const password = appendField(
@@ -3372,6 +3395,7 @@
             ),
             note: getValue(row, 'proxy.note'),
           };
+          if (passwordMode === 'missing') proxy.credentialsRequired = true;
           if (passwordMode === 'preserve' && row.mv3CredentialRef) {
             proxy.password = REDACTED_PASSWORD;
             proxy.hasPassword = true;
@@ -4657,7 +4681,8 @@
         setMessage(t('unifiedConflict'), 'warning');
       } else if (configuration && current && configuration.active && current.active &&
           configuration.effectiveId === current.effectiveId) {
-        setMessage(t('unifiedApplyFailed'), 'warning');
+        setMessage(t('unifiedApplyFailed') + (state.lastErrorCode === 'CREDENTIALS_REQUIRED' ?
+          ` ${t('transferCredentialsRequired')}` : ''), 'warning');
       }
     }
 

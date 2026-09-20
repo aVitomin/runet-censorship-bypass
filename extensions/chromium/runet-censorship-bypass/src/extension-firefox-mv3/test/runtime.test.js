@@ -251,6 +251,9 @@ function startEventPage(options = {}) {
       },
     },
     runtime: {
+      async getPlatformInfo() {
+        return {os: 'win'};
+      },
       async getBrowserInfo() {
 
         return {name: 'Firefox', version: '154.0.1'};
@@ -276,6 +279,9 @@ function startEventPage(options = {}) {
       },
     },
     i18n: {
+      getUILanguage() {
+        return 'en';
+      },
       getMessage(key) {
 
         return key;
@@ -607,6 +613,10 @@ function startEventPage(options = {}) {
   Vm.runInContext(operationalStatusSource, context, {
     filename: 'operational-status.js',
   });
+  for (const file of ['../extension-mv3-common/configuration-transfer.js',
+    'background/configuration-transfer.js']) {
+    Vm.runInContext(Fs.readFileSync(Path.join(sourceRoot, file), 'utf8'), context, {filename: file});
+  }
   Vm.runInContext(eventPageSource, context, {filename: 'event-page.js'});
   return {
     actionCalls,
@@ -660,6 +670,89 @@ describe('Firefox MV3 production control package', function() {
     return page;
 
   }
+
+  it('imports inactive settings without activation, provider fetches or accepting stale revisions', async function() {
+    const page = await unifiedFixture();
+    const exported = (await page.send({type: 'firefox.transfer.export'})).result;
+    page.context.fetch = () => {
+      throw new Error('Import must not fetch');
+    };
+    const before = (await page.send({type: 'firefox.configuration.get'})).result;
+    const text = JSON.stringify(exported);
+    const preview = (await page.send({type: 'firefox.transfer.preview', text})).result;
+    Assert.strictEqual(preview.expectedRevision, before.savedRevision);
+    const imported = await page.send({type: 'firefox.transfer.import', text, expectedRevision: before.savedRevision});
+    Assert.strictEqual(imported.ok, true);
+    Assert.strictEqual(imported.result.savedRevision, before.savedRevision + 1);
+    Assert.strictEqual((await page.send({type: 'firefox.configuration.get'})).result.active, false);
+    Assert.strictEqual(page.proxySettingsCalls.set, 0);
+    const conflict = await page.send({type: 'firefox.transfer.import', text, expectedRevision: before.savedRevision});
+    Assert.strictEqual(conflict.error.code, 'SETTINGS_REVISION_CONFLICT');
+    const support = (await page.send({type: 'firefox.transfer.export', support: true})).result;
+    Assert.strictEqual(support.configuration, null);
+    Assert.strictEqual(support.metadata.browser.family, 'firefox');
+    const rejected = await page.send({type: 'firefox.transfer.preview', text: JSON.stringify(support)});
+    Assert.strictEqual(rejected.error.code, 'TRANSFER_NO_CONFIGURATION');
+  });
+
+  it('imports over pending settings while active without changing Effective; explicit Apply promotes', async function() {
+    const page = await unifiedFixture();
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 0})).ok, true);
+    const before = (await page.send({type: 'firefox.configuration.get'})).result;
+    const exported = (await page.send({type: 'firefox.transfer.export'})).result;
+    exported.configuration.routes.push({host: 'imported.example', scope: 'domain', mode: 'direct', enabled: true});
+    exported.diagnostics = {active: false, pending: false,
+      pendingCategories: [], sourceAvailable: false};
+    const writes = page.proxySettingsCalls.set;
+    page.context.fetch = () => {
+      throw new Error('Import must not fetch');
+    };
+    let expectedRevision = before.savedRevision;
+    for (let i = 0; i < 2; i++) {
+      const imported = await page.send({type: 'firefox.transfer.import', text: JSON.stringify(exported), expectedRevision});
+      Assert.strictEqual(imported.ok, true);
+      expectedRevision = imported.result.savedRevision;
+      const status = (await page.send({type: 'firefox.configuration.get'})).result;
+      Assert.strictEqual(status.active, true);
+      Assert.strictEqual(status.pending, true);
+      Assert.strictEqual(status.effectiveId, before.effectiveId);
+    }
+    Assert.strictEqual(page.proxySettingsCalls.set, writes);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision})).ok, true);
+    Assert.strictEqual((await page.send({type: 'firefox.configuration.get'})).result.pending, false);
+  });
+
+  it('does not restore omitted credentials and rejects Apply until explicit re-entry', async function() {
+    const page = await unifiedFixture();
+    const saved = (await page.send({type: 'firefox.settings.get'})).result;
+    saved.settings.ownProxies = [{id: 'private-profile', enabled: true, type: 'HTTP', host: 'proxy.example', port: 8080,
+      proxyDNS: false, failoverTimeoutSeconds: null, useAsDirectReplacement: false,
+      credentials: {mode: 'SET', username: 'account-private', password: 'password-private'}}];
+    Assert.strictEqual((await page.send({type: 'firefox.settings.replace', expectedRevision: saved.revision,
+      settings: saved.settings})).ok, true);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 1})).ok, true);
+    const before = (await page.send({type: 'firefox.configuration.get'})).result;
+    const exported = (await page.send({type: 'firefox.transfer.export'})).result;
+    Assert.doesNotMatch(JSON.stringify(exported), /account-private|password-private|private-profile/);
+    Assert.deepStrictEqual(exported.credentials.missing, ['own-1']);
+    Assert.strictEqual((await page.send({type: 'firefox.transfer.import', text: JSON.stringify(exported),
+      expectedRevision: 1})).ok, true);
+    const imported = (await page.send({type: 'firefox.settings.get'})).result;
+    Assert.deepStrictEqual(imported.settings.ownProxies[0].credentials, {mode: 'MISSING'});
+    const failed = await page.send({type: 'firefox.activation.apply', expectedRevision: imported.revision});
+    Assert.strictEqual(failed.error.code, 'REQUIRED_CREDENTIAL_MISSING');
+    const status = (await page.send({type: 'firefox.configuration.get'})).result;
+    Assert.strictEqual(status.active, true);
+    Assert.strictEqual(status.effectiveId, before.effectiveId);
+    imported.settings.ownProxies[0].credentials = {mode: 'SET', username: 'new-user', password: 'new-secret'};
+    const entered = await page.send({type: 'firefox.settings.replace', expectedRevision: imported.revision,
+      settings: imported.settings});
+    Assert.strictEqual(entered.ok, true);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: entered.result.revision})).ok, true);
+    const support = (await page.send({type: 'firefox.transfer.export', support: true})).result;
+    Assert.doesNotMatch(JSON.stringify(support), /proxy.example|new-user|new-secret|savedRevision|effectiveId/);
+  });
 
   it('composes popup Save + exact Apply, protects pending settings and rejects stale confirmation', async function() {
 
@@ -744,6 +837,8 @@ describe('Firefox MV3 production control package', function() {
         'background/dataset-promotion.js',
         'background/production-provider.js',
         'background/settings-control.js',
+        'background/common/configuration-transfer.js',
+        'background/configuration-transfer.js',
         'background/site-control.js',
         'background/activation-controller.js',
         'background/operational-status.js',

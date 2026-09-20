@@ -698,6 +698,7 @@ async function createHarness(options = {}) {
     setTimeout,
   });
   context.window = context;
+  context.rucbConfigurationTransferUi = require('../../extension-mv3-common/configuration-transfer-ui');
   context.window.location = location;
   context.window.confirm = options.confirm || (() => true);
   context.window.addEventListener = (type, listener) => {
@@ -1116,6 +1117,7 @@ describe('MV3 options UI', function() {
           'Site rules',
           'Proxy connections',
           'Maintenance',
+          'Import / Export',
           'Advanced',
           'About',
         ]);
@@ -1125,6 +1127,7 @@ describe('MV3 options UI', function() {
           'site-rules',
           'proxy-methods',
           'maintenance',
+          'import-export',
           'advanced',
           'about',
         ]);
@@ -2564,6 +2567,7 @@ describe('MV3 options UI', function() {
           'Правила сайтов',
           'Прокси-подключения',
           'Обслуживание',
+          'Импорт / Экспорт',
           'Дополнительно',
           'О расширении',
         ]);
@@ -2629,6 +2633,7 @@ describe('MV3 options UI', function() {
               'site-rules',
               'proxy-methods',
               'maintenance',
+              'import-export',
               'advanced',
               'about',
             ]);

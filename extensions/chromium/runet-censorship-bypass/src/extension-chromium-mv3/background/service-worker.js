@@ -4,7 +4,7 @@
 /* global mv3ActionStatus, mv3Hash, mv3PacArtifacts, mv3PacCook, mv3PacDownload */
 /* global mv3PacMods, mv3PeriodicUpdate, mv3SiteScope */
 /* global mv3Providers, mv3ProxyAuth, mv3ProxyHealth, mv3ProxySettings */
-/* global mv3State, mv3Effective */
+/* global mv3State, mv3Effective, mv3ConfigurationTransfer, rucbConfigurationTransfer */
 
 importScripts(
     'vendor/tldts/dist/index.umd.min.js',
@@ -25,6 +25,8 @@ importScripts(
     'proxy-auth.js',
     'proxy-settings.js',
     'effective-config.js',
+    'common/configuration-transfer.js',
+    'configuration-transfer.js',
 );
 
 const PHASE_TEN_STATUS = Object.freeze({
@@ -801,6 +803,52 @@ if (chrome.action && chrome.action.onClicked) {
 }
 
 const RPC_METHODS = Object.freeze({
+  async exportConfiguration(params = {}) {
+
+    const saved = await mv3State.loadState();
+    const status = params.support === true ? await configurationStatus(saved) : null;
+    const platform = await chrome.runtime.getPlatformInfo();
+    const metadata = {exportedAt: new Date().toISOString(),
+      browser: {family: 'chromium', version: (navigator.userAgent.match(/Chrome\/([\d.]+)/) || [])[1] || 'unknown'},
+      extensionVersion: chrome.runtime.getManifest().version,
+      locale: ['ru', 'en'].includes(saved.uiLanguage) ? saved.uiLanguage : chrome.i18n.getUILanguage(),
+      platform: platform.os};
+    return rucbConfigurationTransfer.create(params.support === true ? null :
+      mv3ConfigurationTransfer.fromState(saved), metadata, status ? Object.assign({}, status,
+          {sourceAvailable: Boolean(saved.currentPacProviderKey)}) : null);
+
+  },
+
+  async previewConfigurationImport(params = {}) {
+
+    const parsed = rucbConfigurationTransfer.parse(params.text);
+    if (!parsed.configuration) rucbConfigurationTransfer.fail('TRANSFER_NO_CONFIGURATION');
+    const candidate = mv3ConfigurationTransfer.toPatch(parsed.configuration);
+    const saved = await mv3State.loadState();
+    return {expectedRevision: saved.savedRevision,
+      summary: rucbConfigurationTransfer.preview(mv3ConfigurationTransfer.fromState(saved),
+          parsed.configuration, candidate.unsupported)};
+
+  },
+
+  async importConfiguration(params = {}) {
+
+    const parsed = rucbConfigurationTransfer.parse(params.text);
+    if (!parsed.configuration) rucbConfigurationTransfer.fail('TRANSFER_NO_CONFIGURATION');
+    const candidate = mv3ConfigurationTransfer.toPatch(parsed.configuration);
+    const saved = await mv3State.updateStateAtomically((current) => {
+      if (!Number.isSafeInteger(params.expectedRevision) ||
+          params.expectedRevision !== current.savedRevision ||
+          current.savedRevision === Number.MAX_SAFE_INTEGER) throw configurationConflict();
+      // Saved only. No provider download, proxy write, health probe or Apply.
+      return Object.assign({}, candidate.patch, {savedRevision: current.savedRevision + 1,
+        proxyAuth: Object.assign({}, current.proxyAuth, candidate.patch.proxyAuth),
+        pacWorkflowGeneration: getNextPacWorkflowGeneration(current)});
+    });
+    return {savedRevision: saved.savedRevision};
+
+  },
+
   getConfigurationStatus() {
 
     return configurationStatus();
@@ -2838,6 +2886,7 @@ const CONFIGURATION_MUTATIONS = new Set([
   'applyLegacyMigration', 'updatePopupDraft', 'setCurrentSiteMode',
   'applyPopupChanges', 'applyCookedPac',
   'applySavedConfiguration', 'applySiteConfiguration',
+  'importConfiguration',
 ]);
 
 function configurationConflict(code = 'SAVED_REVISION_CHANGED') {
@@ -4308,6 +4357,10 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
   const providerKey = state.currentPacProviderKey;
   if (params.expectedRevision !== undefined && params.expectedRevision !== state.savedRevision) {
     return createPacApplyStaleResult();
+  }
+  if (state.pacMods.ownProxies.some((proxy) => proxy.enabled && proxy.credentialsRequired)) {
+    return {ok: false, error: {code: 'CREDENTIALS_REQUIRED',
+      message: 'Enter the missing proxy credentials before applying settings.'}};
   }
   const cache = state.cookedPacCache;
   if (!providerKey) {

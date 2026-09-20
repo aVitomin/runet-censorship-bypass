@@ -216,8 +216,8 @@
             typeof value.mode !== 'string') {
           throw settingsError(ERRORS.SETTINGS_MALFORMED);
         }
-        if (value.mode === 'NONE' && hasExactKeys(value, ['mode'])) {
-          return {mode: 'NONE'};
+        if (['NONE', 'MISSING'].includes(value.mode) && hasExactKeys(value, ['mode'])) {
+          return {mode: value.mode};
         }
         if (value.mode === 'KEEP' &&
             hasExactKeys(value, ['mode', 'username']) &&
@@ -385,12 +385,12 @@
         const definitions = [];
 
         for (const proxy of settings.ownProxies) {
-          if (!proxy.enabled && proxy.credentials.mode !== 'NONE') {
+          if (!proxy.enabled && !['NONE', 'MISSING'].includes(proxy.credentials.mode)) {
             throw settingsError(ERRORS.SETTINGS_CREDENTIAL_AMBIGUOUS);
           }
           let authRef = null;
-          let storedCredentials = {mode: 'NONE'};
-          if (proxy.credentials.mode !== 'NONE') {
+          let storedCredentials = {mode: proxy.credentials.mode === 'MISSING' ? 'MISSING' : 'NONE'};
+          if (!['NONE', 'MISSING'].includes(proxy.credentials.mode)) {
             authRef = `own.${proxy.id}`;
             const username = proxy.credentials.username;
             let password;

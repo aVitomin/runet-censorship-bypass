@@ -11,6 +11,7 @@ const ProxyAuth = require('../background/proxy-auth');
 const ProxyControl = require('../background/proxy-control');
 const Routing = require('../background/routing-adapter');
 const Settings = require('../background/settings-control');
+const Transfer = require('../background/configuration-transfer');
 const Helpers = require('./dataset-test-helpers');
 
 const sha256 = async (bytes) => Helpers.sha256(Buffer.from(bytes));
@@ -161,6 +162,22 @@ function challenge(test, requestId) {
 }
 
 describe('Firefox Saved and Effective generations', function() {
+
+  it('imported missing credentials leave active routing/auth intact across restart', async function() {
+    const test = await activeFixture();
+    const saved = await test.settings.get();
+    const imported = Transfer.toSettings(Transfer.fromSettings(saved.settings));
+    await test.settings.replace(saved.revision, imported.settings);
+    Assert.strictEqual(test.auth.onAuthRequired(challenge(test, 'import-active')).authCredentials.password,
+        'fixture-old');
+    await Assert.rejects(test.prepare(), {code: 'REQUIRED_CREDENTIAL_MISSING'});
+    const reboot = await test.boot();
+    Assert.strictEqual(reboot.ready.ok, true);
+    Assert.strictEqual(reboot.auth.onAuthRequired(challenge(reboot, 'import-restart')).authCredentials.password,
+        'fixture-old');
+    Assert.strictEqual((await reboot.settings.get()).settings.ownProxies[0].credentials.mode, 'MISSING');
+    Assert.strictEqual(test.control.clears, 0);
+  });
 
   async function stagedUpdate(test, overrides = {}) {
 
