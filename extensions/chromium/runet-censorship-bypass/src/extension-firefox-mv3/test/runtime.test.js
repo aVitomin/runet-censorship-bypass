@@ -481,6 +481,11 @@ function startEventPage(options = {}) {
   Vm.runInContext(offStateSource, context, {filename: 'off-state.js'});
   Vm.runInContext(proxyControlSource, context, {filename: 'proxy-control.js'});
   Vm.runInContext(datasetStoreSource, context, {filename: 'dataset-store.js'});
+  if (options.datasetStore) {
+    context.rucbFirefoxDatasetStore = Object.assign({}, context.rucbFirefoxDatasetStore, {
+      createIndexedDbBackend: () => ({}), createStore: () => options.datasetStore,
+    });
+  }
   Vm.runInContext(providerUpdaterSource, context, {
     filename: 'provider-updater.js',
   });
@@ -585,7 +590,7 @@ function startEventPage(options = {}) {
           initialize: async () => providerUpdateStatus,
           markInstalled: async () => providerUpdateStatus,
           publicStatus: async () => providerUpdateStatus,
-          trustConfigured: () => false,
+          trustConfigured: () => options.providerUpdateTrustConfigured === true,
         }),
       },
   ));
@@ -636,6 +641,86 @@ function startEventPage(options = {}) {
 }
 
 describe('Firefox MV3 production control package', function() {
+  async function unifiedFixture(privateWindowAccess = true) {
+
+    const sha256 = async (bytes) => Helpers.sha256(Buffer.from(bytes));
+    const artifact = Helpers.artifact({providerKey: ProductionProvider.PROVIDER_KEY});
+    const datasetStore = DatasetStore.createStore({backend: Helpers.memoryBackend(), sha256});
+    await datasetStore.commitPackagedBaseline(artifact);
+    const config = JSON.parse(JSON.stringify(
+        await ProductionProvider.createProductionProductConfig(sha256),
+    ));
+    config.datasetIdentity = {providerKey: artifact.envelope.providerKey,
+      datasetVersion: artifact.envelope.datasetVersion,
+      artifactSha256: artifact.envelope.artifactSha256};
+    const storage = makeStorage();
+    storage.values[ProductConfig.CONFIG_STORAGE_KEY] = config;
+    const page = startEventPage({storage, datasetStore, privateWindowAccess});
+    await page.ready();
+    return page;
+
+  }
+
+  it('composes popup Save + exact Apply, protects pending settings and rejects stale confirmation', async function() {
+
+    const page = await unifiedFixture();
+    const status = async () => (await page.send({type: 'firefox.configuration.get'})).result;
+    const siteApply = async (before, extra = {}) => page.send(Object.assign({
+      type: 'firefox.site.apply', tabUrl: 'https://sub.example.com/',
+      mode: 'DIRECT', scope: 'DOMAIN',
+      expectedRevision: before.savedRevision,
+      expectedEffectiveId: before.effectiveId, applyAll: false,
+    }, extra));
+    const off = await status();
+    Assert.strictEqual(off.active, false);
+    Assert.strictEqual((await siteApply(off)).result.applied, true);
+    const active = await status();
+    Assert.strictEqual(active.active, true);
+    const saved = (await page.send({type: 'firefox.settings.get'})).result;
+    saved.settings.flags.noDirect = true;
+    Assert.strictEqual((await page.send({type: 'firefox.settings.replace',
+      expectedRevision: saved.revision, settings: saved.settings})).ok, true);
+    const pending = await status();
+    Assert.strictEqual(pending.pending, true);
+    Assert.strictEqual(pending.effectiveId, active.effectiveId);
+    Assert.deepStrictEqual((await siteApply(pending)).error, {code: 'PENDING_CONFIRMATION_REQUIRED'});
+    Assert.deepStrictEqual((await siteApply(active, {applyAll: true})).error, {code: 'SAVED_REVISION_CHANGED'});
+    const confirmed = await siteApply(pending, {mode: 'AUTO', applyAll: true});
+    Assert.strictEqual(confirmed.result.applied, true);
+    const after = await status();
+    Assert.strictEqual(after.pending, false);
+    Assert.strictEqual(after.savedRevision, pending.savedRevision + 1);
+    Assert.notStrictEqual(after.effectiveId, active.effectiveId);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+    Assert.strictEqual(page.proxySettingsCalls.set, 1);
+    Assert.strictEqual((await page.send({type: 'firefox.site.get', tabUrl: 'https://sub.example.com/'})).result.route.mode, 'AUTO');
+    // A live ownership loss must not wait for the asynchronous change event to
+    // stop the UI from claiming Active or a safe failed-Apply outcome.
+    page.context.browser.proxy.settings.get = async () => ({
+      levelOfControl: 'controlled_by_other_extensions', value: {},
+    });
+    const lost = await status();
+    Assert.strictEqual(lost.active, false);
+    Assert.strictEqual(lost.blocked, true);
+    Assert.strictEqual(lost.reason, 'CONTROL_LOSS');
+
+  });
+
+  it('popup composite retains Saved on denied private access and never claims active', async function() {
+
+    const page = await unifiedFixture(false);
+    const before = (await page.send({type: 'firefox.configuration.get'})).result;
+    const result = await page.send({type: 'firefox.site.apply', tabUrl: 'https://example.com/',
+      expectedRevision: before.savedRevision, expectedEffectiveId: before.effectiveId,
+      mode: 'DIRECT', scope: 'HOST', applyAll: false});
+    Assert.strictEqual(result.result.saved, true);
+    Assert.strictEqual(result.result.applied, false);
+    Assert.strictEqual(result.result.previousActive, false);
+    Assert.strictEqual(result.result.errorCode, 'PRIVATE_ACCESS_REQUIRED');
+    Assert.strictEqual(result.result.configuration.blocked, true);
+    Assert.strictEqual(page.proxySettingsCalls.set, 0);
+
+  });
 
   it('uses the Firefox MV3 event-page manifest model', function() {
 
@@ -1378,6 +1463,7 @@ describe('Firefox MV3 production control package', function() {
 
         let calls = 0;
         const eventPage = startEventPage({
+          providerUpdateTrustConfigured: true,
           promotionInstall: async () => {
 
             calls += 1;
@@ -1395,6 +1481,18 @@ describe('Firefox MV3 production control package', function() {
         Assert.strictEqual(calls, 1);
 
       });
+
+  it('does not enter provider installation with unconfigured production trust', async function() {
+
+    let calls = 0;
+    const page = startEventPage({promotionInstall: async () => {
+      calls += 1;
+    }});
+    Assert.deepStrictEqual(await page.send({type: 'firefox.provider.update.install'}),
+        {ok: false, error: {code: 'UPDATE_TRUST_NOT_CONFIGURED'}});
+    Assert.strictEqual(calls, 0);
+
+  });
 
   it('checks provider updates only through an exact no-input RPC',
       async function() {
@@ -1506,6 +1604,7 @@ describe('Firefox MV3 production control package', function() {
         });
         const order = [];
         const eventPage = startEventPage({
+          providerUpdateTrustConfigured: true,
           promotionInstall: async () => {
 
             order.push('install-start');
@@ -1539,6 +1638,7 @@ describe('Firefox MV3 production control package', function() {
         });
         const order = [];
         const eventPage = startEventPage({
+          providerUpdateTrustConfigured: true,
           providerUpdateCheck: async () => {
 
             order.push('check-start');

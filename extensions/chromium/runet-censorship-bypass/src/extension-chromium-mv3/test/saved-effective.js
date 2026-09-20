@@ -47,6 +47,137 @@ async function effective(h) {
 }
 
 describe('Chromium Saved and Effective generations', function() {
+  it('projects clean and pending categories independently of storage object-key order', async function() {
+
+    const h = await active();
+    const storage = h.getLocalStorage();
+    const store = storage[h.context.mv3Effective.STORAGE_KEY];
+    for (const record of store.records) {
+      record.config = JSON.parse(JSON.stringify(record.config, (_key, item) =>
+        item && typeof item === 'object' && !Array.isArray(item) ?
+          Object.fromEntries(Object.keys(item).sort().map((key) => [key, item[key]])) : item));
+    }
+    const resumed = await createRuntimeHarness({initialLocalStorage: storage,
+      pacMods: h.getState().pacMods, initialProxyDetails: h.getProxyDetails()});
+    Assert.equal((await resumed.callRpc('getConfigurationStatus')).pending, false);
+    const mods = await resumed.callRpc('getPacMods');
+    mods.rules.push({pattern: 'new.example', action: 'DIRECT', enabled: true});
+    await resumed.callRpc('setPacMods', {pacMods: mods});
+    Assert.deepEqual(Array.from((await resumed.callRpc('getConfigurationStatus')).pendingCategories), ['siteRules']);
+
+  });
+
+  it('projects credential-only pending changes without credential material', async function() {
+
+    const h = await active();
+    const before = await h.callRpc('getConfigurationStatus');
+    Assert.equal(before.pending, false);
+    await save(h);
+    const status = await h.callRpc('getConfigurationStatus');
+    Assert.equal(status.active, true);
+    Assert.equal(status.pending, true);
+    Assert.equal(status.effectiveId, before.effectiveId);
+    Assert.ok(status.pendingCategories.includes('proxyConnections'));
+    Assert.doesNotMatch(JSON.stringify(status), /synthetic-|proxy\.example|username|password/);
+
+  });
+
+  it('serializes two UI Saves from one revision and rejects the second', async function() {
+
+    const h = await active();
+    const status = await h.callRpc('getConfigurationStatus');
+    const mods = await h.callRpc('getPacMods');
+    const results = await Promise.all([false, true].map((noDirect) => h.callRpcRaw('setPacMods', {
+      expectedRevision: status.savedRevision,
+      pacMods: Object.assign({}, mods, {ownProxies: [proxy('changed')], noDirect}),
+    })));
+    Assert.equal(results.filter((value) => value.ok).length, 1);
+    Assert.equal(results.find((value) => !value.ok).error.code, 'SAVED_REVISION_CHANGED');
+    Assert.equal((await effective(h)).id, status.effectiveId);
+
+  });
+
+  it('rejects stale Options Apply without promoting latest Saved', async function() {
+
+    const h = await active();
+    const status = await h.callRpc('getConfigurationStatus');
+    await save(h);
+    const result = await h.callRpcRaw('applySavedConfiguration', {
+      expectedRevision: status.savedRevision, expectedEffectiveId: status.effectiveId,
+    });
+    Assert.equal(result.error.code, 'SAVED_REVISION_CHANGED');
+    Assert.equal((await effective(h)).id, status.effectiveId);
+
+  });
+
+  it('requires explicit popup confirmation before saving or applying pending settings', async function() {
+
+    const h = await active();
+    await save(h);
+    const status = await h.callRpc('getConfigurationStatus');
+    const result = await h.callRpcRaw('applySiteConfiguration', {
+      expectedRevision: status.savedRevision, expectedEffectiveId: status.effectiveId,
+      tabUrl: 'https://sub.example.com/', mode: 'direct', scope: 'domain', applyAll: false,
+    });
+    Assert.equal(result.error.code, 'PENDING_CONFIRMATION_REQUIRED');
+    Assert.equal(h.getState().savedRevision, status.savedRevision);
+    Assert.equal((await effective(h)).id, status.effectiveId);
+
+  });
+
+  it('popup confirmation promotes the exact patched revision without Clear', async function() {
+
+    const h = await active();
+    await save(h);
+    const status = await h.callRpc('getConfigurationStatus');
+    const result = await h.callRpc('applySiteConfiguration', {
+      expectedRevision: status.savedRevision, expectedEffectiveId: status.effectiveId,
+      tabUrl: 'https://sub.example.com/', mode: 'direct', scope: 'domain', applyAll: true,
+    });
+    Assert.equal(result.ok, true);
+    Assert.equal((await effective(h)).savedRevision, status.savedRevision + 1);
+    Assert.equal((await h.callRpc('getConfigurationStatus')).pending, false);
+    Assert.equal(h.counts.proxySettingsClears, 0);
+    start(h, 'confirmed');
+    Assert.equal((await challenge(h, 'confirmed')).authCredentials.password, 'synthetic-B');
+    Assert.equal((await h.callRpc('getPopupState', {tabUrl: 'https://sub.example.com/'})).mode, 'direct');
+
+  });
+
+  it('rejects confirmation when a provider refresh changed Effective identity', async function() {
+
+    const h = await active();
+    const status = await h.callRpc('getConfigurationStatus');
+    await h.audit.applyCookedPacAndPersist({});
+    const result = await h.callRpcRaw('applySiteConfiguration', {
+      expectedRevision: status.savedRevision, expectedEffectiveId: status.effectiveId,
+      tabUrl: 'https://example.com/', mode: 'direct', scope: 'host', applyAll: true,
+    });
+    Assert.equal(result.error.code, 'SAVED_REVISION_CHANGED');
+    Assert.equal(h.getState().savedRevision, status.savedRevision);
+
+  });
+
+  it('keeps a successfully Saved site patch when candidate cooking fails', async function() {
+
+    const h = await active();
+    const status = await h.callRpc('getConfigurationStatus');
+    h.context.mv3PacCook = Object.assign({}, h.context.mv3PacCook, {
+      cookPac: async () => {
+        throw new Error('synthetic cooking failure');
+      },
+    });
+    const result = await h.callRpc('applySiteConfiguration', {
+      expectedRevision: status.savedRevision, expectedEffectiveId: status.effectiveId,
+      tabUrl: 'https://example.com/', mode: 'direct', scope: 'host', applyAll: false,
+    });
+    Assert.equal(result.ok, false);
+    Assert.equal(result.saved, true);
+    Assert.equal(result.previousActive, true);
+    Assert.equal((await effective(h)).id, status.effectiveId);
+    Assert.equal(h.getState().savedRevision, status.savedRevision + 1);
+
+  });
   it('Save-only password changes preserve Effective and active authentication', async function() {
 
     const h = await active();
@@ -226,6 +357,8 @@ describe('Chromium Saved and Effective generations', function() {
     Assert.equal(after.savedRevision, before.savedRevision);
     Assert.deepEqual(after.config, before.config);
     Assert.deepEqual(h.getState().pacMods, saved.pacMods);
+    Assert.equal((await h.callRpc('getConfigurationStatus')).pending, true);
+    Assert.equal((await h.callRpc('getConfigurationStatus')).savedRevision, saved.savedRevision);
     start(h, 'refresh');
     Assert.equal((await challenge(h, 'refresh')).authCredentials.password, 'synthetic-A');
 

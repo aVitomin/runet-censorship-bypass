@@ -83,7 +83,36 @@ live-control проверки.
 configuration. Она изменяется при сохранении, включая замену только пароля.
 `pacModsRevision` сохраняет прежний контракт redacted credential placeholders;
 `pacWorkflowGeneration` по-прежнему инвалидирует операции, но не определяет
-Effective. UI в этой фазе не переработан.
+Effective.
+
+### Unified Apply в Options и popup
+
+Options сохраняет Draft локально; Save пишет только Saved. Apply отключён при
+несохранённых правках и вызывает `applySavedConfiguration` с показанными
+`expectedRevision` и `expectedEffectiveId`. Discard edits загружает Saved,
+не меняя Effective. В Chromium существующие формы сохраняются по разделам;
+панель действий предлагает сохранить текущий раздел. Чужая Saved revision
+помечает несохранённую форму конфликтной, не перезаписывая её поля.
+
+Popup показывает Effective site mode. Выбор Auto/Proxy/Direct и scope остаётся
+локальным до Apply; закрытие popup отбрасывает Draft. `applySiteConfiguration`
+в одной backend-операции проверяет Saved/Effective, пишет только site patch,
+затем применяет точную полученную revision. Если Saved уже отличается от
+Effective, требуется отдельное явное Apply all saved changes; Review in Options
+ничего не применяет. Устаревшее подтверждение отклоняется. Успешный Save при
+неуспешном Apply остаётся Saved; автоматического rollback нет.
+
+UI mutations сериализованы с promotion через RPC configuration queue.
+Долговечные revision/workflow и live ownership проверки остаются
+авторитетными. `getConfigurationStatus`/поле `configuration` возвращают только
+control flags, opaque identities и allowlisted категории изменений
+(`siteRules`, `proxyConnections`, `routingSettings`). Draft dirty/stale хранится
+только в UI. Ни endpoints, ни credential hashes, ни PAC bodies в эту проекцию
+не входят. Сообщение о сохранении старой защиты допускается только при повторно
+подтверждённом прежнем Effective. Provider refresh не сбрасывает pending/Draft.
+
+Apply не требует обновления страницы. Уже установленные TCP/QUIC соединения и
+браузерный auth cache могут продолжить работать по прежним параметрам.
 
 `background/effective-config.js` хранит приватный `mv3EffectiveConfigurations`:
 immutable records с отдельным UUID, Saved revision, необходимыми settings и

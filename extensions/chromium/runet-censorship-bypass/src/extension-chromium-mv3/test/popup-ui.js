@@ -489,6 +489,94 @@ function createDeferred() {
 }
 
 describe('MV3 popup UI', () => {
+  function pendingConfiguration() {
+
+    return {savedRevision: 5, effectiveId: 'generation-a', active: true, pending: true,
+      applying: false, blocked: false, pendingCategories: ['proxyConnections']};
+
+  }
+
+  it('requires explicit Apply all for pending Saved and sends only the site patch', async function() {
+
+    const state = createPopupState({configuration: pendingConfiguration()});
+    const harness = createPopupHarness({state});
+    harness.start();
+    await flushUi();
+    const direct = getRadios(harness.root, 'site-mode').find((input) => input.value === 'direct');
+    direct.checked = true;
+    direct.onchange();
+    expect(harness.root.textContent).to.include('Other saved settings have not been applied');
+    expect(findLink(harness.root, 'Review in Options')).to.exist;
+    expect(harness.calls.some((entry) => entry.method === 'applySiteConfiguration')).to.equal(false);
+    await findButton(harness.root, 'Apply all saved changes').onclick();
+    const sent = harness.calls.find((entry) => entry.method === 'applySiteConfiguration');
+    expect(sent.params).to.deep.equal({tabUrl: 'https://audit.example/',
+      mode: 'direct', scope: 'domain', expectedRevision: 5,
+      expectedEffectiveId: 'generation-a', applyAll: true});
+    expect(harness.calls.some((entry) => entry.method === 'updatePopupDraft')).to.equal(false);
+
+  });
+
+  it('discards the local route Draft when the popup closes without Apply', async function() {
+
+    const state = createPopupState({configuration:
+      Object.assign(pendingConfiguration(), {pending: false})});
+    const first = createPopupHarness({state});
+    first.start();
+    await flushUi();
+    const direct = getRadios(first.root, 'site-mode').find((input) => input.value === 'direct');
+    direct.checked = true;
+    direct.onchange();
+    const reopened = createPopupHarness({state});
+    reopened.start();
+    await flushUi();
+    expect(getRadios(reopened.root, 'site-mode').find((input) => input.value === 'auto').checked).to.equal(true);
+    expect(reopened.root.textContent).to.include('Check passed');
+    expect(first.calls.map((entry) => entry.method)).to.deep.equal(['getPopupState']);
+
+  });
+
+  it('refreshes stale confirmation without replaying it against newer settings', async function() {
+
+    let state = createPopupState({configuration: pendingConfiguration()});
+    const harness = createPopupHarness({rpcHandler(method) {
+
+      if (method === 'getPopupState') return state;
+      if (method === 'applySiteConfiguration') {
+        state = createPopupState({configuration:
+          Object.assign(pendingConfiguration(), {savedRevision: 6})});
+        const error = new Error('Settings changed elsewhere.');
+        error.code = 'SAVED_REVISION_CHANGED';
+        throw error;
+      }
+      return {ok: true};
+
+    }});
+    harness.start();
+    await flushUi();
+    await findButton(harness.root, 'Apply all saved changes').onclick();
+    expect(harness.calls.filter((entry) => entry.method === 'applySiteConfiguration')).to.have.length(1);
+    expect(harness.root.textContent).to.include('Settings changed elsewhere');
+    expect(findButton(harness.root, 'Apply all saved changes')).to.exist;
+
+  });
+
+  it('shows saved-not-applied for a confirmed active previous generation', async function() {
+
+    const state = createPopupState({configuration: pendingConfiguration()});
+    const harness = createPopupHarness({rpcHandler(method) {
+
+      if (method === 'getPopupState') return state;
+      return {ok: false, saved: true, previousActive: true, popupState: state,
+        error: {code: 'APPLY_FAILED'}, status: 'error'};
+
+    }});
+    harness.start();
+    await flushUi();
+    await findButton(harness.root, 'Apply all saved changes').onclick();
+    expect(harness.root.textContent).to.include('Site rule saved, but not applied. Previous settings remain active.');
+
+  });
 
   it('loads with one read-only RPC and separates global control from site route',
       async () => {
@@ -634,7 +722,7 @@ describe('MV3 popup UI', () => {
         cleared.start();
         await flushUi();
         expect(cleared.root.textContent).to.include('Routing is turned off');
-        expect(findButton(cleared.root, 'Apply')).to.exist;
+        expect(findButton(cleared.root, 'Apply and turn on')).to.exist;
         expect(findButton(cleared.root, 'Turn off extension proxy')).to.equal(null);
 
         let externalState = createPopupState({
@@ -822,14 +910,14 @@ describe('MV3 popup UI', () => {
         proxyRadio.onchange();
         expect(noCandidate.root.textContent)
             .to.include('Proxy routing needs at least one enabled');
-        expect(noCandidate.root.textContent).to.include('Not applied');
+        expect(noCandidate.root.textContent).to.include('Currently: Auto. Selected: Proxy.');
         const proxySettings = findLink(
             noCandidate.root,
             'Configure proxy connections',
         );
         expect(proxySettings).to.exist;
         expect(proxySettings.href).to.match(/#proxy-methods$/);
-        const apply = findButton(noCandidate.root, 'Apply');
+        const apply = findButton(noCandidate.root, 'Apply and turn on');
         expect(apply.disabled).to.equal(true);
         expect(apply.getAttribute('aria-describedby'))
             .to.equal('popup-site-warning');
@@ -859,7 +947,7 @@ describe('MV3 popup UI', () => {
             if (method === 'getPopupState') {
               return initialState;
             }
-            if (method === 'applyPopupChanges') {
+            if (method === 'applySiteConfiguration') {
               return applyRequest.promise;
             }
             return {ok: true};
@@ -885,12 +973,12 @@ describe('MV3 popup UI', () => {
 
         expect(harness.root.textContent)
             .to.include('Another extension or browser policy controls proxy settings');
-        expect(findButton(harness.root, 'Apply').disabled).to.equal(true);
+        expect(findButton(harness.root, 'Apply and turn on').disabled).to.equal(true);
         expect(findButton(harness.root, 'Retry')).to.equal(null);
         expect(findButton(harness.root, 'Turn off extension proxy')).to.exist;
         expect(getRadios(harness.root, 'site-mode').every((radio) => radio.disabled))
             .to.equal(true);
-        expect(harness.root.textContent).to.include('Not applied');
+        expect(harness.root.textContent).to.include('Currently: Auto. Selected: Direct.');
 
       });
 
@@ -1047,7 +1135,7 @@ describe('MV3 popup UI', () => {
             if (method === 'getPopupState') {
               return initialState;
             }
-            if (method === 'applyPopupChanges') {
+            if (method === 'applySiteConfiguration') {
               return applyRequest.promise;
             }
             return {ok: true};
@@ -1062,13 +1150,13 @@ describe('MV3 popup UI', () => {
         proxyRadio.onchange();
         expect(harness.calls.map((call) => call.method))
             .to.deep.equal(['getPopupState']);
-        expect(harness.root.textContent).to.include('Not applied');
+        expect(harness.root.textContent).to.include('Currently: Auto. Selected: Proxy.');
 
         const applyButton = findButton(harness.root, 'Apply');
         const firstApply = applyButton.onclick();
         applyButton.onclick();
         expect(harness.calls.filter((call) =>
-          call.method === 'applyPopupChanges',
+          call.method === 'applySiteConfiguration',
         )).to.have.length(1);
         expect(harness.root.textContent).to.include('Applying changes');
         expect(findButton(harness.root, 'Apply')).to.equal(null);
@@ -1103,7 +1191,7 @@ describe('MV3 popup UI', () => {
             if (method === 'getPopupState') {
               return initialState;
             }
-            if (method === 'applyPopupChanges') {
+            if (method === 'applySiteConfiguration') {
               ++applyCount;
               if (applyCount > 1) {
                 return {
@@ -1224,7 +1312,7 @@ describe('MV3 popup UI', () => {
             if (method === 'getPopupState') {
               return state;
             }
-            if (method === 'applyPopupChanges') {
+            if (method === 'applySiteConfiguration') {
               return {
                 ok: false,
                 status: 'error',

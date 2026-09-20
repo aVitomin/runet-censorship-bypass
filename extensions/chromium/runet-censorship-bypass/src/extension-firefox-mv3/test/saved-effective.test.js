@@ -4,6 +4,7 @@ const Assert = require('node:assert');
 const Activation = require('../background/activation-controller');
 const Config = require('../background/product-config');
 const DatasetStore = require('../background/dataset-store');
+const Promotion = require('../background/dataset-promotion');
 const OffState = require('../background/off-state');
 const Production = require('../background/production-provider');
 const ProxyAuth = require('../background/proxy-auth');
@@ -121,7 +122,9 @@ async function fixture() {
 
   }
   const runtime = await boot();
-  return Object.assign(runtime, {boot, control, factoryOptions, prepare, values});
+  return Object.assign(runtime, {
+    boot, control, factoryOptions, prepare, values, datasetStore, storageArea,
+  });
 
 }
 
@@ -158,6 +161,204 @@ function challenge(test, requestId) {
 }
 
 describe('Firefox Saved and Effective generations', function() {
+
+  async function stagedUpdate(test, overrides = {}) {
+
+    const artifact = Helpers.artifact({providerKey: Production.PROVIDER_KEY, datasetVersion: 'next-v2',
+      payload: Helpers.payload([{width: 12, routeRef: 'PROVIDER_DIRECT', hosts: 'next.example'}]),
+      trust: Helpers.Dataset.TRUST.REMOTE_AUTHENTICATED});
+    Assert.strictEqual((await test.datasetStore.stageAuthenticatedCandidate({
+      envelope: artifact.envelope, artifactBytes: artifact.artifactBytes, sequence: 2,
+    })).ok, true);
+    return Promotion.createController(Object.assign({storageArea: test.storageArea,
+      datasetStore: test.datasetStore, sha256, providerKey: Production.PROVIDER_KEY,
+      activationSnapshot: () => test.activation.snapshot(),
+      replacePrepared: (prepared) => test.activation.replacePrepared(prepared),
+    }, overrides));
+
+  }
+
+  it('installs provider data while ON using Effective N, never pending Saved N+1, including after restart', async function() {
+
+    const test = await activeFixture();
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    const oldRequest = challenge(test, 'before-provider');
+    const next = authenticatedSettings('pending-password');
+    next.rules.direct = ['beta.example'];
+    next.rules.proxy = [];
+    await test.settings.replace(1, next);
+    const saved = structuredClone(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY]);
+    const credentials = structuredClone(test.values[Config.CREDENTIALS_STORAGE_KEY]);
+    const promotion = await stagedUpdate(test);
+    Assert.deepStrictEqual(await promotion.install(), {ok: true, status: 'INSTALLED'});
+    Assert.strictEqual(test.activation.snapshot().active, true);
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].routingDescriptor,
+        before.routingDescriptor);
+    Assert.notDeepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
+        before.datasetIdentity);
+    Assert.strictEqual((await test.settings.getEffective()).revision, 1);
+    Assert.strictEqual((await test.settings.get()).revision, 2);
+    Assert.deepStrictEqual(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY], saved);
+    Assert.deepStrictEqual(test.values[Config.CREDENTIALS_STORAGE_KEY], credentials);
+    Assert.strictEqual(test.auth.onAuthRequired(oldRequest).authCredentials.password, 'fixture-old');
+    const afterProvider = challenge(test, 'after-provider');
+    Assert.strictEqual(test.auth.onAuthRequired(afterProvider).authCredentials.password, 'fixture-old');
+    Assert.strictEqual(test.control.clears, 0);
+    Assert.strictEqual(test.control.writes, 1);
+    const reboot = await test.boot();
+    Assert.strictEqual(reboot.activation.snapshot().active, true);
+    Assert.strictEqual((await reboot.settings.getEffective()).revision, 1);
+    Assert.strictEqual((await reboot.settings.get()).revision, 2);
+    Assert.strictEqual(reboot.auth.onAuthRequired(challenge(reboot, 'restart-provider')).authCredentials.password, 'fixture-old');
+    // A later explicit user Apply uses the newly installed data, not its old identity.
+    Assert.strictEqual((await reboot.activation.replacePrepared(await test.prepare(2))).ok, true);
+    Assert.strictEqual((await reboot.settings.getEffective()).revision, 2);
+
+  });
+
+  it('keeps the old provider and auth serving while staged runtime preparation is paused', async function() {
+
+    const test = await activeFixture();
+    const entered = gate();
+    const resume = gate();
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    const promotion = await stagedUpdate(test, {replacePrepared: (prepared) =>
+      test.activation.replacePrepared(Object.assign({}, prepared, {datasetStore: {
+        async loadVerifications(...args) {
+
+          entered.resolve();
+          await resume.promise;
+          return prepared.datasetStore.loadVerifications(...args);
+
+        },
+      }}))});
+    const installing = promotion.install();
+    await entered.promise;
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY], before);
+    Assert.strictEqual(test.auth.onAuthRequired(challenge(test, 'preparing-provider')).authCredentials.password, 'fixture-old');
+    Assert.strictEqual(test.control.clears, 0);
+    resume.resolve();
+    Assert.strictEqual((await installing).ok, true);
+
+  });
+
+  it('rolls back a failed provider preparation without changing provider pointers or Effective', async function() {
+
+    const test = await activeFixture();
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    const promotion = await stagedUpdate(test, {replacePrepared: (prepared) =>
+      test.activation.replacePrepared(Object.assign({}, prepared, {datasetStore: {
+        loadVerifications: async () => {
+          throw new Error('synthetic unavailable candidate');
+        },
+      }}))});
+    const pointers = (await test.datasetStore.loadVerifications(Production.PROVIDER_KEY)).pointers;
+    await Assert.rejects(promotion.install());
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY], before);
+    const unchanged = await test.datasetStore.loadVerifications(Production.PROVIDER_KEY);
+    Assert.deepStrictEqual(unchanged.pointers, pointers);
+    Assert.strictEqual(test.activation.snapshot().active, true);
+    Assert.strictEqual(test.values[Config.DATASET_PROMOTION_STORAGE_KEY], undefined);
+    Assert.strictEqual(test.control.clears, 0);
+
+  });
+
+  it('rejects an unauthenticated staged artifact while active before retaining or promoting it', async function() {
+
+    const test = await activeFixture();
+    const before = structuredClone(test.values);
+    const promotion = await stagedUpdate(test, {datasetStore: Object.assign({}, test.datasetStore, {
+      async loadStaged(provider) {
+
+        const staged = await test.datasetStore.loadStaged(provider);
+        return Object.assign({}, staged, {verification: Object.assign({}, staged.verification, {
+          trust: Helpers.Dataset.TRUST.REMOTE_UNAUTHENTICATED,
+        })});
+
+      },
+    })});
+    await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.NO_STAGED_CANDIDATE});
+    Assert.deepStrictEqual(test.values, before);
+    Assert.strictEqual(test.activation.snapshot().active, true);
+    Assert.strictEqual(test.control.clears, 0);
+
+  });
+
+  it('rechecks authenticated candidate identity before committing an active replacement', async function() {
+
+    const test = await activeFixture();
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    let checks = 0;
+    const promotion = await stagedUpdate(test, {replacePrepared: (prepared) =>
+      test.activation.replacePrepared(Object.assign({}, prepared, {async checkSavedRevision() {
+
+        checks += 1;
+        if (checks === 2) throw new Error('synthetic candidate invalidated');
+        return prepared.checkSavedRevision();
+
+      }}))});
+    await Assert.rejects(promotion.install());
+    Assert.strictEqual(checks, 2);
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY], before);
+    Assert.strictEqual(test.activation.snapshot().active, true);
+    Assert.strictEqual(test.control.clears, 0);
+    Assert.strictEqual(test.values[Config.DATASET_PROMOTION_STORAGE_KEY], undefined);
+
+  });
+
+  for (const loss of ['permission', 'control']) {
+    it(`provider promotion rechecks ${loss} without claiming READY`, async function() {
+
+      const test = await activeFixture();
+      const promotion = await stagedUpdate(test, {replacePrepared: (prepared) => {
+        if (loss === 'permission') test.control.privateAccess = false;
+        else test.control.live = {levelOfControl: 'controlled_by_other_extensions', value: {proxyType: 'none'}};
+        return test.activation.replacePrepared(prepared);
+      }});
+      await Assert.rejects(promotion.install());
+      Assert.strictEqual(test.activation.snapshot().active, false);
+      Assert.notStrictEqual(test.activation.snapshot().runtimeState, 'READY');
+      Assert.strictEqual(test.control.clears, 0);
+
+    });
+  }
+
+  it('finishes a committed provider promotion after interrupted pointer persistence', async function() {
+
+    const test = await activeFixture();
+    const promotion = await stagedUpdate(test, {datasetStore: Object.assign({}, test.datasetStore, {
+      promoteStagedExact: async () => {
+        throw new Error('synthetic interrupted pointer write');
+      },
+    })});
+    await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.RECOVERY_REQUIRED});
+    Assert.ok(test.values[Config.DATASET_PROMOTION_STORAGE_KEY]);
+    await test.activation.requireRecovery();
+    Assert.strictEqual(test.activation.snapshot().active, false);
+    const recovery = Promotion.createController({storageArea: test.storageArea,
+      datasetStore: test.datasetStore, sha256, providerKey: Production.PROVIDER_KEY,
+      activationSnapshot: () => test.activation.snapshot()});
+    Assert.strictEqual((await recovery.initialize()).status, 'ROLLED_FORWARD');
+    Assert.strictEqual((await test.boot()).activation.snapshot().active, true);
+    Assert.strictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity.datasetVersion, 'next-v2');
+
+  });
+
+  it('recovers interrupted provider preparation to the old Effective generation', async function() {
+
+    const test = await activeFixture();
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    const promotion = await stagedUpdate(test, {replacePrepared: async () => {
+      throw new Error('interrupted');
+    }});
+    await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.RECOVERY_REQUIRED});
+    Assert.strictEqual((await promotion.initialize()).status, 'ROLLED_BACK');
+    const reboot = await test.boot();
+    Assert.strictEqual(reboot.activation.snapshot().active, true);
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
+        before.datasetIdentity);
+
+  });
 
   it('saves while OFF without activating or retaining an Effective generation', async function() {
 

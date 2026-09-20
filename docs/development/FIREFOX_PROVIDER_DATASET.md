@@ -123,8 +123,9 @@ The bootstrap performs no external request: its only reads use
 settings or activate routing. Remote update configuration remains disabled and
 contains neither a URL nor a trust key.
 
-The Firefox settings control plane can replace only the user-routing portion of
-the product configuration while durable and runtime state are both `OFF`.
+The Firefox settings control plane can save the user-routing portion of the
+configuration while `OFF` or active `READY`. Save does not change Effective;
+explicit Apply promotes the exact Saved revision.
 Provider key, current trusted dataset identity, provider candidates, and
 provider fallback are internal and never RPC input. A settings write preserves
 the exact current dataset identity and cannot select, mutate, or promote a
@@ -133,8 +134,14 @@ provider artifact.
 The package has exact no-input status/check/install RPC integration and a
 12-hour alarm, but the disabled empty trust configuration causes no external
 fetch until the missing release endpoint/key are pinned. Check can only stage a
-candidate already verified as `REMOTE_AUTHENTICATED`; a separate install RPC is OFF-only,
-reverifies exact bytes/provider/sequence, rotates active/LKG pointers, and uses
-a `storage.local` write-ahead journal so startup resolves cross-store crashes to
-one consistent old or new dataset/config pair. It never changes settings,
-credentials, proxy ownership, or an active session.
+candidate already verified as `REMOTE_AUTHENTICATED`. A separate install RPC
+requires configured trust, reverifies exact bytes/provider/sequence, and supports
+both `OFF` and active `READY`. Active installation prepares the replacement with
+Effective user settings and credentials, rechecks ownership/private access and
+candidate identity, and promotes without Clear or an OFF interval. Pending Saved
+changes remain pending. The existing `storage.local` journal resolves cross-store
+crashes: v1 preserves the OFF path; v2 uses durable ON as the active commit decision
+before finalizing active/LKG pointers and Saved dataset metadata. Ambiguity blocks
+recovery rather than selecting latest Saved. See
+[active installation and recovery](FIREFOX_MV3_ARCHITECTURE.md) for the transaction.
+The alarm still checks/stages only; no automatic installation policy is added.

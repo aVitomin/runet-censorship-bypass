@@ -508,6 +508,7 @@ function createSnapshot(patch = {}) {
       type: 'builtIn',
     }],
     state: {
+      savedRevision: 4,
       uiLanguage: 'en',
       currentPacProviderKey: 'Антизапрет',
       pacMods,
@@ -709,7 +710,16 @@ async function createHarness(options = {}) {
     async callBackground(method, params) {
 
       calls.push({method, params});
-      return handler(method, params, calls);
+      const result = await handler(method, params, calls);
+      if (method === 'getState' && !result.configuration) {
+        const active = result.proxy.proxyControl.controlledByThisExtension === true;
+        return Object.assign({}, result, {configuration: {
+          savedRevision: result.state.savedRevision, effectiveId: active ? 'generation-a' : null,
+          active, pending: active && result.stale.cookedPac.stale, blocked: false,
+          applying: false, pendingCategories: [],
+        }});
+      }
+      return result;
 
     },
   };
@@ -779,6 +789,67 @@ function getSection(root, id) {
 }
 
 describe('MV3 options UI', function() {
+  it('shows credential-only pending status even when PAC is fresh and applies exact Saved', async function() {
+
+    const snapshot = createSnapshot();
+    snapshot.configuration = {savedRevision: 4, effectiveId: 'generation-a', active: true,
+      pending: true, blocked: false, applying: false, pendingCategories: ['proxyConnections']};
+    const harness = await createHarness({snapshot});
+    const bar = harness.root.querySelector('#global-action-bar');
+    expect(bar.textContent).to.include('Protection active — changes not applied');
+    expect(bar.textContent).to.include('Proxy connections changed');
+    await findButton(bar, 'Apply').onclick();
+    expect(harness.calls.find((entry) => entry.method === 'applySavedConfiguration').params)
+        .to.deep.equal({expectedRevision: 4, expectedEffectiveId: 'generation-a'});
+    expect(harness.calls.some((entry) => entry.method === 'clearProxy')).to.equal(false);
+
+  });
+
+  it('keeps an Options Draft stale when a popup changes Saved but the PAC revision stays old', async function() {
+
+    const snapshot = createSnapshot();
+    const harness = await createHarness({snapshot});
+    const form = harness.root.querySelector('form[data-draft-key="proxy-methods"]');
+    const host = getInput(form, 'localTor.host');
+    host.value = 'draft.example';
+    host.dispatch('input');
+    expect(findButton(harness.root.querySelector('#global-action-bar'), 'Apply').disabled).to.equal(true);
+    snapshot.state.savedRevision += 1;
+    harness.dispatchStorageChange();
+    await flush();
+    expect(host.value).to.equal('draft.example');
+    expect(form.dataset.conflict).to.equal('true');
+    await form.saveDraft.onclick();
+    expect(harness.calls.some((entry) => entry.method === 'setPacMods')).to.equal(false);
+
+  });
+
+  it('reports safe Apply failure only when the previous Effective is confirmed', async function() {
+
+    for (const lost of [false, true]) {
+      const snapshot = createSnapshot();
+      snapshot.configuration = {savedRevision: 4, effectiveId: 'generation-a', active: true,
+        pending: true, blocked: false, applying: false, pendingCategories: ['routingSettings']};
+      const harness = await createHarness({snapshot, rpcHandler(method) {
+
+        if (method === 'getState') return snapshot;
+        if (method === 'applySavedConfiguration') {
+          if (lost) {
+            snapshot.configuration = Object.assign({}, snapshot.configuration, {
+              active: false, blocked: true, effectiveId: null,
+            });
+          }
+          return {ok: false, error: {code: 'PROXY_SET_FAILED'}};
+        }
+        return {ok: true};
+
+      }});
+      await findButton(harness.root.querySelector('#global-action-bar'), 'Apply').onclick();
+      expect(harness.root.textContent.includes('Changes were not applied. Previous settings remain active.'))
+          .to.equal(!lost);
+    }
+
+  });
 
   it('guides a pristine setup through source, optional proxy, and Apply',
       async function() {
@@ -797,10 +868,10 @@ describe('MV3 options UI', function() {
         expect(setup.textContent).to.include('Waiting for a source');
         expect(findButton(setup, 'Apply configuration')).not.to.exist;
         expect(harness.root.querySelector('#global-action-bar').hidden)
-            .to.equal(true);
+            .to.equal(false);
         expect(harness.root.querySelectorAll('button').filter((button) =>
           button.textContent === 'Choose source',
-        )).to.have.length(1);
+        )).to.have.length(2);
         expect(harness.calls.map((call) => call.method)).to.deep.equal([
           'getState',
         ]);
@@ -874,9 +945,9 @@ describe('MV3 options UI', function() {
         )).to.have.length(1);
         expect(harness.calls.find((call) =>
           call.method === 'setCurrentPacProvider',
-        ).params).to.deep.equal({providerKey: 'Антицензорити'});
+        ).params).to.deep.equal({providerKey: 'Антицензорити', expectedRevision: 4});
         expect(harness.calls.some((call) =>
-          call.method === 'applyPopupChanges',
+          call.method === 'applySavedConfiguration',
         )).to.equal(false);
         const refreshedSetup = harness.root.querySelector(
             '#initial-setup-card',
@@ -934,8 +1005,8 @@ describe('MV3 options UI', function() {
             if (method === 'getState') {
               return snapshot;
             }
-            if (method === 'applyPopupChanges') {
-              expect(params).to.deep.equal({operation: 'apply', draft: {}});
+            if (method === 'applySavedConfiguration') {
+              expect(params).to.deep.equal({expectedRevision: 4, expectedEffectiveId: null});
               snapshot.state.proxyApply = {
                 status: 'applied',
                 providerKey: 'Антизапрет',
@@ -961,7 +1032,7 @@ describe('MV3 options UI', function() {
         await flush();
 
         expect(harness.calls.filter((call) =>
-          call.method === 'applyPopupChanges',
+          call.method === 'applySavedConfiguration',
         )).to.have.length(1);
         expect(harness.root.querySelector('#initial-setup-card')).not.to.exist;
         expect(harness.root.textContent).to.include('Routing is active');
@@ -979,7 +1050,7 @@ describe('MV3 options UI', function() {
             if (method === 'getState') {
               return initial;
             }
-            if (method === 'applyPopupChanges') {
+            if (method === 'applySavedConfiguration') {
               return {
                 ok: false,
                 status: 'error',
@@ -1418,7 +1489,7 @@ describe('MV3 options UI', function() {
         expect(harness.document.activeElement).to.equal(invalidHost);
         expect(rows[2].textContent).to.include('Needs attention');
         expect(harness.calls.some((call) =>
-          call.method === 'applyPopupChanges',
+          call.method === 'applySavedConfiguration',
         )).to.equal(false);
 
       });
@@ -1441,7 +1512,7 @@ describe('MV3 options UI', function() {
           clearedSnapshot.state.proxyControl;
         const cleared = await createHarness({snapshot: clearedSnapshot});
         expect(cleared.root.textContent).to.include('Routing is turned off');
-        expect(findButton(cleared.root, 'Apply configuration')).to.exist;
+        expect(findButton(cleared.root, 'Apply')).to.exist;
         const externalSnapshot = createSnapshot();
         externalSnapshot.state.proxyApply = {status: 'idle'};
         externalSnapshot.state.proxyControl = {
@@ -1534,24 +1605,24 @@ describe('MV3 options UI', function() {
         if (method === 'getState') {
           return snapshot;
         }
-        if (method === 'applyPopupChanges') {
+        if (method === 'applySavedConfiguration') {
           return gate.promise;
         }
         return {ok: true};
 
       },
     });
-    const apply = findButton(harness.root, 'Apply configuration');
+    const apply = findButton(harness.root, 'Apply');
     const first = apply.onclick();
     const second = apply.onclick();
     expect(harness.calls.filter((call) =>
-      call.method === 'applyPopupChanges',
+      call.method === 'applySavedConfiguration',
     )).to.have.length(1);
     gate.resolve({ok: true, status: 'applied'});
     await Promise.all([first, second]);
     expect(harness.calls.find((call) =>
-      call.method === 'applyPopupChanges',
-    ).params).to.deep.equal({operation: 'apply', draft: {}});
+      call.method === 'applySavedConfiguration',
+    ).params).to.deep.equal({expectedRevision: 4, expectedEffectiveId: null});
 
   });
 
@@ -1651,7 +1722,7 @@ describe('MV3 options UI', function() {
               return snapshot;
             }
             if (method === 'addCustomPacProvider') {
-              return {ok: true, provider: {key: 'custom:new'}};
+              return {ok: true, savedRevision: 7, provider: {key: 'custom:new'}};
             }
             if (method === 'updateCustomPacProvider') {
               return {ok: true, status: 'updated'};
@@ -1674,6 +1745,8 @@ describe('MV3 options UI', function() {
           'addCustomPacProvider',
           'setCurrentPacProvider',
         ]);
+        expect(harness.calls.find((call) => call.method === 'setCurrentPacProvider')
+            .params.expectedRevision).to.equal(7);
         const customName = getInput(
             harness.root,
             'provider.custom:one.label',

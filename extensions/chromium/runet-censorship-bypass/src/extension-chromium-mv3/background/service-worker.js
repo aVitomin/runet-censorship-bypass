@@ -81,7 +81,7 @@ const PAC_APPLY_STALE_ERROR = Object.freeze({
 const actionStatusRefresh = mv3ActionStatus.createRefreshCoordinator({
   chromeApi: chrome,
   loadState: () => mv3State.loadState(),
-  createStatus: (tabUrl, state) => createPopupState(tabUrl, state),
+  createStatus: (tabUrl, state) => createPopupState(tabUrl, state, false),
 });
 actionStatusRefresh.start();
 const automaticPacUpdatesInitializationPromise =
@@ -590,6 +590,7 @@ function createProviderMutationResult(state, provider, metadata = {}) {
 
   return Object.assign({
     ok: true,
+    savedRevision: state.savedRevision,
     provider: provider || null,
     providers: getProvidersForState(state, true),
     currentPacProviderKey: state.currentPacProviderKey,
@@ -617,6 +618,7 @@ function createOptionsStateForRpc(state) {
   delete pacCook.pacModsSha256;
   delete cookedPacCache.pacModsSha256;
   return {
+    savedRevision: state.savedRevision,
     uiLanguage: state.uiLanguage,
     currentPacProviderKey: state.currentPacProviderKey,
     pacMods: mv3PacMods.serializePacModsForRpc(
@@ -799,6 +801,23 @@ if (chrome.action && chrome.action.onClicked) {
 }
 
 const RPC_METHODS = Object.freeze({
+  getConfigurationStatus() {
+
+    return configurationStatus();
+
+  },
+
+  applySavedConfiguration(params = {}) {
+
+    return applyUnifiedConfiguration(params, false);
+
+  },
+
+  applySiteConfiguration(params = {}) {
+
+    return applyUnifiedConfiguration(params, true);
+
+  },
   async getState() {
 
     await actionStatusRecoveryPromise.catch(() => undefined);
@@ -814,6 +833,7 @@ const RPC_METHODS = Object.freeze({
     ]);
     return Object.assign({}, PHASE_TEN_STATUS, {
       state: createOptionsStateForRpc(state),
+      configuration: await configurationStatus(state),
       providers: getProvidersForState(state, true),
       artifactStorage: mv3PacArtifacts.getStatus(),
       proxyAuth: getProxyAuthStatusFromState(state),
@@ -1660,7 +1680,7 @@ async function applyPopupChangesForWorkflow(params, operation, workflow) {
   }
   let state;
   try {
-    state = await persistPopupDraft(params.tabUrl, draft, workflow);
+    state = await persistPopupDraft(params.tabUrl, draft, workflow, params.expectedRevision);
   } catch (err) {
     if (err && err.code === PAC_APPLY_STALE_ERROR.code) {
       return createPopupPipelineFailure(
@@ -1749,7 +1769,14 @@ async function applyPopupChangesForWorkflow(params, operation, workflow) {
     };
   }
 
-  const apply = await applyCookedPacAndPersist({}, workflow);
+  if (params.expectedEffectiveId !== undefined &&
+      (await configurationStatus()).effectiveId !== params.expectedEffectiveId) {
+    return createPopupPipelineFailure({ok: false, error: {
+      code: 'SAVED_REVISION_CHANGED', message: 'Settings changed elsewhere.',
+    }}, params.tabUrl);
+  }
+  const apply = await applyCookedPacAndPersist({expectedRevision: state.savedRevision,
+    expectedEffectiveId: params.expectedEffectiveId}, workflow);
   if (apply.ok === false) {
     return createPopupPipelineFailure(apply, params.tabUrl);
   }
@@ -1790,13 +1817,16 @@ async function applyPopupChangesForWorkflow(params, operation, workflow) {
 
 }
 
-async function persistPopupDraft(tabUrl, draft, workflow = null) {
+async function persistPopupDraft(tabUrl, draft, workflow = null, expectedRevision) {
 
   const providerKey = getPopupDraftProviderKey(draft);
   const target = normalizePopupTabUrl(tabUrl);
   let mutation;
   let ifWorkflowStale = false;
   const state = await mv3State.updateStateAtomically((currentState) => {
+    if (expectedRevision !== undefined && currentState.savedRevision !== expectedRevision) {
+      throw configurationConflict();
+    }
     if (workflow && !ifPacWorkflowIsFresh(workflow, currentState)) {
       ifWorkflowStale = true;
       return mv3State.ATOMIC_NO_CHANGE;
@@ -2038,8 +2068,10 @@ async function createPopupPipelineFailure(result, tabUrl) {
 
 }
 
-async function createPopupState(tabUrl, state) {
+async function createPopupState(tabUrl, state, includeConfiguration = true) {
 
+  const effective = includeConfiguration ? await mv3Effective.current() : null;
+  const configuration = includeConfiguration ? await configurationStatus(state, effective) : null;
   const target = normalizePopupTabUrl(tabUrl);
   const pacMods = mv3PacMods.normalizePacMods(state.pacMods);
   const candidates = getPopupProxyCandidateSummary(pacMods);
@@ -2061,7 +2093,7 @@ async function createPopupState(tabUrl, state) {
   if (!target.controllable) {
     warnings.push(target.reason);
   } else {
-    siteRule = getPopupHostRuleState(pacMods, target.host);
+    siteRule = getPopupHostRuleState(effective ? effective.config.pacMods : pacMods, target.host);
     mode = siteRule.mode;
     if (mode === 'proxy' && candidates.available === false) {
       warnings.push(NO_PROXY_CANDIDATE_MESSAGE);
@@ -2089,6 +2121,7 @@ async function createPopupState(tabUrl, state) {
   );
   const autoUpdate = getPacAutoUpdateSummary(state);
   return {
+    configuration,
     uiLanguage: state.uiLanguage || 'auto',
     host: target.host || '',
     controllable: target.controllable,
@@ -2795,6 +2828,111 @@ async function applyPeriodicUpdateIfStillSafe(
 
 }
 
+// Serialize UI Saved writes with the complete prepare/promote operation. The
+// durable workflow/revision checks still protect worker recreation and refresh.
+let configurationQueue = Promise.resolve();
+let configurationApplying = false;
+const CONFIGURATION_MUTATIONS = new Set([
+  'setPacMods', 'setCurrentPacProvider', 'addCustomPacProvider',
+  'updateCustomPacProvider', 'deleteCustomPacProvider', 'setProxyAuthEnabled',
+  'applyLegacyMigration', 'updatePopupDraft', 'setCurrentSiteMode',
+  'applyPopupChanges', 'applyCookedPac',
+  'applySavedConfiguration', 'applySiteConfiguration',
+]);
+
+function configurationConflict(code = 'SAVED_REVISION_CHANGED') {
+
+  return createProviderError(code, 'Settings changed elsewhere. Review the current settings.');
+
+}
+
+function configurationValue(value) {
+
+  // Chrome storage may reorder object properties; order is not a setting.
+  return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item) ?
+    Object.fromEntries(Object.keys(item).sort().map((key) => [key, item[key]])) : item);
+
+}
+
+async function configurationStatus(saved = null, knownEffective = undefined) {
+
+  saved = saved || await mv3State.loadState();
+  const effective = knownEffective === undefined ? await mv3Effective.current() : knownEffective;
+  const details = effective ? {levelOfControl: 'controlled_by_this_extension'} :
+    await mv3ProxySettings.getProxySettings();
+  const active = Boolean(effective);
+  const blocked = !active && (saved.proxyApply.status === 'applied' ||
+    details.levelOfControl === 'controlled_by_this_extension' ||
+    ['not_controllable', 'controlled_by_other_extensions'].includes(details.levelOfControl));
+  // The validated immutable generation carries the exact promoted Saved revision.
+  const pending = active && saved.savedRevision !== effective.savedRevision;
+  const categories = [];
+  if (pending) {
+    const old = effective.config.pacMods;
+    const next = saved.pacMods;
+    const differs = (keys) => keys.some((key) =>
+      configurationValue(old[key]) !== configurationValue(next[key]));
+    if (differs(['exceptions', 'rules', 'whitelist'])) categories.push('siteRules');
+    if (differs(['ownProxies', 'localTor', 'torBrowser', 'warp']) ||
+        effective.config.proxyAuth.enabled !== saved.proxyAuth.enabled) {
+      categories.push('proxyConnections');
+    }
+    // Categories are an allowlist, never values, hashes of credentials, or URLs.
+    if (!categories.length || differs(['noDirect', 'replaceDirectWithProxy',
+      'ownProxiesOnlyForOwnSites', 'usePacScriptProxies']) ||
+      effective.config.currentPacProviderKey !== saved.currentPacProviderKey ||
+      configurationValue(effective.config.customPacProviders) !==
+        configurationValue(saved.customPacProviders)) {
+      categories.push('routingSettings');
+    }
+  }
+  return {savedRevision: saved.savedRevision, effectiveId: effective && effective.id,
+    active, pending, blocked, applying: configurationApplying,
+    reason: blocked ? details.levelOfControl : null, pendingCategories: categories};
+
+}
+
+async function applyUnifiedConfiguration(params, sitePatch) {
+
+  const before = await configurationStatus();
+  if (!Number.isSafeInteger(params.expectedRevision) ||
+      params.expectedRevision !== before.savedRevision ||
+      params.expectedEffectiveId !== before.effectiveId) throw configurationConflict();
+  if (sitePatch && before.pending && params.applyAll !== true) {
+    throw configurationConflict('PENDING_CONFIRMATION_REQUIRED');
+  }
+  if (sitePatch && (!['auto', 'proxy', 'direct'].includes(params.mode) ||
+      !['host', 'domain'].includes(params.scope) || !normalizePopupTabUrl(params.tabUrl).controllable)) {
+    throw new TypeError('Invalid site rule.');
+  }
+  configurationApplying = true;
+  try {
+    let result;
+    try {
+      result = await applyPopupChanges({
+        tabUrl: params.tabUrl, operation: 'apply',
+        expectedRevision: params.expectedRevision,
+        expectedEffectiveId: params.expectedEffectiveId,
+        draft: sitePatch ? {siteMode: params.mode, siteScope: params.scope} : {},
+      });
+    } catch (error) {
+      result = {ok: false, status: 'error', error: {
+        code: error.code === 'SAVED_REVISION_CHANGED' ? error.code : 'APPLY_FAILED',
+        message: 'The saved configuration was not applied.',
+      }, popupState: await createPopupState(params.tabUrl, await mv3State.loadState())};
+    }
+    const after = await configurationStatus();
+    after.applying = false;
+    if (result.popupState) result.popupState.configuration.applying = false;
+    return Object.assign({}, result, {configuration: after,
+      saved: sitePatch && after.savedRevision !== before.savedRevision,
+      previousActive: before.active && after.active && before.effectiveId === after.effectiveId});
+  } finally {
+    configurationApplying = false;
+  }
+
+}
+
 async function handleRpcMessage(message) {
 
   const handler = RPC_METHODS[message.method];
@@ -2809,7 +2947,22 @@ async function handleRpcMessage(message) {
   }
 
   try {
-    const result = await handler(message.params || {});
+    const params = message.params || {};
+    const invoke = async () => {
+      if (params.expectedRevision !== undefined && CONFIGURATION_MUTATIONS.has(message.method) &&
+          params.expectedRevision !== (await mv3State.loadState()).savedRevision) {
+        throw configurationConflict();
+      }
+      return handler(params);
+    };
+    let result;
+    if (CONFIGURATION_MUTATIONS.has(message.method)) {
+      const operation = configurationQueue.then(invoke, invoke);
+      configurationQueue = operation.catch(() => undefined);
+      result = await operation;
+    } else {
+      result = await invoke();
+    }
     return {
       ok: true,
       result,
@@ -4136,6 +4289,10 @@ async function applyCookedPacAndPersist(
 }
 
 async function applyCookedPacAndPersistForOperation(params, operation) {
+  if (params.expectedEffectiveId !== undefined &&
+      (await configurationStatus()).effectiveId !== params.expectedEffectiveId) {
+    return createPacApplyStaleResult();
+  }
 
   const state = await getFreshPacWorkflowState(operation.workflow);
   if (

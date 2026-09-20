@@ -145,6 +145,7 @@
     'SETTINGS_TRANSACTION_INCOMPLETE',
     'SETTINGS_VERSION_UNSUPPORTED',
     'SAVED_REVISION_CHANGED',
+    'PENDING_CONFIRMATION_REQUIRED',
     'EFFECTIVE_CONFIG_UNAVAILABLE',
     'STALE_REVISION',
     'UNKNOWN_RPC',
@@ -370,6 +371,20 @@
 
   }
 
+  function validateConfiguration(value) {
+
+    if (!hasExactKeys(value, ['savedRevision', 'effectiveId', 'active', 'pending',
+      'applying', 'blocked', 'reason', 'pendingCategories']) ||
+      !Number.isSafeInteger(value.savedRevision) || value.savedRevision < 0 ||
+      !(value.effectiveId === null || typeof value.effectiveId === 'string') ||
+      ['active', 'pending', 'applying', 'blocked'].some((key) => typeof value[key] !== 'boolean') ||
+      !(value.reason === null || typeof value.reason === 'string') ||
+      !Array.isArray(value.pendingCategories) || value.pendingCategories.some((key) =>
+      !['siteRules', 'proxyConnections', 'routingSettings'].includes(key))) throw rpcError('UI_RPC_FAILED');
+    return Object.freeze(clone(value));
+
+  }
+
   return Object.freeze({
     CAPABILITY_KEYS,
     CONTROL_LEVELS,
@@ -391,6 +406,7 @@
     safeErrorCode,
     translate,
     validateCapabilities,
+    validateConfiguration,
     validateHealth,
     validateOperationalStatus,
   });

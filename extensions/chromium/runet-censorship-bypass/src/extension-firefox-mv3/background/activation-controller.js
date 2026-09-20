@@ -1026,6 +1026,15 @@
             return enqueue(() => replacePreparedNow(input));
 
           },
+          requireRecovery() {
+
+            return enqueue(() => {
+              clearEphemeralState();
+              setUnavailable(ERRORS.ACTIVATION_FAILED);
+              return errorResult(ERRORS.ACTIVATION_FAILED);
+            });
+
+          },
           clear() {
 
             return enqueue(clearNow);

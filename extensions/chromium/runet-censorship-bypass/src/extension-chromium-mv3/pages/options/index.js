@@ -2,7 +2,21 @@
 
 (function() {
 
-  const rpc = window.mv3Rpc;
+  const savedMethods = new Set(['setPacMods', 'setCurrentPacProvider', 'addCustomPacProvider',
+    'updateCustomPacProvider', 'deleteCustomPacProvider', 'setProxyAuthEnabled', 'applyLegacyMigration']);
+  const rpc = {
+    callBackground(method, params = {}) {
+
+      if (savedMethods.has(method)) {
+        params = Object.assign({}, params, {
+          expectedRevision: state.operationRevision === undefined ?
+            savedRevision() : state.operationRevision,
+        });
+      }
+      return window.mv3Rpc.callBackground(method, params);
+
+    },
+  };
   const root = document.getElementById('app-root');
   const REDACTED_PASSWORD = '***';
   const NAV_ITEMS = Object.freeze([
@@ -163,6 +177,12 @@
 
   }
 
+  function savedRevision(snapshot = state.snapshot) {
+
+    return snapshot && snapshot.state && snapshot.state.savedRevision;
+
+  }
+
   function getDraftRemoteSignature(key, snapshot = state.snapshot) {
 
     if (!snapshot) {
@@ -248,10 +268,12 @@
   function bindDraftForm(form, key, options = {}) {
 
     form.dataset.draftKey = key;
+    form.saveDraft = options.save;
     let draft = state.drafts.get(key);
     const baseline = serializeForm(form);
     if (!draft) {
       draft = {
+        savedRevision: savedRevision(),
         baseline,
         values: baseline,
         dirty: false,
@@ -269,6 +291,7 @@
       draft.pacRevision = options.usesPacMods ? getPacRevision() : null;
       draft.conflict = false;
       draft.remoteSignature = getDraftRemoteSignature(key);
+      draft.savedRevision = savedRevision();
     }
     const record = () => {
       const current = serializeForm(form);
@@ -307,6 +330,7 @@
       dirty: false,
       conflict: false,
       pacRevision: getPacRevision(),
+      savedRevision: savedRevision(),
       usesPacMods: state.drafts.get(key) &&
         state.drafts.get(key).usesPacMods === true,
       remoteSignature: getDraftRemoteSignature(key),
@@ -343,6 +367,11 @@
       nextRevision !== null && previousRevision !== nextRevision;
     state.drafts.forEach((draft, key) => {
       if (!draft.dirty) {
+        return;
+      }
+      if (draft.savedRevision !== undefined &&
+          draft.savedRevision !== savedRevision(nextSnapshot)) {
+        draft.conflict = true;
         return;
       }
       if (draft.usesPacMods && pacChanged) {
@@ -487,10 +516,18 @@
 
   async function runOperation(key, button, action, options = {}) {
 
-    if (state.pending.has(key)) {
+    if (state.pending.size) {
       return null;
     }
+    const base = options.draftKey && state.drafts.get(options.draftKey);
+    if (base && base.conflict) {
+      setMessage(t('unifiedConflict'), 'warning');
+      return null;
+    }
+    state.operationRevision = options.expectedRevision === undefined ?
+      base ? base.savedRevision : savedRevision() : options.expectedRevision;
     state.pending.add(key);
+    state.lastErrorCode = null;
     if (button) {
       button.disabled = true;
       button.setAttribute('aria-busy', 'true');
@@ -515,13 +552,15 @@
       state.retry = null;
       return result;
     } catch (error) {
+      state.lastErrorCode = error && error.code;
       const message = getSafeError(error, options.context);
       setMessage(
           message,
           'error',
           options.retry ? () => options.retry() : null,
       );
-      if (/stale|revision/i.test(String(error && error.message || '')) ||
+      if (/stale|revision/i.test(String(error && error.code || '')) ||
+          /stale|revision/i.test(String(error && error.message || '')) ||
           error && error.code === 'PAC_APPLY_STALE') {
         const draft = options.draftKey &&
           state.drafts.get(options.draftKey);
@@ -532,6 +571,7 @@
       return null;
     } finally {
       state.pending.delete(key);
+      state.operationRevision = undefined;
       if (button && button.parentNode) {
         button.removeAttribute('aria-busy');
         button.disabled = false;
@@ -1580,7 +1620,7 @@
         t('optionsDeleting'),
     );
     remove.onclick = () => deleteCustomProvider(provider, remove);
-    bindDraftForm(form, key);
+    bindDraftForm(form, key, {save});
     renderDraftConflict(form, key);
 
   }
@@ -1655,7 +1695,7 @@
         saveOnly,
         false,
     );
-    bindDraftForm(form, 'provider:add');
+    bindDraftForm(form, 'provider:add', {save: saveOnly});
 
   }
 
@@ -1796,7 +1836,7 @@
           () => rpc.callBackground('setCurrentPacProvider', {
             providerKey: result.provider.key,
           }),
-          {context: 'provider'},
+          {context: 'provider', expectedRevision: result.savedRevision},
       );
       if (!selected) {
         state.drafts.delete('provider:add');
@@ -2237,7 +2277,7 @@
         route,
         addButton,
     );
-    bindDraftForm(form, 'site-rule:add', {usesPacMods: true});
+    bindDraftForm(form, 'site-rule:add', {usesPacMods: true, save: addButton});
     renderDraftConflict(form, 'site-rule:add');
 
   }
@@ -2382,7 +2422,7 @@
         t('optionsDeleting'),
     );
     remove.onclick = () => removeSiteRule(rule, index, key, remove);
-    bindDraftForm(form, key, {usesPacMods: true});
+    bindDraftForm(form, key, {usesPacMods: true, save});
     renderDraftConflict(form, key);
 
   }
@@ -2578,7 +2618,7 @@
         'quiet',
     );
     discard.onclick = () => confirmDiscardAll();
-    bindDraftForm(form, 'proxy-methods', {usesPacMods: true});
+    bindDraftForm(form, 'proxy-methods', {usesPacMods: true, save});
     syncProxyFormPresentation(form);
     const updateAvailability = () => updateProxyAvailabilitySummary(form);
     form.addEventListener('input', updateAvailability);
@@ -3536,7 +3576,7 @@
       update.setAttribute('aria-describedby', unavailable.id);
     }
     update.onclick = () => runUpdateNow(update);
-    bindDraftForm(form, 'updates');
+    bindDraftForm(form, 'updates', {save});
     const healthCard = append(section, 'div', 'settings-card ui-card');
     const healthHeader = append(healthCard, 'div', 'card-header');
     appendText(healthHeader, 'h3', t('optionsConnectionHealth'));
@@ -3913,7 +3953,7 @@
         'quiet',
     );
     discard.onclick = () => confirmDiscardAll();
-    bindDraftForm(form, 'advanced-routing', {usesPacMods: true});
+    bindDraftForm(form, 'advanced-routing', {usesPacMods: true, save});
     renderDraftConflict(form, 'advanced-routing');
 
   }
@@ -4046,7 +4086,7 @@
         t('optionsSaving'),
     );
     save.onclick = () => saveNotifications(form, save);
-    bindDraftForm(form, 'notifications');
+    bindDraftForm(form, 'notifications', {save});
 
   }
 
@@ -4402,7 +4442,9 @@
     const dirty = getDirtyDrafts();
     const conflicts = dirty.filter((entry) => entry[1].conflict);
     const view = deriveControlView();
+    const configuration = state.snapshot.configuration || {};
     const copy = append(bar, 'div', 'global-action-copy');
+    copy.setAttribute('role', 'status');
     const buttons = append(bar, 'div', 'global-action-buttons');
     if (conflicts.length) {
       appendText(copy, 'strong', t('optionsConflictTitle'));
@@ -4419,6 +4461,9 @@
           'danger quiet',
       );
       discard.onclick = () => confirmDiscardAll();
+      const apply = createButton(buttons, t('unifiedApply'));
+      apply.disabled = true;
+      apply.title = t('unifiedSaveFirst');
       return;
     }
     if (dirty.length) {
@@ -4432,6 +4477,15 @@
           ),
       );
       appendText(copy, 'span', t('optionsSaveSectionBeforeApply'));
+      const current = dirty.find(([key]) => getSectionForDraft(key) === state.activeSection) ||
+        dirty[0];
+      const form = Array.from(root.querySelectorAll('form[data-draft-key]'))
+          .find((entry) => entry.dataset.draftKey === current[0]);
+      if (form && form.saveDraft) {
+        const save = createButton(buttons, t('unifiedSaveSection'), 'primary');
+        save.disabled = state.pending.size > 0;
+        save.onclick = () => form.saveDraft.onclick();
+      }
       const review = createButton(
           buttons,
           t('optionsReviewChanges'),
@@ -4444,10 +4498,9 @@
           'danger quiet',
       );
       discard.onclick = () => confirmDiscardAll();
-      return;
-    }
-    if (ifShowInitialSetup() && state.activeSection === 'overview') {
-      bar.hidden = true;
+      const apply = createButton(buttons, t('unifiedApply'));
+      apply.disabled = true;
+      apply.title = t('unifiedSaveFirst');
       return;
     }
     if (view.external) {
@@ -4479,8 +4532,8 @@
     }
     if (view.busy || state.pending.has('configuration:apply') ||
         state.pending.has('configuration:clear')) {
-      appendText(copy, 'strong', view.title);
-      appendText(copy, 'span', t('optionsOperationInProgressHelp'));
+      appendText(copy, 'strong', t('unifiedApplying'));
+      appendText(copy, 'span', t(configuration.active ? 'unifiedPreparing' : 'optionsOperationInProgressHelp'));
       const busy = createButton(
           buttons,
           view.kind === 'clearing' ?
@@ -4503,8 +4556,8 @@
       choose.onclick = () => navigateTo('routing-sources');
       return;
     }
-    if (view.controlsPac && !view.stale) {
-      appendText(copy, 'strong', t('optionsSavedAndActive'));
+    if (configuration.active && !configuration.pending) {
+      appendText(copy, 'strong', t('unifiedActive'));
       appendText(copy, 'span', t('optionsTurnOffKeepsSettings'));
       const clear = createButton(
           buttons,
@@ -4518,12 +4571,16 @@
     appendText(
         copy,
         'strong',
-        view.stale ? t('optionsApplyRequired') : t('optionsReadyToApply'),
+        t(configuration.blocked ? 'unifiedBlocked' : configuration.active ? 'unifiedPending' : 'unifiedInactive'),
     );
-    appendText(copy, 'span', t('optionsApplyWorkflowHelp'));
+    appendText(copy, 'span', t(configuration.blocked ? 'unifiedUnproven' :
+      configuration.active ? 'unifiedSavedActive' : 'optionsApplyWorkflowHelp'));
+    for (const category of configuration.pendingCategories || []) {
+      appendText(copy, 'span', t(`unifiedCategory_${category}`));
+    }
     const apply = createButton(
         buttons,
-        t('optionsApplyConfiguration'),
+        t('unifiedApply'),
         'primary',
         t('optionsApplyingConfiguration'),
     );
@@ -4575,12 +4632,13 @@
       setMessage(t('optionsSaveSectionBeforeApply'), 'warning');
       return;
     }
+    const configuration = state.snapshot.configuration;
     const result = await runOperation(
         'configuration:apply',
         button,
-        () => rpc.callBackground('applyPopupChanges', {
-          operation: 'apply',
-          draft: {},
+        () => rpc.callBackground('applySavedConfiguration', {
+          expectedRevision: savedRevision(),
+          expectedEffectiveId: configuration && configuration.effectiveId || null,
         }),
         {
           context: 'apply',
@@ -4592,6 +4650,15 @@
         message: t('optionsConfigurationApplied'),
         tone: 'success',
       });
+    } else {
+      await refresh();
+      const current = state.snapshot.configuration;
+      if (state.lastErrorCode === 'SAVED_REVISION_CHANGED' || state.lastErrorCode === 'PAC_APPLY_STALE') {
+        setMessage(t('unifiedConflict'), 'warning');
+      } else if (configuration && current && configuration.active && current.active &&
+          configuration.effectiveId === current.effectiveId) {
+        setMessage(t('unifiedApplyFailed'), 'warning');
+      }
     }
 
   }
