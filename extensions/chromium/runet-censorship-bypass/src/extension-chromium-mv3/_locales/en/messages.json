@@ -1,7 +1,7 @@
 {
-  "providerLifecycleControlHelp": {"message": "Check the protection status above. Updated provider data alone does not confirm that routing is active."},
+  "providerLifecycleControlHelp": {"message": "Check the protection status above. Updated routing data alone does not confirm that routing is active."},
   "providerLifecycleHelp": {"message": "Check for updates → Verify data → Prepare → Apply update."},
-  "providerLifecycleName": {"message": "Provider data"},
+  "providerLifecycleName": {"message": "Routing data"},
   "providerLifecycleVersion": {"message": "Data version"},
   "providerLifecycleLastCheck": {"message": "Last check"},
   "providerLifecycleLastApplied": {"message": "Last applied"},
@@ -11,19 +11,19 @@
   "providerLifecyclePreparing": {"message": "Preparing…"},
   "providerLifecycleApplying": {"message": "Preparing and applying…"},
   "providerLifecycleVerified": {"message": "Verified"},
-  "providerLifecycleVerifiedHelp": {"message": "The provider data passed the available integrity checks. This does not test proxy connections."},
+  "providerLifecycleVerifiedHelp": {"message": "The routing data passed the available integrity checks. This does not test proxy connections."},
   "providerLifecyclePrepared": {"message": "Ready to apply"},
   "providerLifecyclePreparedHelp": {"message": "The data passed verification and the update is ready to apply. Saved settings have not been applied."},
   "providerLifecyclePreparedOffHelp": {"message": "The data passed verification and preparation. Protection remains off; use the settings Apply action when you want to turn it on."},
   "providerLifecycleApplied": {"message": "Applied"},
-  "providerLifecycleAppliedHelp": {"message": "The current provider data is active. Availability of connections depends on the configured proxy services."},
+  "providerLifecycleAppliedHelp": {"message": "The current routing data is active. Availability of connections depends on the configured proxy services."},
   "providerLifecycleFailed": {"message": "Failed"},
   "providerLifecycleFailedHelp": {"message": "The update could not be checked, prepared or applied. Review the protection status before trying again."},
-  "providerLifecycleVerificationFailed": {"message": "Provider data verification failed."},
-  "providerLifecycleInvalid": {"message": "The provider returned invalid data."},
+  "providerLifecycleVerificationFailed": {"message": "Routing data verification failed."},
+  "providerLifecycleInvalid": {"message": "The source returned invalid routing data."},
   "providerLifecyclePreparationFailed": {"message": "The update could not be prepared or applied. Check the protection status."},
   "providerLifecycleBusyHelp": {"message": "The update operation is in progress. Existing routing continues during preparation; saved settings stay pending."},
-  "providerLifecycleSafetyHelp": {"message": "Checking verifies and prepares data without changing active routing. Applying an update retains current user settings and keeps saved changes pending. Updates do not enable inactive protection or test proxy availability."},
+  "providerLifecycleSafetyHelp": {"message": "Checking verifies and prepares routing data without changing active routing. Applying an update retains current user settings and keeps saved changes pending. Updates do not enable inactive protection or test proxy availability."},
   "providerLifecycleApplyRechecks": {"message": "Apply update checks and prepares data again before safely applying it. If protection is off, data is only prepared; use the settings Apply action to turn protection on."},
   "providerLifecycleCheck": {"message": "Check for updates"},
   "transferCredentialsMissingLabel": {"message":"Credentials required"},
@@ -48,17 +48,17 @@
   "transferNoConfiguration": {"message":"This is a support file, not a settings export."},
   "transferConflict": {"message":"Settings changed elsewhere. Choose the file again to review a fresh preview."},
   "transferCredentialsRequired": {"message":"Credentials were omitted: enter them before Apply, or explicitly select no authentication."},
-  "transferUnsupported_source": {"message":"Source selection is not transferred to this browser. Review the automatic-routing source before Apply. Custom source addresses are omitted from exports because they may contain access tokens."},
+  "transferUnsupported_source": {"message":"Source selection is not transferred to this browser. Review the routing source before Apply. Custom source addresses are omitted from exports because they may contain access tokens."},
   "transferUnsupported_language": {"message":"This browser does not import the interface language preference."},
   "transferUnsupported_disabledRules": {"message":"Disabled rules are not stored by this browser and will be omitted."},
   "transferUnsupported_proxyOptions": {"message":"Per-proxy DNS and timeout preferences are not supported here; browser defaults remain in use."},
   "transferUnsupported_torScope": {"message":"This browser cannot use a disabled Tor mode for only .onion or Direct replacement. Review the Tor mode after import."},
   "transferUnsupported_torExclusive": {"message":"This browser supports one Tor mode at a time. Both modes will be disabled until you choose one."},
   "transferUnsupported_warpScope": {"message":"WARP scope switches apply to the whole list here. Mixed switches are conservatively disabled; review them before Apply."},
-  "unifiedSaveSection": {"message": "Save this section"},
+  "unifiedSaveSection": {"message": "Save settings"},
   "unifiedPopupConflict": {"message": "Settings changed elsewhere. Review the current state and confirm again."},
   "unifiedControlLost": {"message": "The browser or another extension controls the proxy. Check proxy control before applying again."},
-  "unifiedUnproven": {"message": "The active configuration could not be confirmed. Review the status and apply saved settings again."},
+  "unifiedUnproven": {"message": "The active settings could not be confirmed. Review the status and select Apply again."},
   "unifiedActions": {"message": "Settings actions"},
   "unifiedApply": {"message": "Apply"},
   "unifiedApplyOn": {"message": "Apply and turn on"},
@@ -188,7 +188,7 @@
     "message": "Setup is required"
   },
   "popupControlSetupHelp": {
-    "message": "Choose an automatic-routing source and apply routing to get started."
+    "message": "Choose a routing source and apply routing to get started."
   },
   "popupControlActiveShort": {
     "message": "Controlled by this extension"
@@ -233,7 +233,7 @@
     "message": "Turn off extension proxy"
   },
   "popupTurnOffProxyHelp": {
-    "message": "Use Chromium's system proxy settings. Saved rules and downloaded routing data are kept."
+    "message": "Use the browser's system proxy settings. Saved rules and downloaded routing data are kept."
   },
   "popupCurrentSiteRouting": {
     "message": "This site"
@@ -253,7 +253,7 @@
     }
   },
   "popupAutoModeDescription": {
-    "message": "Uses the selected automatic-routing source."
+    "message": "Uses the selected routing source."
   },
   "popupProxyModeDescription": {
     "message": "Routes this site through an enabled Proxy connection."
@@ -268,10 +268,10 @@
     "message": "Configure proxy connections"
   },
   "popupAutomaticRoutingSettings": {
-    "message": "Automatic routing settings"
+    "message": "Routing source settings"
   },
   "popupOpenConnectionCheck": {
-    "message": "Open connection check"
+    "message": "Check connection"
   },
   "popupDetails": {
     "message": "Details"
@@ -297,7 +297,7 @@
     "message": "Connection summary"
   },
   "popupRoutingSource": {
-    "message": "Automatic routing"
+    "message": "Routing source"
   },
   "popupProxyMethods": {
     "message": "Proxy connections"
@@ -348,19 +348,19 @@
     "message": "Advanced routing settings"
   },
   "popupAdvancedSettingsHelp": {
-    "message": "Change the automatic routing source or optional proxy connections. Opening this section does not save anything."
+    "message": "Change the routing source or optional proxy connections. Opening this section does not save anything."
   },
   "popupRefreshRoutingData": {
     "message": "Refresh data"
   },
   "popupRefreshRoutingDataHelp": {
-    "message": "Refresh saved routing data without applying Chromium proxy settings."
+    "message": "Refresh saved routing data without applying browser proxy settings."
   },
   "popupTechnicalStatus": {
     "message": "Technical status"
   },
   "popupBrowserProxyControl": {
-    "message": "Chromium proxy control"
+    "message": "Browser proxy control"
   },
   "popupChangesPending": {
     "message": "Changes are pending and are not active yet."
@@ -369,7 +369,7 @@
     "message": "The operation was superseded by a newer setting or action. Review the current state and retry if needed."
   },
   "popupRoutingDataUpdated": {
-    "message": "Routing data updated. Active Chromium proxy settings were not changed."
+    "message": "Routing data updated. Active browser proxy settings were not changed."
   },
   "popupOperationCompleted": {
     "message": "Operation completed."
@@ -393,10 +393,10 @@
     "message": "Updating routing data…"
   },
   "actionTitleChecking": {
-    "message": "Testing proxy connection…"
+    "message": "Checking configured connection…"
   },
   "actionTitleOff": {
-    "message": "Extension proxy is off. Chromium uses system proxy settings."
+    "message": "Extension proxy is off. The browser uses system proxy settings."
   },
   "actionTitleStale": {
     "message": "Extension proxy is on — Saved settings are newer than active routing rules. Open the extension to apply."
@@ -426,7 +426,7 @@
     "message": "Automatically routes sites using the built-in Antizapret source."
   },
   "providerAnticensorityDescription": {
-    "message": "Uses the alternative built-in source for automatic routing."
+    "message": "Uses the alternative built-in routing source."
   },
   "providerOnlyOwnSitesLabel": {
     "message": "Manual rules only"
@@ -435,7 +435,7 @@
     "message": "Only sites you explicitly mark Proxy or Direct are overridden."
   },
   "popupPacProvider": {
-    "message": "Automatic routing source"
+    "message": "Routing source"
   },
   "popupNotSelected": {
     "message": "not selected"
@@ -1030,7 +1030,7 @@
     "message": "Overview"
   },
   "optionsNavRoutingSources": {
-    "message": "Automatic routing"
+    "message": "Routing source"
   },
   "optionsNavSiteRules": {
     "message": "Site rules"
@@ -1054,22 +1054,22 @@
     "message": "See whether the extension proxy is active and what needs attention."
   },
   "optionsRoutingSourcesDescription": {
-    "message": "Choose a source for automatic routing and manage trusted custom sources."
+    "message": "Choose a routing source and manage trusted custom sources."
   },
   "optionsSiteRulesDescription": {
-    "message": "Override automatic routing for exact hosts or a domain and its subdomains."
+    "message": "Override Auto for exact hosts or a domain and its subdomains."
   },
   "optionsProxyMethodsDescription": {
     "message": "Configure the proxy connections available to explicit Proxy rules."
   },
   "optionsUpdatesHealthDescription": {
-    "message": "Control automatic routing-data refreshes and check a configured proxy connection."
+    "message": "Control routing-data refreshes and check a configured proxy connection."
   },
   "optionsDiagnosticsDescriptionNew": {
     "message": "Review technical status details useful for support and troubleshooting."
   },
   "optionsMaintenanceDescription": {
-    "message": "Refresh automatic routing data, check a proxy connection, and review support diagnostics."
+    "message": "Refresh routing data, check a proxy connection, and review support diagnostics."
   },
   "optionsAdvancedDescriptionNew": {
     "message": "Manage uncommon routing policies, notifications, and expert operations."
@@ -1090,7 +1090,7 @@
     "message": "Changing the language reloads this page and discards unsaved edits. Continue?"
   },
   "optionsActiveRoutingSource": {
-    "message": "Automatic routing source"
+    "message": "Routing source"
   },
   "optionsSavedConfiguration": {
     "message": "Saved configuration"
@@ -1123,10 +1123,10 @@
     "message": "The last proxy operation failed. Review the configuration and try again."
   },
   "optionsChooseSourceTitle": {
-    "message": "Choose an automatic routing source"
+    "message": "Choose a routing source"
   },
   "optionsChooseSourceHelp": {
-    "message": "An automatic routing source is required before the extension proxy can be turned on."
+    "message": "A routing source is required before the extension proxy can be turned on."
   },
   "optionsGoToRoutingSources": {
     "message": "Choose source"
@@ -1135,13 +1135,13 @@
     "message": "Set up routing"
   },
   "optionsSetupIntro": {
-    "message": "Three short steps are enough to start. Nothing changes in Chrome until you apply routing."
+    "message": "Three short steps are enough to start. Nothing changes in the browser until you apply routing."
   },
   "optionsSetupStatus": {
     "message": "Setup"
   },
   "optionsSetupSourceTitle": {
-    "message": "Choose automatic routing"
+    "message": "Choose a routing source"
   },
   "optionsSetupSourceHelp": {
     "message": "Choose how sites in Auto mode are routed."
@@ -1192,7 +1192,7 @@
     "message": "Apply routing"
   },
   "optionsSetupApplyHelp": {
-    "message": "Saved configuration affects Chrome only after you apply it."
+    "message": "Saved settings affect the browser only after you apply them."
   },
   "optionsSetupWaitingForSource": {
     "message": "Waiting for a source"
@@ -1265,7 +1265,7 @@
     "message": "Delete source"
   },
   "optionsCustomSourceTrustHelp": {
-    "message": "Add only PAC addresses you trust. A PAC controls routing decisions in Chromium."
+    "message": "Add only PAC addresses you trust. A PAC controls routing decisions in the browser."
   },
   "optionsSaveAndUse": {
     "message": "Save and use"
@@ -1422,7 +1422,7 @@
     }
   },
   "optionsProxyAvailabilityHelp": {
-    "message": "This count reflects enabled, configured connections for explicit Proxy rules; connection and authentication checks are in Maintenance. Automatic routing can use the selected source separately."
+    "message": "This count reflects enabled, configured connections for explicit Proxy rules; connection and authentication checks are in Maintenance. Auto can use the selected routing source separately."
   },
   "optionsConfigureProxyConnections": {
     "message": "Configure Proxy connections"
@@ -1431,10 +1431,10 @@
     "message": "Source-provided proxies"
   },
   "optionsSourceProvidedProxiesHelp": {
-    "message": "Keep proxy connections supplied by Automatic routing separate from local applications and custom servers."
+    "message": "Keep proxy connections supplied by the routing source separate from local applications and custom servers."
   },
   "optionsAutomaticRoutingSourceProxies": {
-    "message": "Proxies from the Automatic routing source"
+    "message": "Proxies from the routing source"
   },
   "optionsAutomaticRoutingSourceProxiesHelp": {
     "message": "Allows the selected source to use the proxy connections it supplies."
@@ -1559,7 +1559,7 @@
     "message": "Proxy connections saved. Apply the configuration to activate routing changes."
   },
   "optionsAutomaticUpdates": {
-    "message": "Provider data updates"
+    "message": "Routing data updates"
   },
   "optionsAutoUpdateSafetyHelp": {
     "message": "Automatic updates never turn on an extension proxy that you turned off."
@@ -1571,7 +1571,7 @@
     "message": "Apply update"
   },
   "optionsUpdateRequiresSource": {
-    "message": "Choose an Automatic routing source before updating routing data."
+    "message": "Choose a routing source before updating routing data."
   },
   "optionsUpdatingRoutingRules": {
     "message": "Updating routing rules…"
@@ -1652,7 +1652,7 @@
     "message": "Broadens proxy use by replacing eligible Direct results with enabled replacement methods."
   },
   "optionsNoDirectWarningNew": {
-    "message": "Removes Direct fallbacks from source results. This does not change Chromium's mandatory:false behavior."
+    "message": "Removes Direct fallbacks from source results. The browser may still use its own fallback behavior."
   },
   "optionsPatternRequired": {
     "message": "Enter a host pattern."
@@ -1691,7 +1691,7 @@
     "message": "Your draft is preserved. Review it against the latest saved state before trying again."
   },
   "optionsConflictActionHelp": {
-    "message": "Review the preserved draft or discard all local changes."
+    "message": "Review the preserved draft or discard your edits."
   },
   "optionsConflictError": {
     "message": "This draft is based on older settings. It was kept so you can review it."
@@ -1722,10 +1722,10 @@
     "message": "Review changes"
   },
   "optionsDiscardAllChanges": {
-    "message": "Discard all"
+    "message": "Discard edits"
   },
   "optionsConfirmDiscardAll": {
-    "message": "Discard all unsaved edits on this page? Saved settings will not change."
+    "message": "Discard unsaved edits on this page? Saved settings will not change."
   },
   "optionsDraftsDiscarded": {
     "message": "Unsaved edits discarded."
@@ -1755,10 +1755,10 @@
     "message": "Apply configuration updates, validates, prepares, verifies, and activates routing rules as one protected workflow."
   },
   "optionsApplyConfiguration": {
-    "message": "Apply configuration"
+    "message": "Apply"
   },
   "optionsApplyingConfiguration": {
-    "message": "Applying configuration…"
+    "message": "Applying…"
   },
   "optionsConfigurationApplied": {
     "message": "Configuration applied successfully."

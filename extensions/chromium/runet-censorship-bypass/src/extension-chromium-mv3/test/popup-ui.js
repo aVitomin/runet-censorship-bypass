@@ -590,7 +590,7 @@ describe('MV3 popup UI', () => {
         expect(harness.root.textContent).to.include('Routing is active');
         expect(harness.root.textContent).to.include('This site');
         expect(harness.root.textContent)
-            .to.include('Uses the selected automatic-routing source.');
+            .to.include('Uses the selected routing source.');
         expect(findButton(harness.root, 'Turn off extension proxy')).to.exist;
         expect(findButton(harness.root, 'Apply')).to.equal(null);
         expect(harness.root.textContent).to.not.include('Connection summary');
@@ -835,7 +835,7 @@ describe('MV3 popup UI', () => {
         expect(findButton(harness.root, 'Turn off extension proxy')).to.exist;
         const connectionCheck = findLink(
             harness.root,
-            'Open connection check',
+            'Check connection',
         );
         expect(connectionCheck).to.exist;
         expect(connectionCheck.href).to.match(/#maintenance$/);
@@ -1282,7 +1282,7 @@ describe('MV3 popup UI', () => {
           ['SELECT'].includes(node.tagName) ||
           node.tagName === 'INPUT' && node.type === 'checkbox',
         )).to.have.length(0);
-        expect(findLink(harness.root, 'Automatic routing settings').href)
+        expect(findLink(harness.root, 'Routing source settings').href)
             .to.match(/#routing-sources$/);
         expect(findLink(harness.root, 'Configure proxy connections').href)
             .to.match(/#proxy-methods$/);

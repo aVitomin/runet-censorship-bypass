@@ -1602,6 +1602,20 @@ describe('Firefox production UI controllers', function() {
         catalogs[0].popupStateActive.message,
         catalogs[1].popupStateActive.message,
     );
+    Assert.strictEqual(catalogs[0].unifiedSaveSection.message, 'Save settings');
+    Assert.strictEqual(catalogs[1].unifiedSaveSection.message, 'Сохранить настройки');
+    Assert.strictEqual(catalogs[0].optionsApplySaved.message, 'Apply');
+    Assert.strictEqual(catalogs[1].optionsApplySaved.message, 'Применить');
+    Assert.strictEqual(catalogs[0].optionsNavAutomaticRouting.message, 'Routing source');
+    Assert.strictEqual(catalogs[1].optionsNavAutomaticRouting.message, 'Источник правил');
+    Assert.strictEqual(catalogs[0].providerLifecycleName.message, 'Routing data');
+    Assert.strictEqual(catalogs[1].providerLifecycleName.message, 'Данные маршрутизации');
+    Assert.strictEqual(catalogs[0].popupModePROXY.message, 'Proxy');
+    Assert.strictEqual(catalogs[1].popupModePROXY.message, 'Через прокси');
+    Assert.strictEqual(catalogs[0].diagnosticsRuntimeState.message, 'Protection state');
+    Assert.strictEqual(catalogs[1].diagnosticsRuntimeState.message, 'Состояние защиты');
+    Assert.strictEqual(catalogs[0].popupSiteEditingRequiresOff, undefined);
+    Assert.strictEqual(catalogs[1].popupSiteEditingRequiresOff, undefined);
 
   });
 
