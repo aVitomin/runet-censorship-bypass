@@ -9,6 +9,11 @@
 Firefox 154.0+ — Mozilla-подписанный XPI. Публичной страницы расширения в
 каталоге Mozilla Add-ons (AMO) пока нет.
 
+Руководства ниже описывают именно этот выпуск. Для работы с ещё не выпущенной
+сборкой используйте отдельную
+[подготовку пользовательского руководства 1.0](development/UPCOMING_1_0_USER_GUIDE.md),
+а не переносите её инструкции на установленный `0.0.4.0`.
+
 ## Пользователям
 
 - **Хочу установить или обновить:**
@@ -37,10 +42,13 @@ and Direct. The extension does not provide a VPN or proxy service; connection
 requirements depend on the selected browser and routing source. See
 [Troubleshooting](user/TROUBLESHOOTING.md) and
 [Privacy and security](user/PRIVACY_AND_SECURITY.md) when needed.
+These guides cover published `0.0.4.0`; unreleased workflows are kept in the
+[1.0 preparation guide](development/UPCOMING_1_0_USER_GUIDE.md).
 
 ## Разработчикам и участникам
 
 - [Подготовка среды](development/DEVELOPMENT.md)
+- [Пользовательские сценарии к 1.0 — ещё не опубликованы](development/UPCOMING_1_0_USER_GUIDE.md)
 - [Архитектура Chromium/общих компонентов](development/ARCHITECTURE.md)
 - [Архитектура Firefox](development/FIREFOX_MV3_ARCHITECTURE.md)
 - [Тестирование и браузерная QA](development/TESTING.md)
