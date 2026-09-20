@@ -49,6 +49,7 @@
     requestSerial: 0,
     drafts: new Map(),
     pending: new Set(),
+    providerUpdateError: null,
     openDisclosures: new Set(),
     activeSection: 'overview',
     message: null,
@@ -140,6 +141,9 @@
   function getSafeError(error, context) {
 
     const code = error && error.code || '';
+    if (context === 'provider-update') {
+      return t(providerUpdateErrorKey(code));
+    }
     const message = String(error && error.message || '');
     const keys = {
       CUSTOM_PROVIDER_LABEL_REQUIRED: 'optionsProviderNameRequired',
@@ -1377,6 +1381,7 @@
 
   function updateLiveState() {
 
+    renderProviderDataStatus();
     const view = deriveControlView();
     const values = {
       'control-title': view.title,
@@ -3521,6 +3526,108 @@
 
   }
 
+  function providerUpdateErrorKey(code) {
+
+    if (['PROVIDER_NOT_SELECTED', 'PROVIDER_NOT_FOUND'].includes(code)) {
+      return 'optionsUpdateRequiresSource';
+    }
+    if (['PAC_INVALID', 'PAC_INVALID_RAW', 'PAC_INVALID_COOKED',
+      'PAC_INVALID_UTF8', 'PAC_TOO_LARGE'].includes(code)) return 'providerLifecycleInvalid';
+    if (['PAC_SOURCE_URL_REJECTED', 'PAC_RESPONSE_URL_REJECTED'].includes(code)) {
+      return 'providerLifecycleVerificationFailed';
+    }
+    if (code === 'PAC_COOK_FAILED') return 'providerLifecyclePreparationFailed';
+    return 'providerLifecycleFailedHelp';
+
+  }
+
+  function providerDataView() {
+
+    const snapshot = state.snapshot;
+    const stored = snapshot.state;
+    const active = snapshot.configuration && snapshot.configuration.active === true;
+    const applied = stored.proxyApply || {};
+    const providerKey = active ? applied.providerKey : stored.currentPacProviderKey;
+    const periodic = snapshot.periodicUpdate && snapshot.periodicUpdate.periodicUpdate || {};
+    const result = periodic.lastResult || {};
+    const sameResult = Boolean(providerKey && result.providerKey === providerKey);
+    const error = state.providerUpdateError;
+    const localError = error && error.providerKey === providerKey &&
+      error.attemptAt === periodic.lastAttemptAt ? error.code : null;
+    const cache = stored.pacCache || {};
+    const cooked = stored.cookedPacCache || {};
+    const download = stored.pacDownload || {};
+    const preparation = stored.pacCook || {};
+    const view = {providerKey, label: 'providerLifecycleUnknown', help: 'providerLifecycleUnknownHelp'};
+    if (!providerKey) {
+      view.help = 'optionsUpdateRequiresSource';
+      return view;
+    }
+    if (localError || periodic.status === 'error' && sameResult) {
+      view.label = 'providerLifecycleFailed';
+      view.help = providerUpdateErrorKey(localError || periodic.lastFailureCode);
+    } else if (periodic.status === 'running' || state.pending.has('updates:run')) {
+      // Only display phases that the existing operation records actually expose.
+      view.label = applied.status === 'applying' ? 'providerLifecycleApplying' :
+        preparation.status === 'cooking' ? 'providerLifecyclePreparing' : 'providerLifecycleChecking';
+      view.help = 'providerLifecycleBusyHelp';
+    } else if (periodic.status === 'skipped' && sameResult) {
+      view.help = 'optionsUpdateSkipped';
+    } else if (snapshot.configuration && snapshot.configuration.blocked) {
+      view.label = 'unifiedBlocked';
+      view.help = 'providerLifecycleControlHelp';
+    } else if (sameResult && result.ok === true && result.cookStatus === 'success') {
+      const current = active && applied.status === 'applied' &&
+        result.cookedPacSha256 && result.cookedPacSha256 === applied.cookedPacSha256;
+      view.label = current ? 'providerLifecycleApplied' : 'providerLifecyclePrepared';
+      view.help = current ? 'providerLifecycleAppliedHelp' :
+        active ? 'providerLifecyclePreparedHelp' : 'providerLifecyclePreparedOffHelp';
+    } else if (active && applied.status === 'applied') {
+      view.label = 'providerLifecycleApplied';
+      view.help = 'providerLifecycleAppliedHelp';
+    } else if (cooked.providerKey === providerKey && cooked.cookedPacSha256 &&
+        snapshot.stale && snapshot.stale.cookedPac && !snapshot.stale.cookedPac.stale) {
+      view.label = 'providerLifecyclePrepared';
+      view.help = 'providerLifecyclePreparedOffHelp';
+    } else if (cache.providerKey === providerKey && cache.rawPacSha256 &&
+        ['success', 'not_modified'].includes(download.status)) {
+      view.label = 'providerLifecycleVerified';
+      view.help = 'providerLifecycleVerifiedHelp';
+    }
+    return view;
+
+  }
+
+  function renderProviderDataStatus() {
+
+    const card = root.querySelector('#provider-data-status');
+    if (!card || !state.snapshot) return;
+    const view = providerDataView();
+    const periodic = state.snapshot.periodicUpdate &&
+      state.snapshot.periodicUpdate.periodicUpdate || {};
+    const result = periodic.lastResult || {};
+    const applied = state.snapshot.state.proxyApply || {};
+    const matching = view.providerKey && result.providerKey === view.providerKey;
+    card.replaceChildren();
+    const status = appendText(card, 'p', t(view.label), 'status-banner');
+    status.dataset.providerStatus = 'true';
+    appendText(card, 'p', t(view.help), 'field-help');
+    const facts = append(card, 'dl', 'technical-list');
+    appendDefinition(facts, t('providerLifecycleName'), getProviderLabel(
+        getProviders().find((provider) => provider.key === view.providerKey),
+    ));
+    // Sources do not provide a portable version number. Never substitute a hash.
+    appendDefinition(facts, t('providerLifecycleVersion'), t('providerLifecycleUnknown'));
+    appendDefinition(facts, t('providerLifecycleLastCheck'), matching ?
+      formatTime(periodic.lastAttemptAt) : t('providerLifecycleUnknown'));
+    appendDefinition(facts, t('providerLifecycleLastApplied'),
+        applied.providerKey === view.providerKey ? formatTime(applied.appliedAt) : t('providerLifecycleUnknown'));
+    root.querySelectorAll('[data-provider-update]').forEach((button) => {
+      button.disabled = state.pending.size > 0 || periodic.status === 'running' || !view.providerKey;
+    });
+
+  }
+
   function renderMaintenanceSection(parent) {
 
     const section = createPageSection(
@@ -3540,6 +3647,12 @@
         t('optionsAutomaticUpdates'),
     );
     updatesHeading.id = 'maintenance-updates-heading';
+    appendText(settings, 'p', t('providerLifecycleHelp'), 'field-help');
+    appendText(settings, 'p', t('providerLifecycleSafetyHelp'), 'field-help');
+    const providerStatus = append(settings, 'div');
+    providerStatus.id = 'provider-data-status';
+    providerStatus.setAttribute('role', 'status');
+    providerStatus.setAttribute('aria-live', 'polite');
     const form = append(settings, 'form');
     form.onsubmit = (event) => event.preventDefault();
     const enabled = appendCheckbox(
@@ -3570,13 +3683,17 @@
         t('optionsSaving'),
     );
     save.onclick = () => saveUpdateSettings(form, enabled, save);
+    const checkUpdate = createButton(actions, t('providerLifecycleCheck'), '', t('providerLifecycleChecking'));
+    checkUpdate.dataset.providerUpdate = 'check';
+    checkUpdate.onclick = () => runUpdateNow(checkUpdate, false);
     const update = createButton(
         actions,
         t('optionsUpdateRoutingRules'),
         '',
         t('optionsUpdatingRoutingRules'),
     );
-    update.disabled = !state.snapshot.state.currentPacProviderKey;
+    update.dataset.providerUpdate = 'apply';
+    update.disabled = !providerDataView().providerKey;
     if (update.disabled) {
       const unavailable = appendText(
           form,
@@ -3588,6 +3705,8 @@
       update.setAttribute('aria-describedby', unavailable.id);
     }
     update.onclick = () => runUpdateNow(update);
+    appendText(form, 'p', t('providerLifecycleApplyRechecks'), 'field-help');
+    renderProviderDataStatus();
     bindDraftForm(form, 'updates', {save});
     const healthCard = append(section, 'div', 'settings-card ui-card');
     const healthHeader = append(healthCard, 'div', 'card-header');
@@ -3660,28 +3779,36 @@
 
   }
 
-  async function runUpdateNow(button) {
+  async function runUpdateNow(button, applyIfSafe = true) {
 
+    if (state.pending.size) return;
+    state.providerUpdateError = null;
     const result = await runOperation(
         'updates:run',
         button,
-        () => rpc.callBackground('runPeriodicUpdateNow', {
-          applyIfSafe: true,
-        }),
+        () => {
+          renderProviderDataStatus();
+          return rpc.callBackground('runPeriodicUpdateNow', {applyIfSafe});
+        },
         {
-          context: 'apply',
+          context: 'provider-update',
           acceptStatuses: ['skipped'],
-          retry: () => runUpdateNow(button),
+          retry: () => runUpdateNow(button, applyIfSafe),
         },
     );
     if (result) {
-      await refresh({
-        message: result.status === 'skipped' ?
-          t('optionsUpdateSkipped') :
-          t('optionsRoutingRulesUpdated'),
-        tone: result.status === 'skipped' ? 'warning' : 'success',
-      });
+      await refresh();
+      const view = providerDataView();
+      setMessage(t(result.status === 'skipped' ? 'optionsUpdateSkipped' : view.help),
+          result.status === 'skipped' ? 'warning' : 'success');
+    } else {
+      const periodic = state.snapshot.periodicUpdate &&
+        state.snapshot.periodicUpdate.periodicUpdate || {};
+      state.providerUpdateError = {code: state.lastErrorCode || 'UPDATE_FAILED',
+        providerKey: providerDataView().providerKey, attemptAt: periodic.lastAttemptAt};
+      await refresh();
     }
+    renderProviderDataStatus();
 
   }
 
@@ -4541,7 +4668,7 @@
       setupApply.disabled = hasDirtyDrafts() ||
         state.pending.has('configuration:apply');
     }
-    const live = root.querySelector('[aria-live="polite"]');
+    const live = root.querySelector('.ui-sr-only[aria-live="polite"]');
     if (live) {
       const message = dirty.length ? formatCount(
           dirty.length,

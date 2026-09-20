@@ -521,7 +521,7 @@ function createSnapshot(patch = {}) {
       pacCache: {rawPacSha256: 'hidden'},
       pacCook: {status: 'success'},
       cookedPacCache: {cookedPacSha256: 'hidden'},
-      proxyApply: {status: 'applied'},
+      proxyApply: {status: 'applied', providerKey: 'Антизапрет', cookedPacSha256: 'hidden'},
       proxyControl: {
         levelOfControl: 'controlled_by_this_extension',
         canControl: true,
@@ -789,6 +789,152 @@ function getSection(root, id) {
 }
 
 describe('MV3 options UI', function() {
+
+  it('renders provider phases from existing records without internal data or connection claims', async function() {
+
+    for (const language of ['en', 'ru']) {
+      const cases = [
+        ['providerLifecycleChecking', {status: 'running'}, 'downloading', 'idle'],
+        ['providerLifecyclePreparing', {status: 'running'}, 'success', 'cooking'],
+        ['providerLifecycleVerified', {}, 'success', 'idle'],
+        ['providerLifecyclePrepared', {status: 'success', lastResult: {
+          ok: true, providerKey: 'Антизапрет', cookStatus: 'success', cookedPacSha256: 'private-hash',
+          autoApply: {status: 'skipped'},
+        }}, 'success', 'success'],
+        ['providerLifecycleFailed', {status: 'error', lastFailureCode: 'PAC_INVALID',
+          lastResult: {providerKey: 'Антизапрет', error: {message: 'private-exception'}}}, 'error', 'idle'],
+      ];
+      for (const [label, periodic, download, preparation] of cases) {
+        const snapshot = createInitialSetupSnapshot();
+        snapshot.state.uiLanguage = language;
+        snapshot.state.currentPacProviderKey = 'Антизапрет';
+        snapshot.state.pacCache = {providerKey: 'Антизапрет', rawPacSha256: 'private-hash'};
+        snapshot.state.pacDownload = {status: download};
+        snapshot.state.pacCook = {status: preparation};
+        snapshot.periodicUpdate.periodicUpdate = periodic;
+        const harness = await createHarness({snapshot, language, hash: '#maintenance'});
+        const card = harness.root.querySelector('#provider-data-status');
+        expect(card.textContent).to.include(CATALOGS[language][label].message);
+        expect(card.textContent).to.not.match(/private-hash|private-exception|pac cooking|journal|generation/i);
+        expect(card.querySelector('[data-provider-status]').textContent).to.not.match(/healthy|connected|anonymous/i);
+        expect(card.textContent).to.include(CATALOGS[language].providerLifecycleUnknown.message);
+      }
+    }
+
+  });
+
+  it('checks without Apply and refreshes provider progress while keeping a local Draft', async function() {
+
+    const snapshot = createSnapshot();
+    const pending = deferred();
+    const harness = await createHarness({snapshot, hash: '#maintenance', rpcHandler: async (method) => {
+      if (method === 'getState') return snapshot;
+      if (method === 'runPeriodicUpdateNow') return pending.promise;
+      throw new Error('Unexpected mutation');
+    }});
+    const enabled = getInput(harness.root, 'updates.enabled');
+    enabled.checked = false;
+    enabled.dispatch('change');
+    const checking = findButton(harness.root, 'Check for updates').onclick();
+    await flush();
+    expect(harness.root.querySelector('#provider-data-status').textContent).to.include('Checking');
+    snapshot.periodicUpdate.periodicUpdate.status = 'running';
+    snapshot.state.pacCook.status = 'cooking';
+    harness.dispatchStorageChange();
+    await flush();
+    expect(harness.root.querySelector('#provider-data-status').textContent).to.include('Preparing');
+    expect(getInput(harness.root, 'updates.enabled')).to.equal(enabled);
+    expect(enabled.checked).to.equal(false);
+    const result = {ok: true, status: 'success', providerKey: 'Антизапрет',
+      cookStatus: 'success', cookedPacSha256: 'new-data', autoApply: {status: 'skipped'}};
+    snapshot.periodicUpdate.periodicUpdate = {status: 'success', lastResult: result};
+    snapshot.state.pacCook.status = 'success';
+    pending.resolve(result);
+    await checking;
+    expect(harness.calls.filter((call) => call.method !== 'getState')).to.deep.equal([
+      {method: 'runPeriodicUpdateNow', params: {applyIfSafe: false}},
+    ]);
+    expect(harness.root.querySelector('#provider-data-status').textContent).to.include('Ready to apply');
+
+  });
+
+  it('uses the existing safe provider Apply without applying Saved, including while OFF', async function() {
+
+    for (const active of [true, false]) {
+      const snapshot = active ? createSnapshot() : createInitialSetupSnapshot();
+      snapshot.state.currentPacProviderKey = 'Антизапрет';
+      const result = {ok: true, status: 'success', providerKey: 'Антизапрет',
+        cookStatus: 'success', cookedPacSha256: 'new-data',
+        autoApply: {status: active ? 'applied' : 'skipped'}};
+      snapshot.configuration = {active, pending: active, savedRevision: 8,
+        effectiveId: active ? 'private-generation' : null, blocked: false, applying: false, pendingCategories: []};
+      const harness = await createHarness({snapshot, rpcHandler: async (method) => {
+        if (method === 'getState') return snapshot;
+        if (method === 'runPeriodicUpdateNow') {
+          snapshot.periodicUpdate.periodicUpdate = {status: 'success', lastResult: result};
+          if (active) snapshot.state.proxyApply.cookedPacSha256 = 'new-data';
+          return result;
+        }
+        throw new Error('Unexpected mutation');
+      }});
+      await findButton(harness.root, 'Apply update').onclick();
+      expect(harness.calls.filter((call) => call.method !== 'getState')).to.deep.equal([
+        {method: 'runPeriodicUpdateNow', params: {applyIfSafe: true}},
+      ]);
+      const card = harness.root.querySelector('#provider-data-status');
+      expect(card.textContent).to.include(active ? 'Applied' : 'Protection remains off');
+      expect(card.textContent).to.not.include('private-generation');
+      expect(snapshot.configuration.pending).to.equal(active);
+    }
+
+  });
+
+  it('shows fixed provider failure text instead of a raw exception', async function() {
+
+    const snapshot = createSnapshot();
+    const harness = await createHarness({snapshot, rpcHandler: async (method) => {
+      if (method === 'getState') return snapshot;
+      throw Object.assign(new Error('secret-path?token=private'), {code: 'PAC_COOK_FAILED'});
+    }});
+    await findButton(harness.root, 'Apply update').onclick();
+    expect(harness.root.textContent)
+        .to.include(CATALOGS.en.providerLifecyclePreparationFailed.message);
+    expect(harness.root.textContent).to.not.include('secret-path');
+    snapshot.periodicUpdate.periodicUpdate = {status: 'success', lastAttemptAt: 5000, lastResult: {
+      ok: true, providerKey: 'Антизапрет', cookStatus: 'success', cookedPacSha256: 'new-data',
+    }};
+    harness.dispatchStorageChange();
+    await flush();
+    expect(harness.root.querySelector('#provider-data-status [data-provider-status]').textContent)
+        .to.equal('Ready to apply');
+
+  });
+
+  it('does not describe blocked protection as inactive or applied provider routing', async function() {
+
+    const snapshot = createSnapshot();
+    snapshot.configuration = {active: false, blocked: true, pending: true};
+    snapshot.periodicUpdate.periodicUpdate = {status: 'success', lastResult: {
+      ok: true, providerKey: 'Антизапрет', cookStatus: 'success', cookedPacSha256: 'new-data',
+    }};
+    const harness = await createHarness({snapshot});
+    const card = harness.root.querySelector('#provider-data-status');
+    expect(card.querySelector('[data-provider-status]').textContent).to.equal('Action required');
+    expect(card.textContent).to.not.include('Protection remains off');
+    expect(card.textContent).to.not.include('current provider data is active');
+
+  });
+
+  it('keeps provider lifecycle translations complete in both languages', function() {
+
+    for (const [key, value] of Object.entries(CATALOGS.en)) {
+      if (!key.startsWith('providerLifecycle')) continue;
+      expect(value.message).to.be.a('string').and.not.equal('');
+      expect(CATALOGS.ru[key].message).to.be.a('string').and.not.equal('');
+      expect(value.message).to.not.match(/must.*(?:disable|turn off)|guarantee.*(?:access|connectivity)/i);
+    }
+
+  });
   it('shows credential-only pending status even when PAC is fresh and applies exact Saved', async function() {
 
     const snapshot = createSnapshot();
@@ -1270,7 +1416,7 @@ describe('MV3 options UI', function() {
         expect(getInput(rules, 'siteRule.pattern')).to.exist;
         expect(getInput(proxies, 'localTor.host')).to.exist;
         expect(getInput(maintenance, 'updates.enabled')).to.exist;
-        expect(findButton(maintenance, 'Update routing rules')).to.exist;
+        expect(findButton(maintenance, 'Apply update')).to.exist;
         expect(findButton(maintenance, 'Check proxy')).to.exist;
         expect(maintenance.querySelector('#diagnostics')).to.exist;
         expect(about.querySelectorAll('.about-links a')).to.have.length(5);
@@ -2424,7 +2570,7 @@ describe('MV3 options UI', function() {
         const name = getInput(harness.root, 'newProvider.label');
         name.value = 'Unsaved';
         name.dispatch('input');
-        const live = harness.root.querySelector('[aria-live="polite"]');
+        const live = harness.root.querySelector('.ui-sr-only[aria-live="polite"]');
         expect(live.textContentWrites).to.equal(1);
         name.value = 'Unsaved again';
         name.dispatch('input');
@@ -2579,7 +2725,7 @@ describe('MV3 options UI', function() {
           snapshot: createInitialSetupSnapshot(),
           hash: '#maintenance',
         });
-        const update = findButton(initial.root, 'Update routing rules');
+        const update = findButton(initial.root, 'Apply update');
         expect(update.disabled).to.equal(true);
         expect(update.getAttribute('aria-describedby'))
             .to.equal('options-update-requires-source');

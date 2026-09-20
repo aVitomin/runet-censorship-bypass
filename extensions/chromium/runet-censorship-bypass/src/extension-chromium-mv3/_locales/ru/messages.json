@@ -1,4 +1,31 @@
 {
+  "providerLifecycleControlHelp": {"message": "Проверьте состояние защиты выше. Само по себе обновление данных провайдера не означает, что маршрутизация активна."},
+  "providerLifecycleHelp": {"message": "Проверить обновления → Проверить данные → Подготовить → Применить обновление."},
+  "providerLifecycleName": {"message": "Данные провайдера"},
+  "providerLifecycleVersion": {"message": "Версия данных"},
+  "providerLifecycleLastCheck": {"message": "Последняя проверка"},
+  "providerLifecycleLastApplied": {"message": "Последнее применение"},
+  "providerLifecycleUnknown": {"message": "Неизвестно"},
+  "providerLifecycleUnknownHelp": {"message": "Результата проверки обновлений пока нет."},
+  "providerLifecycleChecking": {"message": "Проверяем…"},
+  "providerLifecyclePreparing": {"message": "Подготавливаем…"},
+  "providerLifecycleApplying": {"message": "Подготавливаем и применяем…"},
+  "providerLifecycleVerified": {"message": "Проверено"},
+  "providerLifecycleVerifiedHelp": {"message": "Данные провайдера прошли предусмотренные проверки целостности. Это не проверка прокси-подключений."},
+  "providerLifecyclePrepared": {"message": "Готово к применению"},
+  "providerLifecyclePreparedHelp": {"message": "Данные прошли проверку, обновление готово к применению. Сохранённые настройки не применены."},
+  "providerLifecyclePreparedOffHelp": {"message": "Данные проверены и подготовлены. Защита остаётся выключенной; для включения используйте применение настроек."},
+  "providerLifecycleApplied": {"message": "Применено"},
+  "providerLifecycleAppliedHelp": {"message": "Текущие данные провайдера используются. Доступность подключений зависит от настроенных прокси-служб."},
+  "providerLifecycleFailed": {"message": "Не удалось обновить"},
+  "providerLifecycleFailedHelp": {"message": "Не удалось проверить, подготовить или применить обновление. Перед повторной попыткой проверьте состояние защиты."},
+  "providerLifecycleVerificationFailed": {"message": "Не удалось проверить подлинность или целостность данных провайдера."},
+  "providerLifecycleInvalid": {"message": "Провайдер вернул некорректные данные."},
+  "providerLifecyclePreparationFailed": {"message": "Не удалось подготовить или применить обновление. Проверьте состояние защиты."},
+  "providerLifecycleBusyHelp": {"message": "Обновление выполняется. При подготовке действует прежняя маршрутизация; сохранённые изменения остаются неприменёнными."},
+  "providerLifecycleSafetyHelp": {"message": "Поиск обновлений включает проверку и подготовку данных, но не меняет действующую маршрутизацию. Применение обновления сохраняет действующие пользовательские настройки, а сохранённые изменения остаются неприменёнными. Обновление не включает выключенную защиту и не проверяет доступность прокси."},
+  "providerLifecycleApplyRechecks": {"message": "«Применить обновление» повторно проверяет и подготавливает данные перед применением. При выключенной защите данные только подготавливаются; для включения используйте применение настроек."},
+  "providerLifecycleCheck": {"message": "Проверить обновления"},
   "transferCredentialsMissingLabel": {"message":"Нужны учётные данные"},
   "transferUnsupported_authentication": {"message":"В Firefox нет общего переключателя авторизации прокси. Проверьте импортированные профили перед применением; недостающие учётные данные нужно ввести заново."},
   "transferTitle": {"message":"Импорт / Экспорт"},
@@ -565,7 +592,7 @@
     "message": "без изменений"
   },
   "optionsStatusCooking": {
-    "message": "сборка"
+    "message": "подготовка"
   },
   "optionsStatusApplying": {
     "message": "применение"
@@ -592,13 +619,13 @@
     "message": "Сохранение..."
   },
   "optionsDownloadPac": {
-    "message": "Скачать PAC"
+    "message": "Получить и проверить данные"
   },
   "optionsDownloading": {
     "message": "Скачивание..."
   },
   "optionsCooking": {
-    "message": "Сборка..."
+    "message": "Подготавливаем…"
   },
   "optionsApplying": {
     "message": "Применение..."
@@ -1532,7 +1559,7 @@
     "message": "Прокси-подключения сохранены. Примените конфигурацию, чтобы активировать изменения маршрутизации."
   },
   "optionsAutomaticUpdates": {
-    "message": "Автообновление данных маршрутизации"
+    "message": "Обновление данных провайдера"
   },
   "optionsAutoUpdateSafetyHelp": {
     "message": "Автообновление не включает прокси расширения, который вы выключили."
@@ -1541,7 +1568,7 @@
     "message": "Сохранить настройки обновлений"
   },
   "optionsUpdateRoutingRules": {
-    "message": "Обновить правила маршрутизации"
+    "message": "Применить обновление"
   },
   "optionsUpdateRequiresSource": {
     "message": "Перед обновлением данных маршрутизации выберите источник в разделе «Автоматическая маршрутизация»."

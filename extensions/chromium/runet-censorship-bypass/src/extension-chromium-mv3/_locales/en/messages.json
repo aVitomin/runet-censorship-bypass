@@ -1,4 +1,31 @@
 {
+  "providerLifecycleControlHelp": {"message": "Check the protection status above. Updated provider data alone does not confirm that routing is active."},
+  "providerLifecycleHelp": {"message": "Check for updates → Verify data → Prepare → Apply update."},
+  "providerLifecycleName": {"message": "Provider data"},
+  "providerLifecycleVersion": {"message": "Data version"},
+  "providerLifecycleLastCheck": {"message": "Last check"},
+  "providerLifecycleLastApplied": {"message": "Last applied"},
+  "providerLifecycleUnknown": {"message": "Unknown"},
+  "providerLifecycleUnknownHelp": {"message": "No update result is available yet."},
+  "providerLifecycleChecking": {"message": "Checking…"},
+  "providerLifecyclePreparing": {"message": "Preparing…"},
+  "providerLifecycleApplying": {"message": "Preparing and applying…"},
+  "providerLifecycleVerified": {"message": "Verified"},
+  "providerLifecycleVerifiedHelp": {"message": "The provider data passed the available integrity checks. This does not test proxy connections."},
+  "providerLifecyclePrepared": {"message": "Ready to apply"},
+  "providerLifecyclePreparedHelp": {"message": "The data passed verification and the update is ready to apply. Saved settings have not been applied."},
+  "providerLifecyclePreparedOffHelp": {"message": "The data passed verification and preparation. Protection remains off; use the settings Apply action when you want to turn it on."},
+  "providerLifecycleApplied": {"message": "Applied"},
+  "providerLifecycleAppliedHelp": {"message": "The current provider data is active. Availability of connections depends on the configured proxy services."},
+  "providerLifecycleFailed": {"message": "Failed"},
+  "providerLifecycleFailedHelp": {"message": "The update could not be checked, prepared or applied. Review the protection status before trying again."},
+  "providerLifecycleVerificationFailed": {"message": "Provider data verification failed."},
+  "providerLifecycleInvalid": {"message": "The provider returned invalid data."},
+  "providerLifecyclePreparationFailed": {"message": "The update could not be prepared or applied. Check the protection status."},
+  "providerLifecycleBusyHelp": {"message": "The update operation is in progress. Existing routing continues during preparation; saved settings stay pending."},
+  "providerLifecycleSafetyHelp": {"message": "Checking verifies and prepares data without changing active routing. Applying an update retains current user settings and keeps saved changes pending. Updates do not enable inactive protection or test proxy availability."},
+  "providerLifecycleApplyRechecks": {"message": "Apply update checks and prepares data again before safely applying it. If protection is off, data is only prepared; use the settings Apply action to turn protection on."},
+  "providerLifecycleCheck": {"message": "Check for updates"},
   "transferCredentialsMissingLabel": {"message":"Credentials required"},
   "transferUnsupported_authentication": {"message":"Firefox has no global proxy-authentication switch. Review imported profiles before Apply; missing credentials still require re-entry."},
   "transferTitle": {"message":"Import / Export"},
@@ -565,7 +592,7 @@
     "message": "not modified"
   },
   "optionsStatusCooking": {
-    "message": "cooking"
+    "message": "preparing"
   },
   "optionsStatusApplying": {
     "message": "applying"
@@ -592,13 +619,13 @@
     "message": "Saving..."
   },
   "optionsDownloadPac": {
-    "message": "Download PAC"
+    "message": "Get and verify data"
   },
   "optionsDownloading": {
     "message": "Downloading..."
   },
   "optionsCooking": {
-    "message": "Cooking..."
+    "message": "Preparing…"
   },
   "optionsApplying": {
     "message": "Applying..."
@@ -1532,7 +1559,7 @@
     "message": "Proxy connections saved. Apply the configuration to activate routing changes."
   },
   "optionsAutomaticUpdates": {
-    "message": "Automatic routing-data updates"
+    "message": "Provider data updates"
   },
   "optionsAutoUpdateSafetyHelp": {
     "message": "Automatic updates never turn on an extension proxy that you turned off."
@@ -1541,7 +1568,7 @@
     "message": "Save update settings"
   },
   "optionsUpdateRoutingRules": {
-    "message": "Update routing rules"
+    "message": "Apply update"
   },
   "optionsUpdateRequiresSource": {
     "message": "Choose an Automatic routing source before updating routing data."
