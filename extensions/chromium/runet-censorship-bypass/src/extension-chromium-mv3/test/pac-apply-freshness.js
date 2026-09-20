@@ -603,15 +603,15 @@ describe('PAC apply freshness', () => {
         .to.equal(download.pacCache.rawPacSha256);
   });
 
-  it('rejects apply when the cooked artifact is cleared before set', async () => {
+  it('rejects apply when the cooked cache is cleared before set', async () => {
     const harness = await createRuntimeHarness();
     harness.resetCounts();
-    const proxyControlRead = harness.blockProxySettingsRead(2);
+    const artifactRead = harness.blockCookedArtifactRead();
 
     const apply = harness.audit.applyCookedPacAndPersist({});
-    await proxyControlRead.started;
+    await artifactRead.started;
     await harness.audit.clearCookedPacCacheAndArtifacts();
-    proxyControlRead.release();
+    artifactRead.release();
 
     const result = await apply;
 
@@ -705,8 +705,8 @@ describe('PAC apply freshness', () => {
       fingerprintAfter,
     ]);
 
-    expect(result).to.include({ok: true, status: 'applied'});
-    expect(fingerprintAfter).to.deep.equal(fingerprintBefore);
+    expect(result).to.include({ok: false, status: 'stale'});
+    expect(fingerprintAfter.savedRevision).to.be.greaterThan(fingerprintBefore.savedRevision);
     expect(serializedFingerprints.includes(originalSecret)).to.equal(false);
     expect(serializedFingerprints.includes(replacementSecret)).to.equal(false);
     expect(serializedFingerprints.includes('first-user')).to.equal(false);
@@ -714,7 +714,7 @@ describe('PAC apply freshness', () => {
     expect(harness.getState().pacMods.ownProxies[0].password).to.equal('');
   });
 
-  it('does not invalidate apply for note-only PAC metadata changes', async () => {
+  it('rejects a stale exact revision even for note-only Saved changes', async () => {
     const harness = await createRuntimeHarness({
       pacMods: {
         ownProxies: [{
@@ -758,9 +758,9 @@ describe('PAC apply freshness', () => {
 
     const result = await apply;
 
-    expect(result).to.include({ok: true, status: 'applied'});
-    expect(fingerprintAfter).to.deep.equal(fingerprintBefore);
-    expect(harness.counts.proxySettingsWrites).to.equal(1);
+    expect(result).to.include({ok: false, status: 'stale'});
+    expect(fingerprintAfter.savedRevision).to.be.greaterThan(fingerprintBefore.savedRevision);
+    expect(harness.counts.proxySettingsWrites).to.equal(0);
   });
 
   it('coalesces identical concurrent applies into one current write', async () => {

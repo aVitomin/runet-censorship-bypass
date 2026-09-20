@@ -4,7 +4,7 @@
 /* global mv3ActionStatus, mv3Hash, mv3PacArtifacts, mv3PacCook, mv3PacDownload */
 /* global mv3PacMods, mv3PeriodicUpdate, mv3SiteScope */
 /* global mv3Providers, mv3ProxyAuth, mv3ProxyHealth, mv3ProxySettings */
-/* global mv3State */
+/* global mv3State, mv3Effective */
 
 importScripts(
     'vendor/tldts/dist/index.umd.min.js',
@@ -24,6 +24,7 @@ importScripts(
     'pac-cook.js',
     'proxy-auth.js',
     'proxy-settings.js',
+    'effective-config.js',
 );
 
 const PHASE_TEN_STATUS = Object.freeze({
@@ -297,7 +298,9 @@ async function beginPacWorkflow() {
   const state = await mv3State.updateStateAtomically((currentState) => ({
     pacWorkflowGeneration: getNextPacWorkflowGeneration(currentState),
   }));
-  return Object.freeze({generation: state.pacWorkflowGeneration});
+  return Object.freeze({
+    generation: state.pacWorkflowGeneration, savedRevision: state.savedRevision,
+  });
 
 }
 
@@ -321,12 +324,27 @@ function ifPacWorkflowIsFresh(workflow, state) {
 async function getFreshPacWorkflowState(workflow) {
 
   const state = await mv3State.loadState();
-  return ifPacWorkflowIsFresh(workflow, state) ? state : null;
+  if (!ifPacWorkflowIsFresh(workflow, state) ||
+      !workflow.effective && workflow.savedRevision !== undefined &&
+      workflow.savedRevision !== state.savedRevision) return null;
+  return workflow.effective ? Object.assign({}, state, workflow.effective.values) : state;
 
 }
 
 async function savePacWorkflowStatePatch(workflow, patch) {
 
+  if (workflow.effective) {
+    const current = await getFreshPacWorkflowState(workflow);
+    if (!current) return null;
+    patch = Object.assign({}, patch);
+    for (const key of ['pacCache', 'cookedPacCache', 'pacCook', 'pacDownload', 'lastPacUpdateStamp']) {
+      if (Object.prototype.hasOwnProperty.call(patch, key)) {
+        workflow.effective.values[key] = patch[key];
+        delete patch[key];
+      }
+    }
+    if (!Object.keys(patch).length) return getFreshPacWorkflowState(workflow);
+  }
   let ifSaved = false;
   const state = await mv3State.updateStateAtomically((currentState) => {
     if (!ifPacWorkflowIsFresh(workflow, currentState)) {
@@ -373,6 +391,7 @@ function createPacApplyFingerprint(state) {
   const cookedCache = state.cookedPacCache || {};
   const proxyApply = state.proxyApply || {};
   return Object.freeze({
+    savedRevision: state.savedRevision,
     providerKey: providerKey || null,
     providerEnabled: provider ? provider.enabled !== false : null,
     providerUrls: provider ? JSON.stringify(provider.urls || []) : null,
@@ -495,8 +514,52 @@ async function createStartupProxyRestorePlan(state) {
 
 async function reconcileProxyOwnershipOnWorkerStart(reconstructedState) {
 
+  const effective = await mv3Effective.recover();
+  if (effective) {
+    const applied = reconstructedState.proxyApply;
+    const cache = effective.cookedPacCache;
+    if (!ifActionOperationIsActive('apply') && !ifActionOperationIsActive('clear') &&
+        (applied.status !== 'applied' || applied.providerKey !== cache.providerKey ||
+        applied.cookedPacSha256 !== cache.cookedPacSha256)) {
+      reconstructedState = await mv3State.saveStatePatch({
+        proxyApply: createProxyApplyState('applied', {
+          providerKey: cache.providerKey, cookedPacSha256: cache.cookedPacSha256,
+          appliedAt: applied.appliedAt || Date.now(),
+          levelOfControl: 'controlled_by_this_extension',
+        }),
+      });
+    }
+    return {allowed: false, reason: 'effective generation confirmed', state: reconstructedState};
+  }
+  if (ifActionOperationIsActive('apply') || ifActionOperationIsActive('clear')) {
+    return createStartupProxyRestoreSkip('manual operation superseded startup restoration', reconstructedState);
+  }
+  const retained = await mv3Effective.retained();
+  if (retained) {
+    const control = await mv3ProxySettings.getProxyControlState();
+    if (control.levelOfControl === 'controllable_by_this_extension') {
+      const workflow = Object.freeze({
+        generation: reconstructedState.pacWorkflowGeneration,
+        effective: {id: retained.id, values: mv3Effective.overlay({}, retained)},
+      });
+      const result = await applyCookedPacAndPersist({}, workflow, {startupRestore: true});
+      return {allowed: true, result, state: await mv3State.loadState()};
+    }
+  }
+  if (await mv3Effective.hasHistory() ||
+      mv3ProxyAuth.buildProxyAuthConfig(reconstructedState).credentialCount) {
+    if (!['cleared', 'clearing'].includes(reconstructedState.proxyApply.status)) {
+      reconstructedState = await mv3State.saveStatePatch({
+        proxyApply: createProxyApplyState('error', {
+          error: {code: 'EFFECTIVE_GENERATION_UNPROVEN',
+            message: 'Apply saved settings to confirm the active configuration.'},
+        }),
+      });
+    }
+    return createStartupProxyRestoreSkip('no proven effective binding', reconstructedState);
+  }
   const plan = await createStartupProxyRestorePlan(reconstructedState);
-  if (!plan.allowed) {
+  if (!plan.allowed || ifActionOperationIsActive('apply') || ifActionOperationIsActive('clear')) {
     return plan;
   }
   const result = await applyCookedPacAndPersist(
@@ -1317,6 +1380,13 @@ if (chrome.webRequest && chrome.webRequest.onAuthRequired) {
   );
 }
 
+if (chrome.webRequest && chrome.webRequest.onBeforeRequest) {
+  chrome.webRequest.onBeforeRequest.addListener(
+      (details) => mv3Effective.bindRequest(details).catch(() => undefined),
+      {urls: ['<all_urls>']},
+  );
+}
+
 if (chrome.webRequest && chrome.webRequest.onErrorOccurred) {
   chrome.webRequest.onErrorOccurred.addListener(
       handleWebRequestError,
@@ -1360,7 +1430,7 @@ function handleWebRequestAuthRequired(details, asyncCallback) {
     asyncCallback(response || {});
   };
 
-  mv3State.loadState()
+  (details && details.isProxy === true ? mv3Effective.authState(details) : Promise.resolve({}))
       .then((state) => mv3ProxyAuth.handleProxyAuthRequired(details, state))
       .then((result) => {
         respond(result.response);
@@ -1374,7 +1444,7 @@ function handleWebRequestAuthRequired(details, asyncCallback) {
           requestId: details && details.requestId || null,
           isProxy: details && details.isProxy === true,
           host: details && details.challenger && details.challenger.host || null,
-          port: details && details.challenger && details.challenger.port || null,
+          port: details && details.challenger && String(details.challenger.port || '') || null,
           message: 'Proxy auth handler failed safely.',
         });
       })
@@ -1384,6 +1454,7 @@ function handleWebRequestAuthRequired(details, asyncCallback) {
 
 function clearWebRequestAuthAttempt(details) {
 
+  mv3Effective.releaseRequest(details).catch(() => undefined);
   mv3ProxyAuth.clearProxyAuthAttempts(details)
       .catch(() => console.warn('Failed to clear proxy-auth retry state.'));
 
@@ -1600,6 +1671,9 @@ async function applyPopupChangesForWorkflow(params, operation, workflow) {
     throw err;
   }
   const target = normalizePopupTabUrl(params.tabUrl);
+  if (workflow) {
+    workflow = Object.freeze(Object.assign({}, workflow, {savedRevision: state.savedRevision}));
+  }
   const siteMode = String(draft.siteMode || '').toLowerCase();
   if (operation === 'save') {
     return {
@@ -2402,7 +2476,19 @@ function runPeriodicUpdate(params = {}) {
 
 async function executePeriodicUpdatePipeline({trigger, applyIfSafe}) {
 
-  const workflow = await beginPacWorkflow();
+  let workflow = await beginPacWorkflow();
+  const effective = await mv3Effective.current();
+  if (effective) {
+    workflow = Object.freeze(Object.assign({}, workflow, {
+      effective: {id: effective.id, values: mv3Effective.overlay({}, effective)},
+    }));
+  } else {
+    const latest = await mv3State.loadState();
+    if (latest.proxyApply.status === 'applied') {
+      return createPeriodicSkip('EFFECTIVE_GENERATION_UNPROVEN',
+          'Apply saved settings to confirm the active generation before automatic updates.', {trigger});
+    }
+  }
   const initialState = await getFreshPacWorkflowState(workflow);
   if (!initialState) {
     return createPeriodicSkip(
@@ -2859,8 +2945,9 @@ async function assertPacApplyIsFresh(operation, fingerprint) {
   if (!ifPacApplyOperationIsFresh(operation)) {
     throw createPacApplyStaleError();
   }
-  const latestState = await mv3State.loadState();
+  const latestState = await getFreshPacWorkflowState(operation.workflow);
   if (
+    !latestState ||
     !ifPacApplyOperationIsFresh(operation) ||
     !ifPacWorkflowIsFresh(operation.workflow, latestState) ||
     !ifStartupProxyRestoreAuthorizationMatches(
@@ -3931,7 +4018,8 @@ async function clearPacCacheAndArtifacts() {
 
   await invalidatePacWorkflowFreshness();
   const cache = await mv3State.getPacCache();
-  if (cache.providerKey && cache.rawPacSha256) {
+  if (cache.providerKey && cache.rawPacSha256 &&
+      !await mv3Effective.protectsArtifact(cache.artifactRef)) {
     try {
       await mv3PacArtifacts.deleteRawPacArtifact({
         providerKey: cache.providerKey,
@@ -3956,7 +4044,8 @@ async function clearCookedPacCacheAndArtifacts() {
 
   await invalidatePacWorkflowFreshness();
   const cache = await mv3State.getCookedPacCache();
-  if (cache.providerKey && cache.cookedPacSha256) {
+  if (cache.providerKey && cache.cookedPacSha256 &&
+      !await mv3Effective.protectsArtifact(cache.artifactRef)) {
     try {
       await mv3PacArtifacts.deleteCookedPacArtifact({
         providerKey: cache.providerKey,
@@ -3997,6 +4086,11 @@ async function persistProxyFailure(
     message,
     details: metadata.details || null,
   };
+  if (await mv3Effective.current().catch(() => null)) {
+    return Object.assign(createProxyFailure(code, message, metadata), {
+      proxyApply: (await mv3State.loadState()).proxyApply,
+    });
+  }
   const proxyApplyState = createProxyApplyState(
       'error',
       Object.assign({}, metadata, {error}),
@@ -4055,6 +4149,9 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
     return createPacApplyStaleResult();
   }
   const providerKey = state.currentPacProviderKey;
+  if (params.expectedRevision !== undefined && params.expectedRevision !== state.savedRevision) {
+    return createPacApplyStaleResult();
+  }
   const cache = state.cookedPacCache;
   if (!providerKey) {
     return persistProxyFailure(
@@ -4137,6 +4234,8 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
 
   const fingerprint = createPacApplyFingerprint(state);
   let latestProxyControl = control;
+  let candidate = null;
+  const refreshId = operation.workflow.effective && operation.workflow.effective.id || null;
 
   try {
     const cookedArtifact = await mv3PacArtifacts.getCookedPacArtifact({
@@ -4154,9 +4253,15 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
     if (!ifPacApplyOperationIsFresh(operation)) {
       return createPacApplyStaleResult();
     }
+    candidate = await mv3Effective.prepare(state, state.savedRevision, refreshId,
+        operation.startupRestore && Boolean(refreshId));
     await mv3ProxySettings.applyPacScript({
       cookedPacData: cookedArtifact.cookedPacData,
-      beforeSet: () => assertPacApplyIsFresh(operation, fingerprint),
+      beforeSet: async () => {
+        await assertPacApplyIsFresh(operation, fingerprint);
+        await mv3Effective.beginSwitch(candidate, refreshId, operation.startupRestore);
+        await assertPacApplyIsFresh(operation, fingerprint);
+      },
       ifCurrent: () => ifPacApplyOperationIsFresh(operation),
     });
     if (!ifPacApplyOperationIsFresh(operation)) {
@@ -4178,6 +4283,7 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
           {levelOfControl: latestProxyControl.levelOfControl},
       );
     }
+    await mv3Effective.commit(candidate, refreshId);
     const appliedState = await savePacWorkflowStatePatch(operation.workflow, {
       proxyApply: createProxyApplyState('applied', {
         providerKey,
@@ -4191,6 +4297,11 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
       return createPacApplyStaleResult();
     }
     const proxyApply = appliedState.proxyApply;
+    if (operation.workflow.effective) {
+      await mv3State.updateStateAtomically((latest) => mv3Effective.sameSaved(latest, candidate) ? {
+        pacCache: candidate.pacCache, cookedPacCache: candidate.cookedPacCache,
+      } : mv3State.ATOMIC_NO_CHANGE);
+    }
     if (!ifPacApplyOperationIsFresh(operation)) {
       return createPacApplyStaleResult();
     }
@@ -4202,8 +4313,9 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
       stale,
     };
   } catch (err) {
+    if (candidate) await mv3Effective.abortPrepared(candidate).catch(() => undefined);
     if (
-      (err && err.code === 'PAC_APPLY_STALE') ||
+      (err && ['PAC_APPLY_STALE', 'SAVED_REVISION_CHANGED'].includes(err.code)) ||
       !ifPacApplyOperationIsFresh(operation)
     ) {
       return createPacApplyStaleResult();
@@ -4213,6 +4325,12 @@ async function applyCookedPacAndPersistForOperation(params, operation) {
         'PROXY_SET_FAILED',
         'Failed to apply proxy settings.',
     );
+    if (await mv3Effective.current().catch(() => null)) {
+      return createProxyFailure(error.code, error.message, {
+        providerKey, cookedPacSha256: cache.cookedPacSha256,
+        proxyApply: (await mv3State.loadState()).proxyApply,
+      });
+    }
     const failedState = await savePacWorkflowStatePatch(operation.workflow, {
       proxyApply: createProxyApplyState('error', {
         providerKey,
@@ -4306,6 +4424,7 @@ async function persistAuthoritativeProxyClearIntent() {
     }),
     proxyHealth: mv3State.createInvalidatedProxyHealth(currentState.proxyHealth),
   }));
+  await mv3Effective.recover();
   return {
     authorization: createProxyClearAuthorization(state),
     state,

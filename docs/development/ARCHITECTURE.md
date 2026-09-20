@@ -24,9 +24,10 @@ Service worker синхронно импортирует фоновые моду
 локального состояния, IndexedDB, alarms и живого `chrome.proxy.settings`, а не
 из прежних переменных процесса.
 
-Очереди операций, debounce-карты, попытки auth и action cache живут только в
-памяти worker и исчезают при остановке. Это допустимо, если итоговое поведение
-может быть восстановлено из durable state.
+Очереди операций, debounce-карты и action cache живут только в памяти worker.
+Request-generation bindings и bounded auth attempts хранятся в
+`chrome.storage.session`: переживают остановку worker, но не browser restart.
+Effective configuration остаётся в `chrome.storage.local`.
 
 ## Состояние и атомарные обновления
 
@@ -76,6 +77,57 @@ apply или clear. `pacWorkflowGeneration` инвалидирует стары�
 успех поверх нового действия. Перед финальной записью повторяются durable и
 live-control проверки.
 
+## Saved и Effective generations
+
+`mv3State.savedRevision` — ревизия Saved provider/source, modifiers и auth-enabled
+configuration. Она изменяется при сохранении, включая замену только пароля.
+`pacModsRevision` сохраняет прежний контракт redacted credential placeholders;
+`pacWorkflowGeneration` по-прежнему инвалидирует операции, но не определяет
+Effective. UI в этой фазе не переработан.
+
+`background/effective-config.js` хранит приватный `mv3EffectiveConfigurations`:
+immutable records с отдельным UUID, Saved revision, необходимыми settings и
+credential bindings, provider/source metadata и raw/cooked artifact references.
+Обычный Save не изменяет эти записи. PAC body остаётся в IndexedDB; credential
+records не входят в RPC, diagnostics или журналы. PAC hash не является generation
+ID: два поколения с одинаковыми PAC bytes могут иметь разные пароли.
+
+Apply фиксирует точную Saved revision в начале workflow (RPC также принимает
+`expectedRevision`). Кандидат проверяется до native write. Durable journal
+`prepared` удерживает предыдущую и новую записи; `switching` записывается после
+повторной проверки Saved и proxy ownership непосредственно перед `settings.set`.
+После callback проверяются фактические PAC bytes/hash и ownership, затем durable
+Effective pointer переключается на кандидата. Clear/Direct/OFF между поколениями
+не используется. Ошибка подготовки оставляет прежний Effective; неоднозначная
+native/durable запись не подтверждается как успешная. Явный Apply может разрешить
+неоднозначность новой проверенной транзакцией.
+
+`webRequest.onBeforeRequest` ставит binding request ID → generation в общую
+очередь с promotion. Redirect сохраняет первый binding; `onAuthRequired` читает
+его, а не latest Saved. Challenge допускает только matching host/port из этой
+generation; retry budget также связан с generation. Запросы, начавшиеся внутри
+`switching`, получают запрещающий binding. Неизвестный request/endpoint не
+получает сохранённые credentials. `onCompleted`/`onErrorOccurred` удаляют binding
+и попытки; потерянный terminal event не приводит к привязке к более новой
+generation. Лимиты: 2048 request bindings и 32 retained generations. При заполнении
+request map новые bindings запрещаются до browser restart; старые продолжают
+обслуживаться. При лимите generations новый Apply отклоняется до освобождения
+записей. GC сохраняет только Effective, journal references и поколения живых
+bindings. Очистка PAC cache не удаляет используемые ими артефакты.
+
+Chrome не передаёт PAC-generation token и не объединяет proxy.settings и auth в
+native transaction. Request-start binding плюс проверка challenger — доступная
+граница согласованности; неоднозначным запросам credentials не выдаются.
+Установленные соединения и браузерный auth cache могут пережить Apply; код не
+обещает мгновенное переключение существующих TCP/QUIC connections и не требует
+page refresh. `mandatory:false` и прежние control-loss правила сохраняются.
+
+Periodic/manual provider-refresh pipeline готовит PAC из Effective user
+configuration, если она подтверждена. Pending Saved modifiers, credentials и
+provider selection не подставляются в refresh. Его cache metadata остаются
+отдельными до promotion; Saved cache pointers обновляются лишь при совпадении
+Saved с применённой configuration. Download/cook-only действия не включают proxy.
+
 ## Владение proxy settings
 
 Сохранённый статус не считается достаточным: worker перечитывает живой
@@ -89,10 +141,18 @@ Chromium не даёт атомарный compare-and-set между после�
 ### Восстановление после полного browser restart
 
 На старте worker строит план восстановления только для последнего успешно
-применённого PAC. План требует persisted applied intent, совпадения provider,
-modifier revision, provenance, content hash и актуального cooked artifact, а
-также живого состояния Chromium, которым расширение вправе управлять. Он не
-скачивает и не готовит PAC заново.
+применённого поколения. Effective record сверяется с actual browser PAC/control;
+при разрешённом восстановлении из system mode используется retained Effective,
+даже когда Saved новее. PAC заново не скачивается и не готовится.
+
+Interrupted `prepared` восстанавливает прежний matching Effective. Для
+`switching` разные PAC hashes позволяют выбрать только однозначно совпадающую
+запись. При одинаковом PAC и разных credential generations выбор невозможен:
+auth остаётся заблокированным до явного Apply. Последующая Saved revision не
+используется как доказательство. Legacy 0.0.4.0 без Effective binding допускает
+миграцию лишь с подтверждённым PAC provenance и без credential ambiguity. Если
+настроены credentials, старый PAC не доказывает, какие из них применялись:
+сохранённые секреты не отправляются до явного Apply; proxy settings не очищаются.
 
 Persisted Clear/Turn off запрещает восстановление. Новый manual Apply/Clear или
 изменение конфигурации инвалидирует старый startup plan; external controller или

@@ -82,6 +82,7 @@
     pacUpdatePeriodInMinutes: 12,
     pacWorkflowGeneration: 0,
     pacModsRevision: 0,
+    savedRevision: 0,
     pacMods: mv3PacMods.DEFAULT_PAC_MODS,
     notificationPrefs: Object.freeze({
       pacError: true,
@@ -1160,6 +1161,8 @@
           source.pacModsRevision :
           DEFAULT_STATE.pacModsRevision,
       pacMods: normalizePacMods(source.pacMods),
+      savedRevision: Number.isSafeInteger(source.savedRevision) && source.savedRevision >= 0 ?
+        source.savedRevision : 0,
       notificationPrefs: normalizeNotificationPrefs(source.notificationPrefs),
       pacDownload: normalizePacDownload(source.pacDownload),
       pacCache,
@@ -1437,6 +1440,12 @@
       );
     }
     const nextState = normalizeState(mergedState);
+    if (savedConfigurationIdentity(currentState) !== savedConfigurationIdentity(nextState)) {
+      if (currentState.savedRevision === Number.MAX_SAFE_INTEGER) {
+        throw new Error('Saved configuration revision exhausted.');
+      }
+      nextState.savedRevision = currentState.savedRevision + 1;
+    }
     await mv3Storage.set({[STORAGE_KEY]: nextState});
     return nextState;
 
@@ -1446,6 +1455,18 @@
 
     assertObject(patch, 'patch');
     return enqueueStateOperation(() => saveStatePatchNow(patch));
+
+  }
+
+  // Includes secrets; use only for internal equality, never RPC or diagnostics.
+  function savedConfigurationIdentity(state) {
+
+    return JSON.stringify({
+      provider: state.currentPacProviderKey,
+      sources: state.customPacProviders,
+      pacMods: state.pacMods,
+      authEnabled: state.proxyAuth.enabled,
+    });
 
   }
 
