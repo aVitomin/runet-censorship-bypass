@@ -5,6 +5,12 @@ Firefox production source находится в отдельной границ�
 candidate; Mozilla-подписанный пакет `0.0.4.0` опубликован и входит в
 пользовательские инструкции установки.
 
+Это равноправная поддерживаемая MV3-цель в общем tooling root, а не Chromium
+runtime с заменённым manifest. Общие пользовательские контракты и различия
+упаковки перечислены в [общей архитектуре](ARCHITECTURE.md#общие-контракты-и-упаковка).
+Единые Save / Apply и формат переноса не требуют одинаковых browser APIs,
+хранилищ или recovery-механизмов и не означают синхронизацию профилей.
+
 Чистая установка намеренно остаётся в состоянии `OFF`. Пакет содержит Firefox
 MV3 manifest, непостоянную background event page, durable activation state,
 production Apply/Clear RPC, routing adapter и declarative dataset runtime.

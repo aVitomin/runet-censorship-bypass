@@ -28,14 +28,16 @@
 | Область | Где находится | Граница |
 | --- | --- | --- |
 | Chromium MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3/` | Фоновая часть начинается в `background/service-worker.js`; локальные требования находятся в scoped `AGENTS.md`. |
-| Firefox MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-firefox-mv3/` | Фоновая часть начинается в `background/event-page.js`; отдельная архитектура описана в документации Firefox. |
-| Общий MV3-код | `extensions/chromium/runet-censorship-bypass/src/extension-mv3-common/` | Используется обоими поддерживаемыми браузерными целями. |
-| Общие статические страницы | `extensions/chromium/runet-censorship-bypass/src/extension-common/pages/lib/` | Рекурсивный Gulp glob включает всё содержимое каталога. Новый файл изменит пакет и требует проверки packaged bytes. |
+| Firefox MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-firefox-mv3/` | Фоновая часть начинается в `background/event-page.js`; target-scoped `AGENTS.md` задаёт локальные границы, архитектура — в документации Firefox. |
+| Browser-neutral модули | `extensions/chromium/runet-censorship-bypass/src/extension-mv3-common/` | Состав копируемых модулей различается по target; shared routing проверяется также тестами под Chromium. |
+| Статические ресурсы Chromium | `extensions/chromium/runet-censorship-bypass/src/extension-common/pages/lib/` | Рекурсивный Gulp glob включает всё содержимое только в Chromium. Новый файл меняет packaged bytes. |
+| Общие product icons | `extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3/icons/` | Несмотря на путь, выбранные значки используются обоими браузерами. |
 | Сборка и версии | tooling package, `gulpfile.js`, `src/templates-data.js`, manifest templates | Корневого npm-пакета нет; команды npm запускаются только с `--prefix` для tooling package. |
 | Проверки документации | `scripts/verify-docs.mjs`, `docs/release-current.json` | Проверяются навигация, локальные цели и метаданные опубликованного выпуска. |
 | Локальные инструкции | корневой и scoped `AGENTS.md`, `.agents/skills/` | Читайте только применимые инструкции; внешние helper skills вызываются явно. |
 
-Поддерживаемая ветка не собирает MV2. Историческое MV2-дерево доступно через
+Chromium и Firefox равноправны; исторические имена родительских каталогов не
+определяют ownership. Поддерживаемая ветка не собирает MV2. MV2-дерево доступно через
 Git history, frozen development branch и явно помеченные архивные документы.
 
 ## Текущая документация

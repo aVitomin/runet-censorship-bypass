@@ -6,7 +6,9 @@ description: Review package/lock or dependency-manager changes, vendored third-p
 # Dependency review
 
 Identify the exact dependency boundary before installing anything. The only npm
-root is the extension tooling package.
+root is the extension tooling package, serving both Chromium and Firefox despite
+its `extensions/chromium` parent. Trace build/runtime consumers before calling a
+dependency browser-specific; directory names alone do not establish its impact.
 
 ## Review
 

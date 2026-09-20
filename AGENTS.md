@@ -7,8 +7,9 @@ invariants here, the most specific applicable `AGENTS.md`, an applicable
 repository skill, then defaults. A request defines scope but does not silently
 waive a safety invariant. Report any forced stop or material scope expansion.
 
-Read this file once. Read a scoped `AGENTS.md` only when changing files below
-that directory, and load a skill only when its description matches the task.
+Read this file once. Before editing, read the applicable browser/scoped
+`AGENTS.md` for the changed paths; do not load unrelated scopes. Load a skill
+only when its description matches the task.
 
 ## Repository map and working boundary
 
@@ -16,16 +17,19 @@ that directory, and load a skill only when its description matches the task.
   (`$Project`). Run commands from the repository root in PowerShell and never
   run root npm install/scripts. If dependencies are missing, use
   `npm ci --prefix $Project`.
-- Maintained targets are Chromium MV3 (`src/extension-chromium-mv3`), Firefox
-  MV3 (`src/extension-firefox-mv3`), and shared runtime
-  (`src/extension-mv3-common`). MV2 is historical; use Git history or the
-  frozen development branch rather than rebuilding it on `main`.
+- Chromium MV3 (`src/extension-chromium-mv3`) and Firefox MV3
+  (`src/extension-firefox-mv3`) are equal supported targets, with browser-neutral
+  modules in `src/extension-mv3-common`. Chromium-first paths do not establish
+  ownership: inspect consumers, including Firefox's use of Chromium icons.
+  MV2 is historical; use Git history or the frozen development branch rather
+  than rebuilding it on `main`.
 - Chromium background starts at `background/service-worker.js`; Chromium UI is
   under `pages/`; Firefox starts at `background/event-page.js`.
 - Version/build authority is `src/templates-data.js`, `gulpfile.js`, and the
   maintained manifests/templates. Chromium recursively packages every file
   under `src/extension-common/pages/lib`; additions change packaged bytes.
-  Firefox uses explicit Gulp allowlists. Do not broaden package globs implicitly.
+  Shared modules have target-specific copy rules; Firefox uses explicit Gulp
+  allowlists. Do not broaden package globs or assume identical package contents.
 - For user-facing UI strings, update both `en` and `ru` locale catalogs for
   every affected browser target.
 - Build output, `dist`, `node_modules`, coverage, archives, profiles, logs,
@@ -49,6 +53,14 @@ credentials disabled unless write access is required. Never run
 
 ## Hard runtime and data invariants
 
+- Draft is UI-local; Saved may differ from immutable Effective. Save != Apply:
+  Save and configuration import write Saved only, never silently activating
+  protection.
+  Apply promotes one exact Saved revision without an implementation-driven
+  Clear/OFF/Direct interval; recovery uses proven Effective, not latest Saved.
+- Routing and credentials belong to the same Effective generation; proxy auth
+  and retry state remain request/generation bound. Save must not change active
+  credentials. Established connections/browser auth caches may outlive Apply.
 - Downloaded PAC is untrusted data: validate, hash, store, and cook it without
   extension-side `eval` or `Function`. New raw/cooked bodies belong in IndexedDB
   artifacts; normal state stores references/metadata. Keep legacy inline data
@@ -68,10 +80,11 @@ credentials disabled unless write access is required. Never run
 - Safe defaults keep provider proxies enabled, own proxies limited to own
   sites, Direct replacement off, and `noDirect` off. Refresh may update
   artifacts while control is off but must not enable control; reapply only when
-  durable identity and live ownership still match.
+  durable identity and live ownership still match. Active provider refresh uses
+  Effective user configuration, never promoting pending Saved settings.
 - Reconstruct durable behavior from storage, IndexedDB, browser proxy state,
-  and alarms. In-memory locks disappear on worker recreation. Serialize
-  whole-state writes and reread storage inside queued mutations.
+  and alarms. In-memory locks disappear on background-context recreation.
+  Serialize whole-state writes and reread storage inside queued mutations.
 
 ## Select checks once
 

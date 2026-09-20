@@ -23,7 +23,8 @@ explicit authorization.
 3. Run `release:chromium` and `release:firefox`. Verify byte-identical clean
    rebuilds, root manifests, package allowlists, checksums, and the Firefox
    reviewer-source archive. Run the current pinned Mozilla addons-linter on the
-   exact XPI.
+   exact XPI. Both targets share a tooling root, not identical package contents:
+   trace per-target Gulp copies, including shared icons stored under Chromium.
 4. Scan staged paths, package trees, and archives without printing matches.
    Reject dependencies, caches, profiles, logs, environment files, keys,
    credentials, private URLs, tests, source maps, and nested output.
