@@ -292,6 +292,8 @@
       operational: null,
       pending: false,
       providerUpdate: null,
+      providerOperation: null,
+      providerOperationFailed: false,
       revision: null,
       settings: null,
       configuration: null,
@@ -345,6 +347,7 @@
         return false;
       }
       state.pending = true;
+      state.providerOperationFailed = false;
       state.errorCode = null;
       state.notice = null;
       emit();
@@ -367,6 +370,7 @@
         return false;
       }
       state.pending = true;
+      state.providerOperationFailed = false;
       state.errorCode = null;
       emit();
       try {
@@ -392,6 +396,7 @@
       if (state.pending) {
         return false;
       }
+      state.providerOperationFailed = false;
       if (state.stale) {
         state.notice = 'REVISION_CONFLICT';
         emit();
@@ -447,6 +452,7 @@
           state.revision === null ||
           state.capabilities.privateWindowAccess !== 'GRANTED') return false;
       state.pending = true;
+      state.providerOperationFailed = false;
       state.errorCode = null;
       state.notice = null;
       const previousId = state.configuration && state.configuration.effectiveId;
@@ -485,6 +491,7 @@
         return false;
       }
       state.pending = true;
+      state.providerOperationFailed = false;
       state.errorCode = null;
       state.notice = null;
       emit();
@@ -511,6 +518,8 @@
         return false;
       }
       state.pending = true;
+      state.providerOperation = notice === 'UPDATE_INSTALLED' ? 'APPLYING' : 'CHECKING';
+      state.providerOperationFailed = false;
       state.errorCode = null;
       state.notice = null;
       emit();
@@ -520,6 +529,7 @@
         state.notice = notice;
         return true;
       } catch (error) {
+        state.providerOperationFailed = true;
         state.errorCode = Ui.safeErrorCode(error);
         try {
           // An active install can discover permission/control loss. Refresh the
@@ -530,6 +540,7 @@
         }
         return false;
       } finally {
+        state.providerOperation = null;
         state.pending = false;
         emit();
       }
@@ -548,6 +559,7 @@
     function installProviderUpdate() {
 
       if (!state.editable || !state.providerUpdate || !state.providerUpdate.trustConfigured) {
+        state.providerOperationFailed = false;
         state.errorCode = 'SETTINGS_READ_ONLY';
         emit();
         return Promise.resolve(false);
@@ -582,6 +594,54 @@
       save,
       snapshot,
     });
+
+  }
+
+  function providerUpdateView(state) {
+
+    const update = state.providerUpdate;
+    const view = {label: 'providerLifecycleUnknown', help: 'providerLifecycleUnknownHelp'};
+    if (!update) return view;
+    if (!update.trustConfigured) {
+      return {label: 'providerUpdateStatusUnavailable', help: 'providerUpdateError_TRUST_NOT_CONFIGURED'};
+    }
+    if (state.providerOperation) {
+      return {label: state.providerOperation === 'APPLYING' ? 'providerLifecycleApplying' : 'providerLifecycleChecking',
+        help: 'providerLifecycleBusyHelp'};
+    }
+    if (state.providerOperationFailed || update.status === 'CHECK_FAILED' || update.lastCheckStatus === 'FAILED') {
+      return {label: 'providerLifecycleFailed', help: update.errorCategory ?
+        `providerUpdateError_${update.errorCategory}` : 'providerLifecyclePreparationFailed'};
+    }
+    if (update.status === 'CHECKING') {
+      return {label: 'providerLifecycleChecking', help: 'providerLifecycleBusyHelp'};
+    }
+    if (state.configuration && state.configuration.blocked) {
+      return {label: 'unifiedBlocked', help: 'providerLifecycleControlHelp'};
+    }
+    if (update.status === 'UPDATE_AVAILABLE') {
+      return {label: 'providerLifecyclePrepared', help: 'providerLifecyclePreparedHelp'};
+    }
+    if (update.status === 'UPDATED') {
+      return state.configuration && state.configuration.active ?
+        {label: 'providerLifecycleApplied', help: 'providerLifecycleAppliedHelp'} :
+        {label: 'providerLifecycleAppliedOff', help: 'providerLifecycleAppliedOffHelp'};
+    }
+    if (update.status === 'UP_TO_DATE') {
+      return {label: 'providerLifecycleVerified', help: 'providerLifecycleVerifiedHelp'};
+    }
+    return view;
+
+  }
+
+  function renderProviderUpdateStatus(parent, state, t) {
+
+    const view = providerUpdateView(state);
+    const status = Ui.appendText(parent, 'p', t(view.label), 'status');
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    Ui.appendText(parent, 'p', t(view.help), 'muted');
+    return status;
 
   }
 
@@ -758,21 +818,6 @@
         UNKNOWN: 'healthStatusUnknown',
       };
       return t(keys[health.status] || keys.UNKNOWN);
-
-    }
-
-    function providerUpdateLabel(update) {
-
-      const keys = {
-        CHECK_FAILED: 'providerUpdateStatusFailed',
-        CHECKING: 'providerUpdateStatusChecking',
-        IDLE: 'providerUpdateStatusIdle',
-        NOT_CONFIGURED: 'providerUpdateStatusUnavailable',
-        UPDATED: 'providerUpdateStatusUpdated',
-        UPDATE_AVAILABLE: 'providerUpdateStatusAvailable',
-        UP_TO_DATE: 'providerUpdateStatusCurrent',
-      };
-      return t(keys[update.status] || keys.CHECK_FAILED);
 
     }
 
@@ -1273,33 +1318,35 @@
       const updateCard = Ui.append(maintenance, 'article', 'subsection');
       const updateHeader = Ui.append(updateCard, 'div', 'section-row');
       Ui.appendText(updateHeader, 'h3', t('providerUpdateTitle'));
-      Ui.appendText(
-          updateHeader,
-          'span',
-          providerUpdateLabel(update),
-          `pill ${update.status === 'UP_TO_DATE' ||
-            update.status === 'UPDATED' ? 'success' :
-            update.status === 'CHECK_FAILED' ? 'error' : 'warning'}`,
-      );
+      renderProviderUpdateStatus(updateCard, state, t);
+      Ui.appendText(updateCard, 'p', t('providerLifecycleHelp'), 'muted');
       Ui.appendText(
           updateCard, 'p', t('providerUpdateHelp'), 'muted',
       );
       const updateFacts = Ui.append(updateCard, 'dl', 'overview-facts');
+      definition(updateFacts, 'providerLifecycleName', 'Anticensority');
       definition(
           updateFacts,
           'providerUpdateCurrentVersion',
-          update.currentDatasetVersion,
+          update.currentDatasetVersion || t('providerLifecycleUnknown'),
       );
       definition(
           updateFacts,
           'providerUpdateAvailableVersion',
-          update.stagedDatasetVersion,
+          update.stagedDatasetVersion || t('providerLifecycleUnknown'),
       );
       definition(
           updateFacts,
           'providerUpdateLastCheck',
-          formatTime(update.lastCheckAt),
+          update.lastCheckAt ? formatTime(update.lastCheckAt) : t('providerLifecycleUnknown'),
       );
+      const lastCheckKeys = {
+        NEVER: 'providerLifecycleUnknown', CHECKING: 'providerLifecycleChecking',
+        STAGED: 'providerLifecyclePrepared', UNCHANGED: 'providerLifecycleVerified',
+        INSTALLED: 'providerLifecycleAppliedOff', FAILED: 'providerLifecycleFailed',
+      };
+      definition(updateFacts, 'providerLifecycleLastResult',
+          t(lastCheckKeys[update.lastCheckStatus] || 'providerLifecycleUnknown'));
       if (update.errorCategory) {
         definition(
             updateFacts,
@@ -1529,7 +1576,8 @@
         statusKey = 'unifiedApplyFailed';
         statusClass = 'status warning';
       } else if (localError || state.errorCode) {
-        statusKey = userErrorKey(localError || state.errorCode);
+        statusKey = !localError && state.providerOperationFailed ?
+          providerUpdateView(state).help : userErrorKey(localError || state.errorCode);
         statusClass = 'status error';
       } else if (state.notice === 'REVISION_CONFLICT') {
         statusKey = 'unifiedConflict';
@@ -1541,10 +1589,10 @@
         statusKey = 'optionsApplied';
         statusClass = 'status success';
       } else if (state.notice === 'UPDATE_CHECKED') {
-        statusKey = 'providerUpdateChecked';
+        statusKey = providerUpdateView(state).help;
         statusClass = 'status success';
       } else if (state.notice === 'UPDATE_INSTALLED') {
-        statusKey = 'providerUpdateInstalled';
+        statusKey = providerUpdateView(state).help;
         statusClass = 'status success';
       } else if (!state.editable) {
         statusKey = 'optionsReadOnlyShort';
@@ -1707,6 +1755,8 @@
     editableFromCapabilities,
     mount,
     parseRuleLines,
+    providerUpdateView,
+    renderProviderUpdateStatus,
     ruleRowsFromRules,
     rulesFromRuleRows,
     userErrorKey,

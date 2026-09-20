@@ -173,6 +173,11 @@ function fakeParent() {
     createElement(tagName) {
 
       return {
+        setAttribute(name, value) {
+
+          this[name] = value;
+
+        },
         addEventListener(type, listener) {
 
           this.listeners[type] = listener;
@@ -199,6 +204,87 @@ function fakeParent() {
 }
 
 describe('Firefox production UI controllers', function() {
+  it('renders confirmed provider phases in RU/EN without internal data or connectivity claims', function() {
+
+    const cases = [
+      [{status: 'CHECKING'}, {}, 'providerLifecycleChecking'],
+      [{status: 'UP_TO_DATE'}, {}, 'providerLifecycleVerified'],
+      [{status: 'UPDATE_AVAILABLE', updateAvailable: true}, {}, 'providerLifecyclePrepared'],
+      [{status: 'UPDATED'}, {configuration: {active: true}}, 'providerLifecycleApplied'],
+      [{status: 'UPDATED'}, {configuration: {active: false}}, 'providerLifecycleAppliedOff'],
+      [{status: 'UPDATED'}, {configuration: {active: false, blocked: true}}, 'unifiedBlocked'],
+      [{status: 'CHECK_FAILED', errorCategory: 'AUTHENTICATION_FAILED'}, {}, 'providerLifecycleFailed'],
+      [{status: 'IDLE'}, {providerOperation: 'APPLYING'}, 'providerLifecycleApplying'],
+      [{status: 'NOT_CONFIGURED', trustConfigured: false}, {}, 'providerUpdateStatusUnavailable'],
+    ];
+    for (const language of ['en', 'ru']) {
+      const catalog = JSON.parse(Fs.readFileSync(
+          Path.join(sourceRoot, '_locales', language, 'messages.json'), 'utf8',
+      ));
+      for (const [update, local, label] of cases) {
+        const parent = fakeParent();
+        const providerUpdate = Options.validateProviderUpdateStatus(providerUpdateResult(
+            Object.assign({trustConfigured: true}, update),
+        ));
+        const state = Object.assign({providerUpdate}, local,
+            {internalHash: 'secret-hash', generation: 'private-generation'});
+        const status = Options.renderProviderUpdateStatus(parent, state, (key) => {
+          Assert.ok(catalog[key], key);
+          return catalog[key].message;
+        });
+        Assert.strictEqual(status.textContent, catalog[label].message);
+        Assert.strictEqual(status['aria-live'], 'polite');
+        const text = parent.children.map((node) => node.textContent).join(' ');
+        Assert.doesNotMatch(text, /secret-hash|private-generation|journal|cooking|promotion/i);
+        Assert.doesNotMatch(status.textContent, /healthy|connected|anonymous/i);
+        if (label === 'providerLifecycleAppliedOff') {
+          Assert.match(text, language === 'en' ? /Protection remains off/ : /Защита остаётся выключенной/);
+        }
+        if (label === 'unifiedBlocked') {
+          Assert.doesNotMatch(text, /Protection remains off|Защита остаётся выключенной/);
+        }
+      }
+    }
+
+  });
+
+  it('shows provider progress for the duration of the real UI call and preserves Draft', async function() {
+
+    const waiting = deferred();
+    const calls = [];
+    const controller = optionsController({rpc: {async call(message) {
+      calls.push(message.type);
+      if (message.type === 'firefox.capabilities.get') return capabilities();
+      if (message.type === 'firefox.settings.get') return settingsResult();
+      if (message.type === 'firefox.operational.get') return operationalResult();
+      if (message.type === 'firefox.provider.update.install') return waiting.promise;
+      return providerUpdateResult({trustConfigured: true, status: 'UPDATE_AVAILABLE', updateAvailable: true});
+    }}});
+    await controller.load();
+    controller.edit();
+    const installing = controller.installProviderUpdate();
+    Assert.strictEqual(Options.providerUpdateView(controller.snapshot()).label, 'providerLifecycleApplying');
+    waiting.resolve({status: 'INSTALLED'});
+    await installing;
+    Assert.strictEqual(controller.snapshot().providerOperation, null);
+    Assert.strictEqual(controller.snapshot().dirty, true);
+    Assert.ok(!calls.includes('firefox.activation.apply'));
+    Assert.ok(!calls.includes('firefox.settings.replace'));
+
+  });
+
+  it('keeps provider verification and preparation failures distinct without displaying exceptions', function() {
+
+    for (const category of ['AUTHENTICATION_FAILED', 'DATASET_REJECTED', 'TRUST_NOT_CONFIGURED']) {
+      const state = {providerUpdate: providerUpdateResult({trustConfigured: true,
+        status: 'CHECK_FAILED', errorCategory: category})};
+      Assert.strictEqual(Options.providerUpdateView(state).help, `providerUpdateError_${category}`);
+    }
+    const state = {providerOperationFailed: true, errorCode: 'UI_RPC_FAILED',
+      providerUpdate: providerUpdateResult({trustConfigured: true, status: 'UPDATE_AVAILABLE'})};
+    Assert.strictEqual(Options.providerUpdateView(state).help, 'providerLifecyclePreparationFailed');
+
+  });
   it('round-trips existing rule buckets, overlaps and legacy patterns without normalization', function() {
 
     const original = {direct: ['exact.example', '*.example.com', '*legacy.example'],
