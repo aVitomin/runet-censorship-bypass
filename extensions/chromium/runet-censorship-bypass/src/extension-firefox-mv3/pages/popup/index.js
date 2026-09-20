@@ -176,6 +176,8 @@
       pending: false,
       site: null,
       tabUrl: '',
+      configuration: null,
+      notice: null,
     };
 
     function snapshot() {
@@ -203,10 +205,12 @@
         rpc.call({type: 'firefox.capabilities.get'}),
         rpc.call({type: 'firefox.site.get', tabUrl}),
         rpc.call({type: 'firefox.operational.get'}),
+        rpc.call({type: 'firefox.configuration.get'}),
       ]);
       state.capabilities = Ui.validateCapabilities(results[0]);
       state.site = validateSiteState(results[1]);
       state.operational = Ui.validateOperationalStatus(results[2]);
+      state.configuration = Ui.validateConfiguration(results[3]);
       state.tabUrl = tabUrl;
 
     }
@@ -247,6 +251,7 @@
         state.capabilities = Ui.validateCapabilities(await rpc.call({
           type: 'firefox.capabilities.get',
         }));
+        state.configuration = Ui.validateConfiguration(await rpc.call({type: 'firefox.configuration.get'}));
         return true;
       } catch (error) {
         state.errorCode = Ui.safeErrorCode(error);
@@ -259,29 +264,40 @@
 
     }
 
-    async function operate(kind, draft = null) {
+    async function operate(kind, draft = null, applyAll = false) {
 
-      if (state.pending) {
+      if (state.pending || kind === 'ENABLE' && !state.configuration) {
         return false;
       }
       state = Object.assign({}, state, {
-        errorCode: null, operation: kind, pending: true,
+        errorCode: null, notice: null, operation: kind, pending: true,
       });
       emit();
       try {
-        if (kind === 'ENABLE' && isDraftDirty(state.site, draft)) {
-          state.site = validateSiteState(await rpc.call({
-            type: 'firefox.site.replace',
+        if (kind === 'ENABLE' && state.site.target.controllable) {
+          const result = await rpc.call({
+            type: 'firefox.site.apply',
             tabUrl: state.tabUrl,
-            expectedRevision: state.site.revision,
-            mode: draft.mode,
-            scope: draft.scope,
-          }));
+            expectedRevision: state.configuration.savedRevision,
+            expectedEffectiveId: state.configuration.effectiveId,
+            mode: (draft || state.site.route).mode,
+            scope: (draft || state.site.route).scope,
+            applyAll,
+          });
+          await readAll();
+          if (!result.applied) {
+            state.errorCode = result.errorCode;
+            state.notice = result.previousActive ? 'SITE_SAVED_NOT_APPLIED' : null;
+            return false;
+          }
+        } else {
+          const type = kind === 'ENABLE' ?
+            'firefox.activation.apply' : 'firefox.activation.clear';
+          await rpc.call(kind === 'ENABLE' ?
+            {type, expectedRevision: state.configuration.savedRevision} : {type});
+          await readAll();
         }
-        const type = kind === 'ENABLE' ?
-          'firefox.activation.apply' : 'firefox.activation.clear';
-        await rpc.call({type});
-        await readAll();
+        state.notice = 'APPLIED';
         return true;
       } catch (error) {
         state.errorCode = Ui.safeErrorCode(error);
@@ -332,7 +348,7 @@
     }
 
     return Object.freeze({
-      apply: (draft) => operate('ENABLE', draft),
+      apply: (draft, applyAll) => operate('ENABLE', draft, applyAll),
       checkHealth,
       checkPrivateAccess,
       clear: () => operate('DISABLE'),
@@ -424,7 +440,7 @@
         );
         return;
       }
-      const editable = view.kind === 'OFF' && !state.pending;
+      const editable = ['OFF', 'ACTIVE', 'RECOVERED'].includes(view.kind) && !state.pending;
       const fieldset = Ui.append(card, 'fieldset', 'route-fieldset');
       const legend = Ui.appendText(
           fieldset, 'legend', t('popupSiteModeGroup', [site.target.host]),
@@ -506,13 +522,9 @@
             card, 'p', t('popupRulePreview', [pattern]), 'pattern-preview',
         );
       }
-      if (view.kind !== 'OFF') {
+      if (isDraftDirty(site, draft)) {
         Ui.appendText(
-            card, 'p', t('popupSiteEditingRequiresOff'), 'muted',
-        );
-      } else if (isDraftDirty(site, draft)) {
-        Ui.appendText(
-            card, 'span', t('popupNotApplied'), 'pill warning',
+            card, 'p', t('unifiedTransition', [t(`popupMode${site.route.mode}`), t(`popupMode${draft.mode}`)]), 'status warning',
         );
       }
 
@@ -521,7 +533,7 @@
     function render(state) {
 
       if (state.site && state.site.target.controllable &&
-          renderedRevision !== state.site.revision) {
+          (!draft || state.notice === 'APPLIED' && renderedRevision !== state.site.revision)) {
         draft = {
           mode: state.site.route.mode,
           scope: state.site.route.scope,
@@ -559,12 +571,16 @@
       const view = presentation(state.capabilities);
       const card = Ui.append(root, 'section', 'card control-card');
       const statusRow = Ui.append(card, 'div', 'status-row');
-      Ui.appendText(statusRow, 'h2', t(view.titleKey));
+      const configuration = state.configuration || {};
+      Ui.appendText(statusRow, 'h2', t(state.operation === 'ENABLE' ? 'unifiedApplying' :
+        configuration.blocked ? 'unifiedBlocked' : configuration.active ?
+          configuration.pending ? 'unifiedPending' : 'unifiedActive' : view.titleKey));
       Ui.appendText(
           statusRow, 'span', t(`popupPill${view.kind}`),
           `pill ${view.tone}`,
       );
       Ui.appendText(card, 'p', t(view.helpKey), 'muted');
+      if (state.operation === 'ENABLE' && configuration.active) Ui.appendText(card, 'p', t('unifiedPreparing'), 'muted');
       Ui.renderPrivateAccessOnboarding(card, state.capabilities, {
         checkAgain: () => controller.checkPrivateAccess(),
         pending: state.pending,
@@ -572,25 +588,39 @@
       });
       if (state.errorCode) {
         const error = Ui.appendText(
-            card, 'p', t(userErrorKey(state.errorCode)),
+            card, 'p', t(state.notice === 'SITE_SAVED_NOT_APPLIED' ? 'unifiedSiteSaved' :
+              ['SAVED_REVISION_CHANGED', 'SETTINGS_REVISION_CONFLICT', 'PENDING_CONFIRMATION_REQUIRED'].includes(state.errorCode) ?
+                'unifiedPopupConflict' : userErrorKey(state.errorCode)),
             'status error message',
         );
         error.setAttribute('role', 'alert');
       }
       const actions = Ui.append(card, 'div', 'actions');
-      if (view.action !== 'NONE') {
+      if (['OFF', 'ACTIVE', 'RECOVERED'].includes(view.kind)) {
+        if (configuration.pending) {
+          Ui.appendText(card, 'p', t('unifiedPopupPending'), 'status warning');
+          const review = Ui.append(actions, 'button', 'primary');
+          review.type = 'button';
+          review.textContent = t('unifiedReview');
+          review.addEventListener('click', () => openSettings());
+        }
         const primary = Ui.append(actions, 'button', 'primary');
         primary.type = 'button';
-        primary.textContent = t(view.action === 'ENABLE' ?
-          'popupApplyChanges' : 'popupTurnOff');
+        primary.textContent = t(configuration.pending ? 'unifiedApplyAll' :
+          configuration.active ? 'unifiedApply' : 'unifiedApplyOn');
+        if (configuration.pending) primary.className = '';
         const proxyUnavailable = draft && draft.mode === 'PROXY' &&
           !state.site.proxyCandidateAvailable;
         primary.disabled = state.pending ||
-          (view.action === 'ENABLE' && (
-            !activationAllowed(state.capabilities) ||
-            proxyUnavailable));
-        primary.addEventListener('click', () => view.action === 'ENABLE' ?
-          controller.apply(draft) : controller.clear());
+          !activationAllowed(state.capabilities) || proxyUnavailable;
+        primary.addEventListener('click', () => controller.apply(draft, configuration.pending === true));
+      }
+      if (view.action === 'DISABLE') {
+        const clear = Ui.append(actions, 'button');
+        clear.type = 'button';
+        clear.textContent = t('popupTurnOff');
+        clear.disabled = state.pending;
+        clear.addEventListener('click', () => controller.clear());
       }
       renderRoute(root, state, view);
       const facts = Ui.append(root, 'section', 'card facts-card');

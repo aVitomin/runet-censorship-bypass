@@ -211,6 +211,34 @@
 
   }
 
+  // A presentation adapter only: keep bucket order, overlaps, and legacy
+  // patterns intact. In particular, an allowlist entry is not an Auto override.
+  function ruleRowsFromRules(rules) {
+
+    return RULE_KEYS.flatMap((bucket) => rules[bucket].map((pattern) => ({
+      route: bucket === 'whitelist' ? 'WHITELIST' : bucket.toUpperCase(),
+      scope: pattern.startsWith('*.') ? 'DOMAIN' : pattern.includes('*') ? 'PATTERN' : 'HOST',
+      host: pattern.startsWith('*.') ? pattern.slice(2) : pattern,
+    })));
+
+  }
+
+  function rulesFromRuleRows(rows) {
+
+    const rules = {direct: [], proxy: [], whitelist: []};
+    for (const row of rows) {
+      if (!['AUTO', 'DIRECT', 'PROXY', 'WHITELIST'].includes(row.route) ||
+          !['HOST', 'DOMAIN', 'PATTERN'].includes(row.scope) || typeof row.host !== 'string') {
+        throw Ui.rpcError('UI_VALIDATION_FAILED');
+      }
+      if (row.route === 'AUTO') continue;
+      const pattern = row.scope === 'DOMAIN' ? `*.${row.host}` : row.host;
+      rules[row.route.toLowerCase()].push(pattern);
+    }
+    return rules;
+
+  }
+
   function credentialPayload(existing, action, username, password) {
 
     if (action === 'NONE') {
@@ -265,6 +293,10 @@
       providerUpdate: null,
       revision: null,
       settings: null,
+      configuration: null,
+      dirty: false,
+      stale: false,
+      applying: false,
     };
 
     function snapshot() {
@@ -286,6 +318,7 @@
         rpc.call({type: 'firefox.settings.get'}),
         rpc.call({type: 'firefox.operational.get'}),
         rpc.call({type: 'firefox.provider.update.get'}),
+        rpc.call({type: 'firefox.configuration.get'}),
       ]);
       const capabilities = Ui.validateCapabilities(results[0]);
       const settings = validateSettingsResult(results[1]);
@@ -294,8 +327,14 @@
       state.editable = editableFromCapabilities(capabilities);
       state.operational = operational;
       state.providerUpdate = validateProviderUpdateStatus(results[3]);
-      state.revision = settings.revision;
-      state.settings = settings.settings;
+      state.configuration = Ui.validateConfiguration(results[4]);
+      if (state.dirty) {
+        state.stale = state.revision !== settings.revision;
+      } else {
+        state.revision = settings.revision;
+        state.settings = settings.settings;
+        state.stale = false;
+      }
 
     }
 
@@ -306,6 +345,7 @@
       }
       state.pending = true;
       state.errorCode = null;
+      state.notice = null;
       emit();
       try {
         await loadNow();
@@ -334,6 +374,7 @@
         }));
         state.capabilities = capabilities;
         state.editable = editableFromCapabilities(capabilities);
+        state.configuration = Ui.validateConfiguration(await rpc.call({type: 'firefox.configuration.get'}));
         return true;
       } catch (error) {
         state.errorCode = Ui.safeErrorCode(error);
@@ -348,6 +389,11 @@
     async function save(nextSettings) {
 
       if (state.pending) {
+        return false;
+      }
+      if (state.stale) {
+        state.notice = 'REVISION_CONFLICT';
+        emit();
         return false;
       }
       if (!state.editable || state.revision === null) {
@@ -367,11 +413,16 @@
         }));
         state.revision = replaced.revision;
         state.settings = replaced.settings;
+        state.dirty = false;
+        state.stale = false;
+        await loadNow();
         state.notice = 'SAVED';
         return true;
       } catch (error) {
         const code = Ui.safeErrorCode(error);
         if (CONFLICT_CODES.has(code)) {
+          state.dirty = true;
+          state.stale = true;
           try {
             await loadNow();
             state.notice = 'REVISION_CONFLICT';
@@ -391,11 +442,15 @@
 
     async function applySaved() {
 
-      if (state.pending || !state.editable || state.revision === null ||
+      if (state.pending || state.dirty || state.stale || !state.editable ||
+          state.revision === null ||
           state.capabilities.privateWindowAccess !== 'GRANTED') return false;
       state.pending = true;
       state.errorCode = null;
       state.notice = null;
+      const previousId = state.configuration && state.configuration.effectiveId;
+      const wasActive = state.configuration && state.configuration.active;
+      state.applying = true;
       emit();
       try {
         await rpc.call({
@@ -408,11 +463,15 @@
         state.errorCode = Ui.safeErrorCode(error);
         try {
           await loadNow();
+          if (wasActive && state.configuration.active &&
+              state.configuration.effectiveId === previousId &&
+              state.errorCode !== 'SAVED_REVISION_CHANGED') state.notice = 'APPLY_FAILED_SAFE';
         } catch (_reloadError) {
           // Retain the original sanitized activation error.
         }
         return false;
       } finally {
+        state.applying = false;
         state.pending = false;
         emit();
       }
@@ -462,10 +521,9 @@
       } catch (error) {
         state.errorCode = Ui.safeErrorCode(error);
         try {
-          const status = await rpc.call({
-            type: 'firefox.provider.update.get',
-          });
-          state.providerUpdate = validateProviderUpdateStatus(status);
+          // An active install can discover permission/control loss. Refresh the
+          // authoritative activation status without replacing a local Draft.
+          await loadNow();
         } catch (_statusError) {
           // Preserve the sanitized operation error as the primary result.
         }
@@ -488,7 +546,7 @@
 
     function installProviderUpdate() {
 
-      if (!state.editable || state.capabilities.runtimeState !== 'OFF') {
+      if (!state.editable || !state.providerUpdate || !state.providerUpdate.trustConfigured) {
         state.errorCode = 'SETTINGS_READ_ONLY';
         emit();
         return Promise.resolve(false);
@@ -501,6 +559,19 @@
     }
 
     return Object.freeze({
+      edit(dirty = true) {
+
+        state.dirty = dirty;
+
+      },
+      discard() {
+
+        if (state.pending) return Promise.resolve(false);
+        state.dirty = false;
+        state.stale = false;
+        return load();
+
+      },
       applySaved,
       checkHealth,
       checkPrivateAccess,
@@ -515,7 +586,7 @@
 
   function userErrorKey(code) {
 
-    if (code === 'SAVED_REVISION_CHANGED') return 'optionsRevisionConflict';
+    if (code === 'SAVED_REVISION_CHANGED') return 'unifiedConflict';
     if (code === 'PRIVATE_ACCESS_REQUIRED') return 'popupErrorPrivateAccess';
     if (code === 'PRIVATE_ACCESS_CHECK_FAILED') return 'popupErrorPrivateAccessCheck';
     if (code === 'SETTINGS_READ_ONLY' ||
@@ -550,6 +621,9 @@
     let draft = null;
     let renderedRevision = null;
     let localError = null;
+    let draftFields = null;
+    let baselineFields = null;
+    let ruleRows = [];
     const controller = createController({
       rpc: Ui.createRpc(browserApi),
       changed: render,
@@ -587,15 +661,66 @@
 
     }
 
-    function textarea(parent, labelKey, name, values) {
+    function validateRuleFields(parent) {
 
-      const label = Ui.append(parent, 'label', 'field');
-      Ui.appendText(label, 'span', t(labelKey));
-      const input = Ui.append(label, 'textarea');
-      input.name = name;
-      input.value = values.join('\n');
-      input.placeholder = t('optionsRulesPlaceholder');
-      return input;
+      for (const row of parent.querySelectorAll('[data-rule]')) {
+        const host = row.querySelector('[name="ruleHost"]');
+        const scope = row.querySelector('[name="ruleScope"]');
+        const route = row.querySelector('[name="ruleRoute"]');
+        host.required = route.value !== 'AUTO';
+        host.setCustomValidity(host.required && scope.value !== 'PATTERN' &&
+          host.value.includes('*') ? t('rulesHostError') : '');
+      }
+
+    }
+
+    function renderRuleList(parent) {
+
+      Ui.appendText(parent, 'p', t('rulesEditorHelp'), 'muted');
+      Ui.appendText(parent, 'p', t('rulesAllowlistHelp'), 'technical-note');
+      const add = Ui.append(parent, 'button', 'primary');
+      add.type = 'button';
+      add.dataset.action = 'rule-add';
+      add.textContent = t('rulesAdd');
+      const list = Ui.append(parent, 'div', 'rule-list');
+      if (!ruleRows.length) Ui.appendText(list, 'p', t('rulesEmpty'), 'muted');
+      ruleRows.forEach((rule, index) => {
+        const row = Ui.append(list, 'article', 'rule-row');
+        row.dataset.rule = String(index);
+        const host = field(row, 'rulesHost', 'ruleHost', rule.host);
+        host.required = rule.route !== 'AUTO';
+        host.placeholder = 'example.com';
+        const select = (key, name, value, choices) => {
+          const label = Ui.append(row, 'label', 'field');
+          Ui.appendText(label, 'span', t(key));
+          const input = Ui.append(label, 'select');
+          input.name = name;
+          for (const [choice, message] of choices) {
+            const option = Ui.append(input, 'option');
+            option.value = choice;
+            option.textContent = t(message);
+          }
+          input.value = value;
+          return input;
+        };
+        const scope = select('rulesScope', 'ruleScope', rule.scope, [
+          ['HOST', 'rulesScopeHost'], ['DOMAIN', 'rulesScopeDomain'],
+          ...(rule.scope === 'PATTERN' ? [['PATTERN', 'rulesScopePattern']] : []),
+        ]);
+        const route = select('rulesRoute', 'ruleRoute', rule.route, [
+          ['AUTO', 'rulesAuto'], ['PROXY', 'popupModePROXY'], ['DIRECT', 'popupModeDIRECT'],
+          ['WHITELIST', 'rulesWhitelist'],
+        ]);
+        const validateHost = () => validateRuleFields(parent);
+        host.addEventListener('input', validateHost);
+        scope.addEventListener('change', validateHost);
+        route.addEventListener('change', validateHost);
+        const remove = Ui.append(row, 'button');
+        remove.type = 'button';
+        remove.dataset.action = 'rule-remove';
+        remove.dataset.index = String(index);
+        remove.textContent = t('rulesDelete');
+      });
 
     }
 
@@ -872,11 +997,12 @@
     function collect(form) {
 
       const next = Ui.clone(draft);
-      next.rules = {
-        direct: parseRuleLines(form.elements.directRules.value),
-        proxy: parseRuleLines(form.elements.proxyRules.value),
-        whitelist: parseRuleLines(form.elements.whitelistRules.value),
-      };
+      ruleRows = Array.from(form.querySelectorAll('[data-rule]')).map((row) => ({
+        host: row.querySelector('[name="ruleHost"]').value,
+        scope: row.querySelector('[name="ruleScope"]').value,
+        route: row.querySelector('[name="ruleRoute"]').value,
+      }));
+      next.rules = rulesFromRuleRows(ruleRows);
       for (const key of [
         'noDirect',
         'ownProxiesOnlyForOwnSites',
@@ -967,11 +1093,17 @@
 
     }
 
-    function render(state) {
+    function render(state, preserveFields = true) {
 
+      const oldForm = document.getElementById('settings-form');
+      const focused = oldForm && document.activeElement;
+      const focusedIndex = focused && Array.from(oldForm.elements).indexOf(focused);
+      if (preserveFields && state.dirty && oldForm) draftFields = formValues(oldForm);
       if (state.settings && renderedRevision !== state.revision) {
         draft = Ui.clone(state.settings);
+        ruleRows = ruleRowsFromRules(draft.rules);
         renderedRevision = state.revision;
+        if (!state.dirty) draftFields = null;
       }
       Ui.clear(root);
       root.setAttribute('aria-busy', state.pending ? 'true' : 'false');
@@ -1011,6 +1143,11 @@
             t('optionsReadOnlyHelp'),
             'status warning read-only',
         );
+      }
+      if (state.configuration && state.configuration.blocked) {
+        Ui.appendText(content, 'p', t(state.configuration.reason === 'PRIVATE_ACCESS_REQUIRED' ?
+          'popupErrorPrivateAccess' : /CONTROL/.test(state.configuration.reason || '') ?
+            'unifiedControlLost' : 'unifiedUnproven'), 'status warning');
       }
       const form = Ui.append(content, 'form');
       form.id = 'settings-form';
@@ -1078,13 +1215,7 @@
       Ui.appendText(rules, 'p', t('optionsSectionEyebrow'), 'eyebrow');
       Ui.appendText(rules, 'h2', t('optionsRulesTitle'));
       Ui.appendText(rules, 'p', t('optionsRulesHelp'), 'muted');
-      const ruleGrid = Ui.append(rules, 'div', 'grid');
-      textarea(ruleGrid, 'optionsDirectRules', 'directRules',
-          draft.rules.direct);
-      textarea(ruleGrid, 'optionsProxyRules', 'proxyRules',
-          draft.rules.proxy);
-      textarea(ruleGrid, 'optionsWhitelistRules', 'whitelistRules',
-          draft.rules.whitelist);
+      renderRuleList(rules);
 
       const own = Ui.append(form, 'section', 'card section');
       own.id = 'proxy-connections';
@@ -1167,7 +1298,7 @@
       installUpdate.type = 'button';
       installUpdate.dataset.operational = 'true';
       installUpdate.textContent = t('providerUpdateInstall');
-      installUpdate.disabled = state.pending || !state.editable ||
+      installUpdate.disabled = state.pending || !state.editable || !update.trustConfigured ||
         !update.updateAvailable;
       installUpdate.addEventListener('click', () =>
         controller.installProviderUpdate());
@@ -1175,10 +1306,11 @@
         Ui.appendText(
             updateCard,
             'p',
-            t('providerUpdateRequiresOff'),
+            t('providerUpdateActionRequired'),
             'status warning',
         );
       }
+      Ui.appendText(updateCard, 'p', t('providerUpdateActiveHelp'), 'muted');
       const health = state.operational.health;
       const healthCard = Ui.append(maintenance, 'article', 'subsection');
       const healthHeader = Ui.append(healthCard, 'div', 'section-row');
@@ -1351,35 +1483,38 @@
       );
 
       const actions = Ui.append(form, 'div', 'form-actions');
+      actions.setAttribute('aria-label', t('unifiedActions'));
       const save = Ui.append(actions, 'button', 'primary');
       save.type = 'submit';
       save.textContent = t('actionSave');
       const apply = Ui.append(actions, 'button');
       apply.type = 'button';
-      apply.textContent = t('optionsApplySaved');
+      apply.textContent = t('unifiedApply');
       apply.addEventListener('click', () => {
-        try {
-          draft = collect(form);
-          controller.applySaved();
-        } catch (_error) {
-          localError = 'UI_VALIDATION_FAILED';
-          render(controller.snapshot());
-        }
+        controller.applySaved();
       });
       const reload = Ui.append(actions, 'button');
       reload.type = 'button';
-      reload.textContent = t('actionReload');
-      reload.addEventListener('click', () => controller.load());
+      reload.textContent = t('unifiedDiscard');
+      reload.addEventListener('click', () => {
+        draftFields = null;
+        renderedRevision = null;
+        localError = null;
+        controller.discard();
+      });
       let statusKey = 'optionsReady';
       let statusClass = 'status';
-      if (localError || state.errorCode) {
+      if (state.notice === 'APPLY_FAILED_SAFE') {
+        statusKey = 'unifiedApplyFailed';
+        statusClass = 'status warning';
+      } else if (localError || state.errorCode) {
         statusKey = userErrorKey(localError || state.errorCode);
         statusClass = 'status error';
       } else if (state.notice === 'REVISION_CONFLICT') {
-        statusKey = 'optionsRevisionConflict';
+        statusKey = 'unifiedConflict';
         statusClass = 'status warning';
       } else if (state.notice === 'SAVED') {
-        statusKey = 'optionsSaved';
+        statusKey = state.configuration && state.configuration.active ? 'unifiedSavedActive' : 'optionsSaved';
         statusClass = 'status success';
       } else if (state.notice === 'APPLIED') {
         statusKey = 'optionsApplied';
@@ -1396,6 +1531,10 @@
       }
       const status = Ui.appendText(actions, 'p', t(statusKey), statusClass);
       status.setAttribute('aria-live', 'polite');
+      const configurationStatus = Ui.appendText(actions, 'p', '', 'status');
+      configurationStatus.setAttribute('role', 'status');
+      const categories = state.configuration && state.configuration.pendingCategories || [];
+      for (const category of categories) Ui.appendText(actions, 'span', t(`unifiedCategory_${category}`), 'pill warning');
 
       for (const control of form.elements) {
         control.disabled = disabled && control.dataset.operational !== 'true';
@@ -1404,11 +1543,40 @@
         state.capabilities.runtimeState !== 'READY';
       checkUpdate.disabled = state.pending || !update.trustConfigured;
       installUpdate.disabled = state.pending || !state.editable ||
-        state.capabilities.runtimeState !== 'OFF' || !update.updateAvailable;
+        !update.trustConfigured || !update.updateAvailable;
       apply.disabled = disabled || state.capabilities.privateWindowAccess !== 'GRANTED' ||
         !state.capabilities.activationSupported || !state.capabilities.providerDatasetAvailable;
       download.disabled = state.pending;
       reload.disabled = state.pending;
+      function updateConfigurationActions() {
+
+        const current = controller.snapshot();
+        const configuration = current.configuration || {};
+        configurationStatus.textContent = t(current.applying || configuration.applying ? 'unifiedApplying' :
+          current.stale ? 'unifiedConflict' : current.dirty ? 'unifiedUnsaved' :
+            configuration.blocked ? 'unifiedBlocked' : configuration.active ?
+              configuration.pending ? 'unifiedPending' : 'unifiedActive' : 'unifiedInactive');
+        if (current.applying && configuration.active) configurationStatus.textContent += ` ${t('unifiedPreparing')}`;
+        apply.disabled = disabled || current.dirty || current.stale || configuration.applying ||
+          state.capabilities.privateWindowAccess !== 'GRANTED';
+        apply.title = current.dirty ? t('unifiedSaveFirst') : '';
+        save.disabled = disabled || current.stale || configuration.applying;
+
+      }
+      if (!state.dirty) baselineFields = formValues(form);
+      if (state.dirty && draftFields) restoreValues(form, draftFields);
+      validateRuleFields(form);
+      form.addEventListener('input', () => {
+        draftFields = formValues(form);
+        controller.edit(JSON.stringify(draftFields) !== JSON.stringify(baselineFields));
+        updateConfigurationActions();
+      });
+      form.addEventListener('change', () => {
+        draftFields = formValues(form);
+        controller.edit(JSON.stringify(draftFields) !== JSON.stringify(baselineFields));
+        updateConfigurationActions();
+      });
+      updateConfigurationActions();
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         localError = null;
@@ -1416,17 +1584,12 @@
           draft = collect(form);
         } catch (error) {
           localError = error.code || 'UI_VALIDATION_FAILED';
-          render(controller.snapshot());
+          const invalid = form.querySelector(':invalid');
+          if (invalid) invalid.reportValidity();
+          status.textContent = t('optionsErrorValidation');
           return;
         }
-        const saved = await controller.save(draft);
-        if (!saved) {
-          draft.ownProxies.forEach((proxy) => {
-            if (proxy.credentials && proxy.credentials.mode === 'SET') {
-              proxy.credentials.password = '';
-            }
-          });
-        }
+        await controller.save(draft);
       });
       form.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-action]');
@@ -1438,7 +1601,11 @@
           draft = collect(form);
           const action = button.dataset.action;
           const index = Number(button.dataset.index);
-          if (action === 'own-add') {
+          if (action === 'rule-add') {
+            ruleRows.push({host: '', route: 'PROXY', scope: 'HOST'});
+          } else if (action === 'rule-remove') {
+            ruleRows.splice(index, 1);
+          } else if (action === 'own-add') {
             draft.ownProxies.push(Object.assign(
                 newCandidate(uniqueId('own', draft.ownProxies)),
                 {
@@ -1464,15 +1631,44 @@
                 action.endsWith('up') ? -1 : 1,
             );
           }
-          render(controller.snapshot());
+          draftFields = null;
+          controller.edit();
+          render(controller.snapshot(), false);
         } catch (error) {
           localError = error.code || 'UI_VALIDATION_FAILED';
           render(controller.snapshot());
         }
       });
+      if (Number.isInteger(focusedIndex) && focusedIndex >= 0 && form.elements[focusedIndex]) {
+        form.elements[focusedIndex].focus();
+      }
 
     }
 
+    function formValues(form) {
+
+      return Array.from(form.elements).filter((input) => input.name).map((input) =>
+        ({name: input.name, value: input.value, checked: input.checked}));
+
+    }
+
+    function restoreValues(form, values) {
+
+      Array.from(form.elements).filter((input) => input.name).forEach((input, index) => {
+        const value = values[index];
+        if (value && value.name === input.name) {
+          input.value = value.value;
+          input.checked = value.checked;
+        }
+      });
+
+    }
+
+    if (browserApi.storage && browserApi.storage.onChanged) {
+      browserApi.storage.onChanged.addListener((_changes, area) => {
+        if (area === 'local') controller.load();
+      });
+    }
     controller.load();
     return controller;
 
@@ -1487,6 +1683,8 @@
     editableFromCapabilities,
     mount,
     parseRuleLines,
+    ruleRowsFromRules,
+    rulesFromRuleRows,
     userErrorKey,
     validateCandidate,
     validateProviderUpdateStatus,

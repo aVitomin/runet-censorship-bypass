@@ -249,12 +249,36 @@ Missing/malformed/future config, descriptor/provider/dataset
 mismatch, missing credential, hash failure или недоступный dataset store
 оставляют session недоступной, а exact floor — fail-closed до Clear.
 
-Production settings control plane предоставляет только строгие
+Production settings control plane предоставляет строгие
 `firefox.settings.get` и `firefox.settings.replace`. Get не раскрывает
 provider/dataset identity, routing descriptor/hash, `authRef` или floor.
 Replace принимает complete schema v1 и разрешён в `OFF` и активном `READY`;
 initializing/blocked состояния остаются read-only. Apply, Clear и Saved writes проходят через одну
 event-page queue. Optimistic numeric revision отклоняет stale concurrent save.
+
+Options держит Draft локально: Save не вызывает Apply, а Apply отключён до
+сохранения/отмены правок и передаёт показанную Saved revision. Внешний Save
+оставляет Draft и его прежнюю базу, отмечая конфликт; Discard edits явно
+перечитывает Saved. Private-window onboarding и Check again сохраняются.
+
+Popup редактирует Effective site mode и scope при активной защите. Единственная
+кнопка Apply вызывает `firefox.site.apply` с `expectedRevision`,
+`expectedEffectiveId`, `tabUrl`, `mode`, `scope`, `applyAll`. Одна control-queue
+операция проверяет identities, требует явного `applyAll: true` при ранее
+ожидающих Saved изменениях, пишет site patch в Saved, затем вызывает существующий
+exact-revision active replacement. Успешно сохранённый site patch остаётся Saved
+при ошибке подготовки. Старый OFF-only `firefox.site.replace` не используется
+этим UX и не расширяет права мутации.
+
+`firefox.configuration.get` — отдельная redacted проекция active/pending/
+applying/blocked, Saved revision и opaque Effective identity для конфликтов.
+Нормальный UI не показывает эти identities. Категории pending — только
+`siteRules`, `proxyConnections`, `routingSettings`; пароли/адреса/descriptor и
+dataset bodies не возвращаются. Состояние private access проверяется отдельно;
+restricted-site permission не блокирует Apply. Safe-failure сообщение возможно
+только при подтверждённой прежней активной generation. Provider checks не
+перезаписывают Draft. Apply не требует refresh страницы; уже открытые соединения
+могут естественно сохраниться.
 
 Public schema хранит Direct/Proxy/whitelist patterns, own proxies, отдельные
 local Tor/Tor Browser/WARP scopes и четыре общих routing flags. Patterns и
@@ -339,21 +363,34 @@ sequence отклоняется; одинаковые sequence+SHA idempotent, �
 sequence с другим SHA даёт conflict. Только полностью verified candidate
 атомарно записывает immutable artifact, staged pointer и sequence metadata.
 Stage не меняет active/LKG/live session/durable ON identity. Строгий
-`firefox.provider.update.install` без дополнительных полей доступен только в
-полном `OFF`: он заново проверяет exact staged artifact и anti-rollback pair,
-а затем переводит его в dataset для следующего Apply. IndexedDB atomically
-меняет active/LKG/staged pointers, а write-ahead journal в `storage.local`
-связывает это изменение с exact `productConfig.datasetIdentity`. При restart
-journal по фактическому pointer state детерминированно восстанавливает старую
-или завершает новую пару; Apply и settings mutation блокируются, пока journal
-не согласован. Настройки и отдельная credential record не изменяются, proxy
-settings не затрагиваются, live session не hot-swap-ится. Storage/signature/
-network failure не продвигает sequence и не меняет текущий routing dataset.
+`firefox.provider.update.install` без дополнительных полей требует configured
+trust и допускает полный `OFF` или активный `READY`. Он заново проверяет exact
+authenticated staged artifact и anti-rollback pair. В `OFF` прежний journal v1
+связывает atomic IndexedDB active/LKG/staged pointers с
+`productConfig.datasetIdentity` для следующего Apply.
+
+При `READY` journal v2 добавляет exact Effective routing descriptor. Подготовка
+читает только проверенный staged dataset и неизменяемую **Effective** user
+configuration/credentials, пока старая session обслуживает запросы. Существующий
+`replacePrepared` повторно проверяет Effective identity, staged identity/trust,
+private access и ownership; сохраняет новый durable `ON`, затем публикует routing
+и credential resolver одной generation. Clear, OFF и повторного floor acquisition
+нет. После этого journal завершает dataset pointers и меняет только dataset
+metadata в Saved config. Если Saved=N+1, а Effective=N, revision N и его credentials
+остаются Effective с новым dataset; N+1 остаётся pending. Password/settings records
+не переписываются. Старые request-bound auth bindings сохраняются.
+
+При restart v2 journal использует durable `ON` как commit decision: OLD оставляет
+старый dataset, NEW завершает exact staged promotion; recovery никогда не выбирает
+latest Saved вместо Effective. Несогласуемый journal блокирует activation/recovery,
+а не сообщает READY. Ошибка подготовки оставляет старую session и provider pointers;
+неоднозначная ошибка после commit сохраняет floor и требует blocked recovery.
+Apply и settings mutation сериализованы с install и запрещены при незавершённом journal.
 
 Manual check принимает только `{type: "firefox.provider.update.check"}` и
 использует исключительно compile-time production trust configuration. Он может
-работать при ACTIVE, но только stage-ит candidate. Install остаётся OFF-only и
-никогда не вызывает Clear. Event page синхронно регистрирует `alarms.onAlarm`;
+работать при ACTIVE, но только stage-ит candidate. Manual install использует общий
+promotion controller и никогда не вызывает Clear. Event page синхронно регистрирует `alarms.onAlarm`;
 после включения реального trust anchor создаётся один 12-hour alarm с
 пятиминутной первой задержкой. Alarm выполняет тот же authenticated check и не
 promote-ит dataset, не меняет settings/credentials и не получает proxy control.
@@ -389,13 +426,18 @@ availability показаны отдельно; `ACTIVE` отображаетс�
 
 Options page отражает только schema v1 production settings control plane:
 Direct/Proxy/whitelist rules, own proxies, local Tor, Tor Browser, WARP и четыре
-routing flags. Как и Chromium MV3, plain host означает exact host, wildcard
+routing flags. Rules editor — единый список с host, scope, route/type и add/delete.
+UI adapter не мигрирует storage: Direct/Proxy и whitelist сохраняют свои buckets,
+порядок и пересечения; старые wildcard patterns показываются отдельно без
+нормализации. Auto удаляет только выбранную запись, а whitelist не выдаётся за
+принудительный Auto. Правки остаются Draft до revision-checked Save и не
+синхронизируются между браузерными профилями. Как и Chromium MV3, plain host означает exact host, wildcard
 `*.example.com` — base + subdomains; defaults остаются
 `useProviderProxies=true`, `ownProxiesOnlyForOwnSites=true`,
 `replaceDirectWithProxy=false`, `noDirect=false`. Firefox-specific Tor scope
 показывается напрямую, без Chromium-only master control. Arbitrary provider
 source и migration controls намеренно отсутствуют. Maintenance предоставляет
-no-input authenticated update check, OFF-only staged install, user-triggered
+no-input authenticated update check, staged install при OFF/READY, user-triggered
 connection check для последнего explicit Proxy origin и sanitized diagnostics.
 Firefox CSP разрешает `connect-src http: https:` для этой явной проверки и
 фиксированного HTTPS authenticated-update origin; connection-check запрос
@@ -403,20 +445,19 @@ Firefox CSP разрешает `connect-src http: https:` для этой явн
 redirects и не читает response body. Проверка не меняет rules, dataset,
 credentials или proxy ownership и не использует отдельный telemetry endpoint.
 Options позволяет редактировать и сохранять при `OFF` или активном `READY`.
-Save не применяет правки; отдельная кнопка «Применить сохранённое» передаёт
-ожидаемую Saved revision, не сохраняет UI draft и не запускает Clear.
-Unified Apply UX и редактирование popup при ON остаются следующей фазой.
-Conflict приводит к
-перезагрузке current settings без overwrite. Stored password никогда не
+Save не применяет правки; отдельная кнопка Apply передаёт ожидаемую Saved
+revision, отключена при несохранённом Draft и не запускает Clear.
+Conflict сохраняет Draft со старой базой; явный Discard edits загружает
+последний Saved. Stored password никогда не
 загружается в DOM: unchanged value использует `KEEP`, новый password передаётся
 только явным `SET`, удаление — явным `NONE`. Pages строят DOM через text nodes и
 `textContent`, используют только extension-local scripts/styles и не добавляют
 permissions или remote assets.
 
 Popup текущего Firefox target также читает активную HTTP(S)-вкладку и через
-строгие `firefox.site.get` / `firefox.site.replace` RPC показывает Auto / Proxy /
+строгие `firefox.site.get` / `firefox.site.apply` RPC показывает Auto / Proxy /
 Direct с exact-host или public-suffix-aware domain scope. Site mutation проходит
-через ту же serialized settings transaction, exact revision и OFF-only gate;
+через ту же serialized settings transaction и exact-revision promotion при OFF/READY;
 full tab URL не возвращается странице. Сравнение пользовательских поверхностей
 и честный список оставшихся отличий зафиксированы в
 [Chromium / Firefox UI parity matrix](FIREFOX_CHROMIUM_UI_PARITY.md).

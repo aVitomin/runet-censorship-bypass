@@ -121,8 +121,10 @@
       JSON.stringify(nextHealth || null);
     if (
       areaName === 'local' &&
-      stateChange &&
-      (!latestState || isOperationBusy(latestState) || ifHealthChanged)
+      (stateChange || changes.mv3EffectiveConfigurations) &&
+      (!latestState || isOperationBusy(latestState) || ifHealthChanged ||
+        changes.mv3EffectiveConfigurations ||
+        (stateChange.oldValue || {}).savedRevision !== (stateChange.newValue || {}).savedRevision)
     ) {
       requestPopupRefresh();
     }
@@ -160,11 +162,13 @@
     try {
       const tab = await getActiveTab();
       activeTabUrl = tab && tab.url || '';
+      const previousDraft = ifPreserveUi && latestState && isSiteDraftDirty(latestState) ?
+        draft : null;
       latestState = await rpc.callBackground('getPopupState', {
         tabUrl: activeTabUrl,
       });
       await window.mv3I18n.init(latestState.uiLanguage);
-      draft = createDraft(latestState);
+      draft = previousDraft || createDraft(latestState);
       lastOperation = null;
       renderPopup(latestState);
     } catch (err) {
@@ -332,7 +336,8 @@
       const message = appendText(
           parent,
           'p',
-          getSafeOperationMessage(operation),
+          operation.previousActive ? t(operation.saved ? 'unifiedSiteSaved' : 'unifiedApplyFailed') :
+            operation.status === 'stale' ? t('unifiedPopupConflict') : getSafeOperationMessage(operation),
           operation.status === 'stale' ?
             'status-message warning' :
             'status-message error',
@@ -387,9 +392,11 @@
       choose.onclick = openFullSettings;
       ifActionAdded = true;
     } else if (primaryAction === 'apply' && !siteChangePending) {
+      renderPendingWarning(actions, state);
       const applyButton = appendButton(
           actions,
-          t('popupApplyChanges'),
+          t(state.configuration && state.configuration.pending ? 'unifiedApplyAll' :
+            (state.configuration ? state.configuration.active : controlsPac(state)) ? 'unifiedApply' : 'unifiedApplyOn'),
           'ui-button primary',
       );
       const candidateMissing = draft.siteMode === 'proxy' &&
@@ -399,7 +406,8 @@
         applyButton.title = t('popupNoProxyCandidate');
         applyButton.setAttribute('aria-describedby', 'popup-site-warning');
       }
-      applyButton.onclick = () => runPopupOperation('apply');
+      applyButton.onclick = () => runPopupOperation('apply', Boolean(state.configuration && state.configuration.pending));
+      if (state.configuration && state.configuration.pending) applyButton.className = 'ui-button quiet';
       ifActionAdded = true;
     } else if (primaryAction === 'connection-check') {
       appendOptionsLink(
@@ -443,6 +451,7 @@
     if (isExternallyControlled(state)) {
       return '';
     }
+    if (state.configuration && state.configuration.pending) return 'apply';
     if (canRetryOperation(operation)) {
       return 'retry';
     }
@@ -649,13 +658,16 @@
     const status = appendText(
         pending,
         'span',
-        t('popupNotApplied'),
+        t('unifiedTransition', [t(`popup${state.mode[0].toUpperCase()}${state.mode.slice(1)}Mode`),
+          t(`popup${draft.siteMode[0].toUpperCase()}${draft.siteMode.slice(1)}Mode`)]),
         'ui-pill warning',
     );
     status.id = 'popup-site-pending-status';
+    renderPendingWarning(pending, state);
     const applyButton = appendButton(
         pending,
-        t('popupApplyChanges'),
+        t(state.configuration && state.configuration.pending ? 'unifiedApplyAll' :
+          (state.configuration ? state.configuration.active : controlsPac(state)) ? 'unifiedApply' : 'unifiedApplyOn'),
         'ui-button primary compact-action',
     );
     const candidateMissing = draft.siteMode === 'proxy' &&
@@ -666,7 +678,16 @@
       isExternallyControlled(state) ?
         'popup-global-description' :
         'popup-site-pending-status');
-    applyButton.onclick = () => runPopupOperation('apply');
+    applyButton.onclick = () => runPopupOperation('apply', Boolean(state.configuration && state.configuration.pending));
+    if (state.configuration && state.configuration.pending) applyButton.className = 'ui-button quiet';
+
+  }
+
+  function renderPendingWarning(parent, state) {
+
+    if (!state.configuration || !state.configuration.pending) return;
+    appendText(parent, 'p', t('unifiedPopupPending'), 'status warning');
+    appendOptionsLink(parent, t('unifiedReview'), '', 'ui-button primary');
 
   }
 
@@ -762,6 +783,23 @@
             'popupControlExternalHelp'),
           'popupStatusExternalPill',
       );
+    }
+    if (state.configuration) {
+      const configuration = state.configuration;
+      if (configuration.blocked) {
+        return createPresentation('error', 'error', 'unifiedBlocked',
+            t('popupControlErrorOffHelp'), 'popupStatusErrorPill');
+      }
+      if (configuration.active) {
+        const unhealthy = state.proxyHealth && state.proxyHealth.status === 'error';
+        const failure = operation && operation.ok === false && operation.previousActive;
+        return createPresentation('active', configuration.pending || unhealthy ? 'warning' : 'success',
+          configuration.pending ? 'unifiedPending' : 'unifiedActive',
+          failure ? t(operation.saved ? 'unifiedSiteSaved' : 'unifiedApplyFailed') :
+            unhealthy ? getProxyHealthErrorText(state.proxyHealth) : t('popupControlActiveHelp'),
+          unhealthy ? 'popupHealthWarningPill' :
+            state.proxyHealth && state.proxyHealth.status === 'ok' ? 'popupHealthWorkingPill' : 'popupStatusActivePill');
+      }
     }
     if (operation && operation.ok === false && operation.status === 'stale') {
       return createPresentation(
@@ -871,6 +909,7 @@
 
   function getReconstructedBusyOperation(state) {
 
+    if (state.configuration && state.configuration.applying) return 'apply';
     if (state.proxyApplyStatus === 'applying') {
       return 'apply';
     }
@@ -1075,7 +1114,7 @@
 
   }
 
-  async function runPopupOperation(operation) {
+  async function runPopupOperation(operation, applyAll = false) {
 
     if (busyOperation) {
       return;
@@ -1084,10 +1123,13 @@
     lastOperation = null;
     renderPopup(latestState);
     try {
-      const result = await rpc.callBackground('applyPopupChanges', {
-        tabUrl: activeTabUrl,
-        operation,
-        draft,
+      const configuration = latestState.configuration || {};
+      const result = await rpc.callBackground(latestState.controllable ?
+        'applySiteConfiguration' : 'applySavedConfiguration', {
+        tabUrl: activeTabUrl, mode: draft.siteMode, scope: draft.siteScope,
+        expectedRevision: configuration.savedRevision,
+        expectedEffectiveId: configuration.effectiveId || null,
+        applyAll,
       });
       latestState = result.popupState || latestState;
       lastOperation = Object.assign({kind: operation}, result);
@@ -1096,6 +1138,10 @@
       }
     } catch (err) {
       lastOperation = createOperationError(operation, err);
+      if (['SAVED_REVISION_CHANGED', 'PENDING_CONFIRMATION_REQUIRED'].includes(err.code)) {
+        latestState = await rpc.callBackground('getPopupState', {tabUrl: activeTabUrl});
+        lastOperation = {kind: operation, ok: false, status: 'stale', message: t('unifiedPopupConflict')};
+      }
     } finally {
       busyOperation = '';
       renderPopup(latestState);

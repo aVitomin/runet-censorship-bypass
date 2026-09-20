@@ -155,6 +155,9 @@
   siteController = siteControlApi.createController({
     settingsController: routingSettingsController,
   });
+  const savedSiteController = siteControlApi.createController({
+    settingsController,
+  });
   operationalController = operationalStatusApi.createController({
     storageArea: browser.storage.local,
     actionApi: browser.action,
@@ -180,9 +183,12 @@
     sha256,
     activationSnapshot: () => activationController.snapshot(),
     providerKey: productionProviderApi.PROVIDER_KEY,
+    replacePrepared: (prepared) => activationController.replacePrepared(prepared),
   });
   async function readCurrentDatasetIdentity() {
 
+    const effective = await productConfigApi.readEffectiveRecords(browser.storage.local);
+    if (effective) return effective[productConfigApi.CONFIG_STORAGE_KEY].datasetIdentity;
     const stored = await browser.storage.local.get(
         productConfigApi.CONFIG_STORAGE_KEY,
     );
@@ -234,7 +240,7 @@
           .concat(Object.values(siteControlApi.ERRORS)),
   );
   const SAFE_PROMOTION_ERROR_CODES = new Set(
-      Object.values(datasetPromotionApi.ERRORS),
+      [...Object.values(datasetPromotionApi.ERRORS), ...SAFE_APPLY_ERROR_CODES],
   );
 
   function exactRpcRequest(message, type) {
@@ -339,6 +345,77 @@
   }
 
   let rpcControlQueue = Promise.resolve();
+  let configurationApplying = false;
+
+  async function configurationStatus() {
+
+    const saved = await settingsController.get();
+    const activation = activationController.snapshot();
+    const records = await productConfigApi.readEffectiveRecords(browser.storage.local);
+    const effective = records ? await settingsController.getEffective() : null;
+    const live = await browser.proxy.settings.get({});
+    const privateAccess = await readPrivateWindowAccess();
+    const active = activation.active && activation.runtimeState === 'READY' &&
+      live.levelOfControl === 'controlled_by_this_extension' && privateAccess === 'GRANTED';
+    const blocked = !active && (activation.runtimeState !== 'OFF' ||
+      privateAccess !== 'GRANTED' ||
+      ['not_controllable', 'controlled_by_other_extensions'].includes(live.levelOfControl));
+    const effectiveId = records ? await sha256(new TextEncoder().encode(JSON.stringify(
+        {routing: records[productConfigApi.CONFIG_STORAGE_KEY].routingDescriptor,
+          dataset: records[productConfigApi.CONFIG_STORAGE_KEY].datasetIdentity},
+    ))) : null;
+    const pending = Boolean(effective && saved.revision !== effective.revision);
+    const categories = [];
+    if (pending) {
+      if (JSON.stringify(saved.settings.rules) !== JSON.stringify(effective.settings.rules)) categories.push('siteRules');
+      if (['ownProxies', 'localTor', 'torBrowser', 'warp'].some((key) =>
+        JSON.stringify(saved.settings[key]) !== JSON.stringify(effective.settings[key]))) categories.push('proxyConnections');
+      // Password-only revisions have identical redacted settings. Compare private
+      // records internally and return only the category, never a credential hash.
+      const stored = await browser.storage.local.get(productConfigApi.CREDENTIALS_STORAGE_KEY);
+      if (!categories.includes('proxyConnections') &&
+          JSON.stringify((stored[productConfigApi.CREDENTIALS_STORAGE_KEY] || {}).entries) !==
+          JSON.stringify((records[productConfigApi.CREDENTIALS_STORAGE_KEY] || {}).entries)) {
+        categories.push('proxyConnections');
+      }
+      if (!categories.length ||
+          JSON.stringify(saved.settings.flags) !== JSON.stringify(effective.settings.flags)) {
+        categories.push('routingSettings');
+      }
+    }
+    return {savedRevision: saved.revision, effectiveId, active, pending, blocked,
+      applying: configurationApplying, pendingCategories: categories,
+      reason: blocked ? privateAccess !== 'GRANTED' ? 'PRIVATE_ACCESS_REQUIRED' :
+        activation.active && live.levelOfControl !== 'controlled_by_this_extension' ? 'CONTROL_LOSS' :
+        activation.failureCode || activation.recoveryStatus : null};
+
+  }
+
+  async function applySiteConfiguration(message) {
+
+    const before = await configurationStatus();
+    if (message.expectedRevision !== before.savedRevision ||
+        message.expectedEffectiveId !== before.effectiveId) {
+      return errorResponse('SAVED_REVISION_CHANGED');
+    }
+    if (before.pending && message.applyAll !== true) return errorResponse('PENDING_CONFIRMATION_REQUIRED');
+    configurationApplying = true;
+    let saved;
+    try {
+      saved = await savedSiteController.replace(message);
+      const applied = await applyPersistedProductConfiguration({expectedRevision: saved.revision});
+      const after = await configurationStatus();
+      after.applying = false;
+      return {ok: true, result: {applied: applied.ok === true, saved: true,
+        errorCode: applied.ok ? null : applied.error.code, configuration: after,
+        previousActive: before.active && after.active && before.effectiveId === after.effectiveId}};
+    } catch (error) {
+      return errorResponse(safeSettingsErrorCode(error));
+    } finally {
+      configurationApplying = false;
+    }
+
+  }
 
   function enqueueRpcControlOperation(operation) {
 
@@ -454,6 +531,9 @@
 
   async function installStagedProviderDataset() {
 
+    if (!providerUpdateController.trustConfigured()) {
+      return errorResponse(providerUpdateControlApi.ERRORS.TRUST_NOT_CONFIGURED);
+    }
     try {
       const installed = await datasetPromotionController.install();
       try {
@@ -464,7 +544,11 @@
       }
       return {ok: true, result: {status: installed.status}};
     } catch (error) {
-      return errorResponse(safePromotionErrorCode(error));
+      const code = safePromotionErrorCode(error);
+      if (code === datasetPromotionApi.ERRORS.RECOVERY_REQUIRED) {
+        await activationController.requireRecovery();
+      }
+      return errorResponse(code);
     }
 
   }
@@ -557,13 +641,31 @@
       return enqueueRpcControlOperation(() => runOperationalAction(
           'APPLY',
           async () => {
-            const result = await applyPersistedProductConfiguration(message);
-            if (result.ok === true) {
-              await operationalController.resetHealth();
+            configurationApplying = true;
+            try {
+              const result = await applyPersistedProductConfiguration(message);
+              if (result.ok === true) await operationalController.resetHealth();
+              return result;
+            } finally {
+              configurationApplying = false;
             }
-            return result;
           },
       ));
+    }
+    if (type === 'firefox.configuration.get') {
+      if (!exactRpcRequest(message, type)) return errorResponse('INVALID_RPC_REQUEST');
+      try {
+        return {ok: true, result: await configurationStatus()};
+      } catch (_error) {
+        return errorResponse('SETTINGS_STATE_UNAVAILABLE');
+      }
+    }
+    if (type === 'firefox.site.apply') {
+      if (!message || Object.keys(message).length !== 7 ||
+          !Number.isSafeInteger(message.expectedRevision) ||
+          !(message.expectedEffectiveId === null || typeof message.expectedEffectiveId === 'string') ||
+          typeof message.applyAll !== 'boolean') return errorResponse('INVALID_RPC_REQUEST');
+      return enqueueRpcControlOperation(() => runOperationalAction('APPLY', () => applySiteConfiguration(message)));
     }
     if (type === 'firefox.activation.clear') {
       if (!exactRpcRequest(message, type)) {
@@ -741,9 +843,10 @@
   const initialization = (async () => {
 
     providerBootstrapState = await providerBootstrap.initialize();
-    await datasetPromotionController.initialize();
+    const promotionRecovery = await datasetPromotionController.initialize();
     await settingsController.initialize();
-    const activation = await activationController.initializeFromDurable();
+    const activation = promotionRecovery.ok ? await activationController.initializeFromDurable() :
+      await activationController.requireRecovery();
     await providerUpdateController.initialize();
     await operationalController.initialize();
     await operationalController.restoreToolbar();

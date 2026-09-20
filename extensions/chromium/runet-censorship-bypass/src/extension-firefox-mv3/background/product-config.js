@@ -822,6 +822,35 @@
 
       }
 
+      async function prepareDatasetReplacement(
+          options, effectiveRecords, datasetIdentity, checkCandidate) {
+
+        const records = snapshotRecords(effectiveRecords);
+        records[CONFIG_STORAGE_KEY] = (await verifyProductConfig(Object.assign({},
+            records[CONFIG_STORAGE_KEY], {datasetIdentity}), options.sha256)).config;
+        const prepared = await createProductSnapshotLoader(options)(records);
+        return Object.freeze(Object.assign({}, prepared, {
+          async retainSnapshot() {
+
+            await retainGeneration(options.storageArea, records);
+
+          },
+          async checkSavedRevision() {
+
+            // This guard deliberately checks Effective, not latest Saved. It is
+            // also called after the durable ON commit and before publication.
+            const current = await readEffectiveRecords(options.storageArea);
+            if (!current || (!sameRecords(current, effectiveRecords) &&
+                !sameRecords(current, records))) {
+              throw configError(ERRORS.EFFECTIVE_CONFIG_UNAVAILABLE);
+            }
+            await checkCandidate();
+
+          },
+        }));
+
+      }
+
       async function createProductConfig(options = {}) {
 
         const routingConfig = canonicalRoutingConfig(options.routingConfig);
@@ -867,6 +896,7 @@
         createProductConfig,
         createRecoveryFactory,
         preserveLegacyEffective,
+        prepareDatasetReplacement,
         readEffectiveRecords,
         routingConfigBytes,
         verifyProductConfig,

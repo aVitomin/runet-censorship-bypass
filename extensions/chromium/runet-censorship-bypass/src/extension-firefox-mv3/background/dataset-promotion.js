@@ -8,7 +8,9 @@
     root.mv3ProviderDataset;
   const productConfig = typeof module === 'object' && module.exports ?
     require('./product-config') : root.rucbFirefoxProductConfig;
-  const api = factory(dataset, productConfig);
+  const offState = typeof module === 'object' && module.exports ?
+    require('./off-state') : root.rucbFirefoxOffState;
+  const api = factory(dataset, productConfig, offState);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
     return;
@@ -16,7 +18,7 @@
   root.rucbFirefoxDatasetPromotion = api;
 
 })(typeof globalThis === 'object' ? globalThis : this,
-    function(Dataset, ProductConfig) {
+    function(Dataset, ProductConfig, OffState) {
 
       const JOURNAL_SCHEMA_VERSION = 1;
       const JOURNAL_STATUS = 'PREPARED';
@@ -91,8 +93,9 @@
 
       function canonicalJournal(value) {
 
-        if (!exactKeys(value, JOURNAL_KEYS) ||
-            value.schemaVersion !== JOURNAL_SCHEMA_VERSION ||
+        const active = value && value.schemaVersion === 2;
+        if (!exactKeys(value, active ? [...JOURNAL_KEYS, 'effectiveRoutingDescriptor'] : JOURNAL_KEYS) ||
+            ![JOURNAL_SCHEMA_VERSION, 2].includes(value.schemaVersion) ||
             value.status !== JOURNAL_STATUS ||
             typeof value.providerKey !== 'string' ||
             !Number.isSafeInteger(value.sequence) || value.sequence < 1 ||
@@ -102,6 +105,9 @@
               SHA256_PATTERN.test(value.oldActiveArtifactSha256)) ||
             !(value.oldPreviousLkgArtifactSha256 === null ||
               SHA256_PATTERN.test(value.oldPreviousLkgArtifactSha256))) {
+          throw promotionError(ERRORS.RECOVERY_REQUIRED);
+        }
+        if (active && !OffState.canonicalizeRoutingDescriptor(value.effectiveRoutingDescriptor)) {
           throw promotionError(ERRORS.RECOVERY_REQUIRED);
         }
         const oldConfig = ProductConfig.canonicalProductConfig(
@@ -159,6 +165,7 @@
               ProductConfig.CONFIG_STORAGE_KEY,
               ProductConfig.DATASET_PROMOTION_STORAGE_KEY,
               ProductConfig.SETTINGS_TRANSACTION_STORAGE_KEY,
+              OffState.STORAGE_KEY,
             ]);
             if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
               throw new TypeError('invalid storage result');
@@ -229,6 +236,7 @@
             pointers.previousLkgArtifactSha256 ===
               journal.oldPreviousLkgArtifactSha256 &&
             staged.ok === true && staged.status === 'STAGED' &&
+            staged.verification.trust === Dataset.TRUST.REMOTE_AUTHENTICATED &&
             staged.sequence === journal.sequence &&
             staged.verification.dataset.identity.artifactSha256 ===
               journal.stagedArtifactSha256 &&
@@ -279,7 +287,38 @@
           if (journal.providerKey !== providerKey) {
             throw promotionError(ERRORS.PROVIDER_MISMATCH);
           }
-          const phase = await pointerPhase(journal);
+          let phase = await pointerPhase(journal);
+          if (journal.schemaVersion === 2) {
+            const state = stored[OffState.STORAGE_KEY];
+            if (!OffState.isCanonicalOnState(state) || state.providerKey !== providerKey ||
+                !OffState.ROUTING_DESCRIPTOR_KEYS.every((key) =>
+                  state.routingDescriptor[key] === journal.effectiveRoutingDescriptor[key])) {
+              throw promotionError(ERRORS.RECOVERY_REQUIRED);
+            }
+            const committed = sameIdentity(state.datasetIdentity,
+                journal.newConfig.datasetIdentity);
+            if (!committed && (!sameIdentity(state.datasetIdentity,
+                journal.oldConfig.datasetIdentity) ||
+                phase !== 'OLD')) {
+              throw promotionError(ERRORS.RECOVERY_REQUIRED);
+            }
+            if (committed && phase === 'OLD') {
+              const promoted = await datasetStore.promoteStagedExact({providerKey,
+                stagedArtifactSha256: journal.stagedArtifactSha256,
+                stagedSequence: journal.sequence,
+                currentDatasetIdentity: journal.oldConfig.datasetIdentity});
+              if (!promoted || !promoted.ok) {
+                throw promotionError(ERRORS.RECOVERY_REQUIRED);
+              }
+              phase = await pointerPhase(journal);
+              if (phase !== 'NEW') throw promotionError(ERRORS.RECOVERY_REQUIRED);
+            }
+            // Recovery must not overwrite an unrelated Saved revision.
+            if (!sameConfig(stored[ProductConfig.CONFIG_STORAGE_KEY], journal.oldConfig) &&
+                !sameConfig(stored[ProductConfig.CONFIG_STORAGE_KEY], journal.newConfig)) {
+              throw promotionError(ERRORS.RECOVERY_REQUIRED);
+            }
+          }
           const target = phase === 'OLD' ? journal.oldConfig : journal.newConfig;
           if (!sameConfig(stored[ProductConfig.CONFIG_STORAGE_KEY], target)) {
             await writeConfig(target);
@@ -296,9 +335,11 @@
 
           await recoverNow();
           const activation = activationSnapshot();
-          if (!activation || activation.active === true ||
+          const active = activation && activation.active === true && activation.runtimeState === 'READY' &&
+            activation.durableIntent === 'ON' && typeof options.replacePrepared === 'function';
+          if (!active && (!activation || activation.active === true ||
               activation.durableIntent !== 'OFF' ||
-              activation.runtimeState !== 'OFF') {
+              activation.runtimeState !== 'OFF')) {
             throw promotionError(ERRORS.OFF_REQUIRED);
           }
           const stored = await readStorage();
@@ -316,6 +357,13 @@
             throw promotionError(ERRORS.CONFIGURATION_INVALID);
           }
           const oldConfig = verifiedConfig.config;
+          const effectiveRecords = active ?
+            await ProductConfig.readEffectiveRecords(storageArea) : null;
+          if (active && (!effectiveRecords || !sameIdentity(
+              effectiveRecords[ProductConfig.CONFIG_STORAGE_KEY].datasetIdentity,
+              oldConfig.datasetIdentity))) {
+            throw promotionError(ERRORS.CONFIGURATION_INVALID);
+          }
           if (oldConfig.providerKey !== providerKey) {
             throw promotionError(ERRORS.PROVIDER_MISMATCH);
           }
@@ -366,8 +414,8 @@
               Object.assign({}, oldConfig, {datasetIdentity: identity}),
               sha256,
           )).config;
-          const journal = canonicalJournal({
-            schemaVersion: JOURNAL_SCHEMA_VERSION,
+          const journal = canonicalJournal(Object.assign({
+            schemaVersion: active ? 2 : JOURNAL_SCHEMA_VERSION,
             status: JOURNAL_STATUS,
             providerKey,
             sequence: staged.sequence,
@@ -377,13 +425,52 @@
               staged.pointers.previousLkgArtifactSha256,
             oldConfig,
             newConfig,
-          });
+          }, active ? {effectiveRoutingDescriptor:
+            effectiveRecords[ProductConfig.CONFIG_STORAGE_KEY].routingDescriptor} : {}));
+          let prepared;
+          if (active) {
+            const checkCandidate = async () => {
+              if (await pointerPhase(journal) !== 'OLD') throw promotionError(ERRORS.POINTER_STATE_INVALID);
+            };
+            // An exact authenticated staged view is used only for preparation;
+            // the serving runtime and durable dataset pointers remain untouched.
+            const stagedView = {async loadVerifications() {
+
+              await checkCandidate();
+              const current = await datasetStore.loadStaged(providerKey);
+              if (!current || !current.ok || !current.verification ||
+                  !sameIdentity(current.verification.dataset.identity, identity) ||
+                  current.verification.trust !== Dataset.TRUST.REMOTE_AUTHENTICATED) {
+                throw promotionError(ERRORS.NO_STAGED_CANDIDATE);
+              }
+              return {active: current.verification, previousLkg: null, packagedBaseline: null};
+
+            }};
+            prepared = await ProductConfig.prepareDatasetReplacement({storageArea, sha256,
+              createDatasetStore: () => stagedView}, effectiveRecords, identity, checkCandidate);
+          }
           try {
             await storageArea.set({
               [ProductConfig.DATASET_PROMOTION_STORAGE_KEY]: journal,
             });
           } catch (_error) {
             throw promotionError(ERRORS.STORAGE_FAILED);
+          }
+          if (active) {
+            let replacement;
+            try {
+              replacement = await options.replacePrepared(prepared);
+              // The existing ON record is the commit decision for v2 recovery:
+              // OLD rolls back, NEW finalizes pointers and Saved dataset metadata.
+              await recoverNow();
+            } catch (_error) {
+              throw promotionError(ERRORS.RECOVERY_REQUIRED);
+            }
+            if (!replacement || replacement.ok !== true) {
+              throw promotionError(replacement && replacement.error && replacement.error.code ||
+                ERRORS.RECOVERY_REQUIRED);
+            }
+            return Object.freeze({ok: true, status: 'INSTALLED'});
           }
           let promoted;
           try {

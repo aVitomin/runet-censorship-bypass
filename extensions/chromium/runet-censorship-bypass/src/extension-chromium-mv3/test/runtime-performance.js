@@ -147,7 +147,7 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
           'actionCalls',
         ])).to.deep.equal({
           runtimeRpcs: 1,
-          storageGets: 1,
+          storageGets: 2, // Saved plus the immutable Effective projection.
           hashOperations: 1,
           actionCalls: 0,
         });
@@ -162,7 +162,7 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
           'alarmGets',
         ])).to.deep.equal({
           runtimeRpcs: 1,
-          storageGets: 1,
+          storageGets: 2,
           hashOperations: 1,
           actionCalls: 0,
           alarmGets: 2,
@@ -230,14 +230,17 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
             tabUrl: 'https://audit.example/',
             draft: {siteMode: mode, siteScope: 'host'},
           });
-          Chai.expect(result.popupState.mode).to.equal(mode);
+          Chai.expect(result.popupState.mode).to.equal('auto'); // Save is not Apply.
+          Chai.expect(harness.context.mv3SiteScope.getHostRuleState(
+              harness.getState().pacMods, 'audit.example',
+          ).mode).to.equal(mode);
           Chai.expect(pickCounts(harness.counts, [
             'runtimeRpcs',
             'storageGets',
             'storageSets',
           ])).to.deep.equal({
             runtimeRpcs: 1,
-            storageGets: 2,
+            storageGets: 3,
             storageSets: 1,
           });
         }

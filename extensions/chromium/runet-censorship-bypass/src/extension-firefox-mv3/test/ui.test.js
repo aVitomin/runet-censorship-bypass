@@ -111,7 +111,37 @@ function providerUpdateResult(overrides = {}) {
 
 }
 
+function configurationRpc(rpc) {
+
+  let revision = 0;
+  let active = false;
+  return {async call(message) {
+
+    if (message.type === 'firefox.configuration.get') {
+      return {
+        savedRevision: revision, effectiveId: active ? 'generation-a' : null,
+        active, pending: false, applying: false, blocked: false,
+        reason: null, pendingCategories: [],
+      };
+    }
+    const result = await rpc.call(message);
+    if (message.type === 'firefox.settings.get' || message.type === 'firefox.settings.replace') revision = result.revision;
+    if (message.type === 'firefox.capabilities.get') active = result.runtimeState === 'READY';
+    return result;
+
+  }};
+
+}
+
+function optionsController(options) {
+
+  return Options.createController(Object.assign({}, options, {rpc: configurationRpc(options.rpc)}));
+
+}
+
 function popupController(options) {
+
+  options = Object.assign({}, options, {rpc: configurationRpc(options.rpc)});
 
   return Popup.createController(Object.assign({
     getActiveTabUrl: async () => 'https://sub.example.com/private',
@@ -169,6 +199,225 @@ function fakeParent() {
 }
 
 describe('Firefox production UI controllers', function() {
+  it('round-trips existing rule buckets, overlaps and legacy patterns without normalization', function() {
+
+    const original = {direct: ['exact.example', '*.example.com', '*legacy.example'],
+      proxy: ['*.example.com', 'proxy.example'], whitelist: ['*', '*.allowed.example']};
+    const before = structuredClone(original);
+    const rows = Options.ruleRowsFromRules(original);
+    Assert.deepStrictEqual(rows[0], {host: 'exact.example', route: 'DIRECT', scope: 'HOST'});
+    Assert.deepStrictEqual(rows[1], {host: 'example.com', route: 'DIRECT', scope: 'DOMAIN'});
+    Assert.deepStrictEqual(rows[2], {host: '*legacy.example', route: 'DIRECT', scope: 'PATTERN'});
+    Assert.strictEqual(rows[5].route, 'WHITELIST');
+    Assert.deepStrictEqual(Options.rulesFromRuleRows(rows), original);
+    Assert.deepStrictEqual(original, before);
+
+  });
+
+  it('adds, edits and deletes exact/domain rules; Auto removes only its selected entry', function() {
+
+    const rows = Options.ruleRowsFromRules({direct: ['*.example.com'], proxy: ['exact.example'], whitelist: ['allowed.example']});
+    rows.push({host: 'new.example', route: 'PROXY', scope: 'DOMAIN'});
+    rows[1] = {host: 'edited.example', route: 'DIRECT', scope: 'HOST'};
+    rows.splice(2, 1);
+    Assert.deepStrictEqual(Options.rulesFromRuleRows(rows), {
+      direct: ['*.example.com', 'edited.example'], proxy: ['*.new.example'], whitelist: [],
+    });
+    rows[1].route = 'AUTO';
+    Assert.deepStrictEqual(Options.rulesFromRuleRows(rows), {
+      direct: ['*.example.com'], proxy: ['*.new.example'], whitelist: [],
+    });
+
+  });
+
+  function unifiedUi() {
+
+    let saved = settingsResult(1);
+    let effectiveRevision = 1;
+    let blocked = false;
+    let failApply = false;
+    const calls = [];
+    const configuration = () => ({savedRevision: saved.revision,
+      effectiveId: `generation-${effectiveRevision}`, active: !blocked,
+      pending: effectiveRevision !== saved.revision, blocked, applying: false,
+      reason: blocked ? 'CONTROL_LOSS' : null,
+      pendingCategories: effectiveRevision !== saved.revision ? ['routingSettings'] : []});
+    const rpc = {async call(message) {
+
+      calls.push(message);
+      if (message.type === 'firefox.configuration.get') return configuration();
+      if (message.type === 'firefox.capabilities.get') {
+        return capabilities({
+          runtimeState: blocked ? 'FAILED' : 'READY', durableIntent: 'ON',
+          recoveryStatus: blocked ? 'BLOCKED_CONTROL_LOSS' : 'ACTIVE',
+        });
+      }
+      if (message.type === 'firefox.settings.get') return structuredClone(saved);
+      if (message.type === 'firefox.operational.get') return operationalResult();
+      if (message.type === 'firefox.provider.update.get') return providerUpdateResult();
+      if (message.type === 'firefox.settings.replace') {
+        if (message.expectedRevision !== saved.revision) throw failure('SETTINGS_REVISION_CONFLICT');
+        saved = {revision: saved.revision + 1, settings: structuredClone(message.settings)};
+        return structuredClone(saved);
+      }
+      if (message.type === 'firefox.activation.apply') {
+        if (message.expectedRevision !== saved.revision) throw failure('SAVED_REVISION_CHANGED');
+        if (failApply) throw failure('DATASET_NOT_READY');
+        effectiveRevision = saved.revision;
+        return {intent: 'ON', status: 'ACTIVE'};
+      }
+      throw failure('UNKNOWN_RPC');
+
+    }};
+    return {rpc, calls, configuration, controller: Options.createController({rpc}),
+      externalSave() {
+        saved.revision += 1; saved.settings.flags.noDirect = true;
+      },
+      fail(controlLost = false) {
+        failApply = true; blocked = controlLost;
+      }};
+
+  }
+
+  it('keeps active Draft local, blocks Apply until Save, then promotes displayed Saved', async function() {
+
+    const test = unifiedUi();
+    await test.controller.load();
+    Assert.strictEqual(test.controller.snapshot().configuration.pending, false);
+    test.controller.edit();
+    Assert.strictEqual(await test.controller.applySaved(), false);
+    const next = structuredClone(test.controller.snapshot().settings);
+    next.flags.noDirect = true;
+    Assert.strictEqual(await test.controller.save(next), true);
+    Assert.strictEqual(test.controller.snapshot().notice, 'SAVED');
+    Assert.strictEqual(test.controller.snapshot().configuration.pending, true);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+    Assert.strictEqual(await test.controller.applySaved(), true);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-2');
+    Assert.strictEqual(test.calls.filter((value) => value.type === 'firefox.activation.clear').length, 0);
+
+  });
+
+  it('preserves a stale Draft through an external Save and discards only local edits', async function() {
+
+    const test = unifiedUi();
+    await test.controller.load();
+    test.controller.edit();
+    test.externalSave();
+    await test.controller.load();
+    Assert.strictEqual(test.controller.snapshot().revision, 1);
+    Assert.strictEqual(test.controller.snapshot().dirty, true);
+    Assert.strictEqual(test.controller.snapshot().stale, true);
+    Assert.strictEqual(await test.controller.save(Settings.createDefaultSettings()), false);
+    Assert.strictEqual(test.calls.some((entry) => entry.type === 'firefox.settings.replace'), false);
+    await test.controller.discard();
+    Assert.strictEqual(test.controller.snapshot().revision, 2);
+    Assert.strictEqual(test.controller.snapshot().settings.flags.noDirect, true);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+
+  });
+
+  it('edits active site rules in Draft, saves only, and applies the exact resulting revision', async function() {
+
+    const test = unifiedUi();
+    await test.controller.load();
+    Assert.strictEqual(test.controller.snapshot().editable, true);
+    const draft = structuredClone(test.controller.snapshot().settings);
+    draft.rules = Options.rulesFromRuleRows([
+      {host: 'exact.example', route: 'DIRECT', scope: 'HOST'},
+      {host: 'domain.example', route: 'PROXY', scope: 'DOMAIN'},
+    ]);
+    test.controller.edit();
+    Assert.deepStrictEqual(test.controller.snapshot().settings.rules.proxy, []);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+    Assert.strictEqual(await test.controller.save(draft), true);
+    Assert.deepStrictEqual(test.controller.snapshot().settings.rules, draft.rules);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+    Assert.strictEqual(await test.controller.applySaved(), true);
+    Assert.strictEqual(test.calls.find((call) => call.type === 'firefox.activation.apply').expectedRevision, 2);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-2');
+
+  });
+
+  it('protects a structured-rule Draft from an external revision instead of overwriting it', async function() {
+
+    const test = unifiedUi();
+    await test.controller.load();
+    const draft = structuredClone(test.controller.snapshot().settings);
+    draft.rules = Options.rulesFromRuleRows([{host: 'draft.example', scope: 'HOST', route: 'PROXY'}]);
+    test.controller.edit();
+    test.externalSave();
+    await test.controller.load();
+    Assert.strictEqual(test.controller.snapshot().stale, true);
+    Assert.strictEqual(await test.controller.save(draft), false);
+    Assert.deepStrictEqual(draft.rules.proxy, ['draft.example']);
+    Assert.strictEqual(test.calls.some((call) => call.type === 'firefox.settings.replace'), false);
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+
+  });
+
+  it('rejects stale Apply and requires a renewed action on refreshed Saved', async function() {
+
+    const test = unifiedUi();
+    await test.controller.load();
+    test.externalSave();
+    Assert.strictEqual(await test.controller.applySaved(), false);
+    Assert.strictEqual(test.controller.snapshot().errorCode, 'SAVED_REVISION_CHANGED');
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+    Assert.strictEqual(await test.controller.applySaved(), true);
+
+  });
+
+  it('distinguishes a confirmed safe preparation failure from control loss', async function() {
+
+    for (const lost of [false, true]) {
+      const test = unifiedUi();
+      await test.controller.load();
+      await test.controller.save(Settings.createDefaultSettings());
+      test.fail(lost);
+      Assert.strictEqual(await test.controller.applySaved(), false);
+      Assert.strictEqual(test.controller.snapshot().notice === 'APPLY_FAILED_SAFE', !lost);
+      Assert.strictEqual(test.controller.snapshot().configuration.blocked, lost);
+    }
+
+  });
+
+  it('rejects secret-bearing status projections and unknown pending categories', function() {
+
+    const test = unifiedUi();
+    Assert.throws(() => Ui.validateConfiguration(Object.assign(test.configuration(), {password: 'secret'})));
+    Assert.throws(() => Ui.validateConfiguration(Object.assign(test.configuration(), {pendingCategories: ['proxy.example']})));
+
+  });
+
+  it('popup sends explicit pending confirmation and retains saved-not-applied outcome', async function() {
+
+    const test = unifiedUi();
+    test.externalSave();
+    const calls = [];
+    const controller = Popup.createController({getActiveTabUrl: async () => 'https://example.com/', rpc: {
+      async call(message) {
+
+        calls.push(message);
+        if (message.type === 'firefox.site.get') return siteState();
+        if (message.type === 'firefox.site.apply') {
+          return {applied: false, saved: true,
+            previousActive: true, errorCode: 'DATASET_NOT_READY'};
+        }
+        return test.rpc.call(message);
+
+      },
+    }});
+    await controller.refresh();
+    Assert.strictEqual(await controller.apply({mode: 'DIRECT', scope: 'HOST'}, true), false);
+    const sent = calls.find((entry) => entry.type === 'firefox.site.apply');
+    Assert.strictEqual(sent.expectedRevision, 2);
+    Assert.strictEqual(sent.expectedEffectiveId, 'generation-1');
+    Assert.strictEqual(sent.applyAll, true);
+    Assert.strictEqual(controller.snapshot().notice, 'SITE_SAVED_NOT_APPLIED');
+    Assert.strictEqual(calls.some((entry) => entry.type === 'firefox.site.replace'), false);
+
+  });
 
   it('renders OFF as Enable without claiming active protection', function() {
 
@@ -361,8 +610,8 @@ describe('Firefox production UI controllers', function() {
     const controller = popupController({rpc: {async call(message) {
 
       calls.push(message);
-      if (message.type === 'firefox.activation.apply') {
-        return {intent: 'ON', status: 'ACTIVE'};
+      if (message.type === 'firefox.site.apply') {
+        return {applied: true};
       }
       if (message.type === 'firefox.site.get') {
         return siteState();
@@ -377,10 +626,12 @@ describe('Firefox production UI controllers', function() {
       });
 
     }}});
+    await controller.refresh();
+    calls.length = 0;
     Assert.strictEqual(await controller.apply(), true);
 
     Assert.deepStrictEqual(calls.map((item) => item.type), [
-      'firefox.activation.apply',
+      'firefox.site.apply',
       'firefox.capabilities.get',
       'firefox.site.get',
       'firefox.operational.get',
@@ -420,9 +671,9 @@ describe('Firefox production UI controllers', function() {
     const controller = popupController({rpc: {async call(message) {
 
       calls += 1;
-      if (message.type === 'firefox.activation.apply') {
+      if (message.type === 'firefox.site.apply') {
         await gate.promise;
-        return {intent: 'ON', status: 'ACTIVE'};
+        return {applied: true};
       }
       if (message.type === 'firefox.site.get') return siteState();
       if (message.type === 'firefox.operational.get') {
@@ -433,6 +684,8 @@ describe('Firefox production UI controllers', function() {
       });
 
     }}});
+    await controller.refresh();
+    calls = 0;
     const first = controller.apply();
     Assert.strictEqual(await controller.apply(), false);
     gate.resolve();
@@ -498,31 +751,19 @@ describe('Firefox production UI controllers', function() {
 
   });
 
-  it('persists the current-site draft before production Apply', async function() {
+  it('uses one revision-safe RPC for the current-site draft and Apply', async function() {
 
     const calls = [];
     const controller = popupController({rpc: {async call(message) {
 
       calls.push(message);
-      if (message.type === 'firefox.site.replace') {
-        return siteState({
-          revision: 1,
-          route: {
-            mode: message.mode,
-            scope: message.scope,
-            pattern: 'sub.example.com',
-          },
-        });
-      }
-      if (message.type === 'firefox.activation.apply') {
-        return {intent: 'ON', status: 'ACTIVE'};
-      }
+      if (message.type === 'firefox.site.apply') return {applied: true};
       if (message.type === 'firefox.site.get') {
         return siteState({
           revision: calls.some((item) =>
-            item.type === 'firefox.site.replace') ? 1 : 0,
+            item.type === 'firefox.site.apply') ? 1 : 0,
           route: calls.some((item) =>
-            item.type === 'firefox.site.replace') ?
+            item.type === 'firefox.site.apply') ?
             {mode: 'DIRECT', scope: 'HOST', pattern: 'sub.example.com'} :
             {mode: 'AUTO', scope: 'DOMAIN', pattern: '*.example.com'},
         });
@@ -548,16 +789,17 @@ describe('Firefox production UI controllers', function() {
       'firefox.capabilities.get',
       'firefox.site.get',
       'firefox.operational.get',
-      'firefox.site.replace',
-      'firefox.activation.apply',
+      'firefox.site.apply',
       'firefox.capabilities.get',
       'firefox.site.get',
       'firefox.operational.get',
     ]);
     Assert.deepStrictEqual(calls[3], {
-      type: 'firefox.site.replace',
+      type: 'firefox.site.apply',
       tabUrl: 'https://sub.example.com/private',
       expectedRevision: 0,
+      expectedEffectiveId: null,
+      applyAll: false,
       mode: 'DIRECT',
       scope: 'HOST',
     });
@@ -671,7 +913,7 @@ describe('Firefox production UI controllers', function() {
             operationalResult() : providerUpdateResult();
 
     }};
-    const controller = Options.createController({rpc});
+    const controller = optionsController({rpc});
 
     Assert.strictEqual(await controller.load(), true);
     Assert.strictEqual(controller.snapshot().revision, 7);
@@ -699,7 +941,7 @@ describe('Firefox production UI controllers', function() {
           return providerUpdateResult();
 
         }};
-        const controller = Options.createController({rpc});
+        const controller = optionsController({rpc});
         await controller.load();
         privateAccess = 'GRANTED';
         Assert.strictEqual(await controller.checkPrivateAccess(), true);
@@ -725,7 +967,11 @@ describe('Firefox production UI controllers', function() {
 
       calls.push(message);
       if (message.type === 'firefox.capabilities.get') return capabilities();
-      if (message.type === 'firefox.settings.get') return settingsResult(3);
+      if (message.type === 'firefox.settings.get') {
+        return settingsResult(
+          calls.some((entry) => entry.type === 'firefox.settings.replace') ? 4 : 3,
+        );
+      }
       if (message.type === 'firefox.operational.get') {
         return operationalResult();
       }
@@ -737,7 +983,7 @@ describe('Firefox production UI controllers', function() {
       });
 
     }};
-    const controller = Options.createController({rpc});
+    const controller = optionsController({rpc});
     await controller.load();
     const next = Settings.createDefaultSettings();
     next.flags.noDirect = true;
@@ -749,7 +995,7 @@ describe('Firefox production UI controllers', function() {
 
   });
 
-  it('reloads instead of overwriting on revision conflict', async function() {
+  it('preserves the Draft base on revision conflict until explicit discard', async function() {
 
     let settingsReads = 0;
     const rpc = {async call(message) {
@@ -770,7 +1016,7 @@ describe('Firefox production UI controllers', function() {
       throw failure('SETTINGS_REVISION_CONFLICT');
 
     }};
-    const controller = Options.createController({rpc});
+    const controller = optionsController({rpc});
     await controller.load();
 
     Assert.strictEqual(
@@ -778,8 +1024,12 @@ describe('Firefox production UI controllers', function() {
         false,
     );
     Assert.strictEqual(controller.snapshot().notice, 'REVISION_CONFLICT');
+    Assert.strictEqual(controller.snapshot().revision, 1);
+    Assert.strictEqual(controller.snapshot().settings.flags.noDirect, false);
+    Assert.strictEqual(controller.snapshot().stale, true);
+    await controller.discard();
     Assert.strictEqual(controller.snapshot().revision, 2);
-    Assert.strictEqual(controller.snapshot().settings.flags.noDirect, true);
+    Assert.strictEqual(controller.snapshot().stale, false);
 
   });
 
@@ -803,7 +1053,7 @@ describe('Firefox production UI controllers', function() {
       return settingsResult();
 
     }};
-    const controller = Options.createController({rpc});
+    const controller = optionsController({rpc});
     await controller.load();
 
     Assert.strictEqual(
@@ -819,7 +1069,7 @@ describe('Firefox production UI controllers', function() {
   it('applies the displayed Saved revision without an implicit Save or Clear', async function() {
 
     const calls = [];
-    const controller = Options.createController({rpc: {async call(message) {
+    const controller = optionsController({rpc: {async call(message) {
 
       calls.push(message);
       if (message.type === 'firefox.capabilities.get') {
@@ -864,7 +1114,7 @@ describe('Firefox production UI controllers', function() {
       return settingsResult(1);
 
     }};
-    const controller = Options.createController({rpc});
+    const controller = optionsController({rpc});
     await controller.load();
     const first = controller.save(Settings.createDefaultSettings());
     Assert.strictEqual(
@@ -1026,7 +1276,7 @@ describe('Firefox production UI controllers', function() {
           return operationalResult();
 
         }};
-        const controller = Options.createController({rpc});
+        const controller = optionsController({rpc});
         await controller.load();
         Assert.strictEqual(await controller.checkHealth(), true);
         Assert.deepStrictEqual(calls.find((message) =>
@@ -1041,7 +1291,7 @@ describe('Firefox production UI controllers', function() {
 
         const calls = [];
         let checked = false;
-        const controller = Options.createController({rpc: {
+        const controller = optionsController({rpc: {
           async call(message) {
 
             calls.push(message);
@@ -1091,12 +1341,12 @@ describe('Firefox production UI controllers', function() {
 
       });
 
-  it('installs a staged update only while settings are fully OFF',
+  it('installs a staged update while OFF without activating protection',
       async function() {
 
         const calls = [];
         let installed = false;
-        const controller = Options.createController({rpc: {
+        const controller = optionsController({rpc: {
           async call(message) {
 
             calls.push(message);
@@ -1141,10 +1391,10 @@ describe('Firefox production UI controllers', function() {
 
       });
 
-  it('does not ask background to install while ACTIVE', async function() {
+  it('requests staged installation while ACTIVE without applying an unsaved rules Draft', async function() {
 
     const calls = [];
-    const controller = Options.createController({rpc: {
+    const controller = optionsController({rpc: {
       async call(message) {
 
         calls.push(message.type);
@@ -1172,11 +1422,15 @@ describe('Firefox production UI controllers', function() {
       },
     }});
     await controller.load();
-    Assert.strictEqual(await controller.installProviderUpdate(), false);
+    controller.edit();
+    Assert.strictEqual(await controller.installProviderUpdate(), true);
+    Assert.strictEqual(controller.snapshot().dirty, true);
     Assert.strictEqual(
         calls.includes('firefox.provider.update.install'),
-        false,
+        true,
     );
+    Assert.strictEqual(calls.includes('firefox.settings.replace'), false);
+    Assert.strictEqual(calls.includes('firefox.activation.apply'), false);
 
   });
 
@@ -1196,6 +1450,33 @@ describe('Firefox production UI controllers', function() {
           (error) => error.code === 'UI_RPC_FAILED',
       );
     }
+
+  });
+
+  it('refreshes blocked activation after a failed active provider install and preserves Draft', async function() {
+
+    const test = unifiedUi();
+    const controller = Options.createController({rpc: {async call(message) {
+
+      if (message.type === 'firefox.provider.update.get') {
+        return providerUpdateResult({trustConfigured: true, status: 'UPDATE_AVAILABLE',
+          updateAvailable: true, stagedDatasetVersion: 'public-v2'});
+      }
+      if (message.type === 'firefox.provider.update.install') {
+        test.fail(true);
+        throw failure('CONTROL_LOSS');
+      }
+      return test.rpc.call(message);
+
+    }}});
+    await controller.load();
+    controller.edit();
+    Assert.strictEqual(await controller.installProviderUpdate(), false);
+    Assert.strictEqual(controller.snapshot().dirty, true);
+    Assert.strictEqual(controller.snapshot().editable, false);
+    Assert.strictEqual(controller.snapshot().configuration.blocked, true);
+    Assert.strictEqual(controller.snapshot().configuration.active, false);
+    Assert.strictEqual(controller.snapshot().notice, null);
 
   });
 

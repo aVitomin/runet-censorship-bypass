@@ -6,6 +6,7 @@ const Mocha = require('mocha');
 const {createRuntimeHarness} = require('./runtime-performance-harness');
 
 const REVIEWED_RPC_METHODS = Object.freeze([
+  'getConfigurationStatus', 'applySavedConfiguration', 'applySiteConfiguration',
   'getState', 'getPacProviders', 'getPacMods', 'setPacMods',
   'getPopupState', 'setCurrentSiteMode', 'updatePopupDraft',
   'applyPopupChanges', 'openOptionsPage', 'normalizePacMods',
@@ -233,6 +234,7 @@ Mocha.describe('MV3 RPC credential redaction', function() {
               'pacMods',
               'proxyApply',
               'proxyControl',
+              'savedRevision',
               'uiLanguage',
             ].join(','),
           passwordDerivedPacModsHashesStayInternal:

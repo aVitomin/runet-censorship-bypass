@@ -7,6 +7,15 @@
 принятое безопасное отличие, а `MISSING` — оставшаяся работа. Последняя
 категория не считается parity.
 
+Это исторический baseline, а не доказательство текущей parity. В текущей рабочей
+версии Unified Apply уже заменяет OFF-only редактирование: Draft → Save → exact
+Apply. Firefox Site rules теперь представлены единым структурированным списком,
+без переноса настроек между профилями. Проверенный dataset можно устанавливать
+при Active из Effective settings, не применяя pending Saved. Production update
+trust по-прежнему не настроен. Текущие контракты и recovery описаны в
+[Firefox architecture](FIREFOX_MV3_ARCHITECTURE.md); приведённый ниже старый visual
+gate не проверяет эти новые изменения.
+
 ## Popup и управление
 
 | Функция Chromium | Firefox | Статус | Примечание |
