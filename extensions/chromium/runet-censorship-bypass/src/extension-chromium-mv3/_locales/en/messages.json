@@ -74,7 +74,7 @@
   "unifiedConflict": {"message": "Settings changed elsewhere. Your edits are preserved. Discard edits to load the latest saved settings and review again."},
   "unifiedSaveFirst": {"message": "Save or discard your edits before applying."},
   "unifiedSavedActive": {"message": "Saved. Previous settings are still active."},
-  "unifiedPreparing": {"message": "Previous settings remain active while the new configuration is prepared."},
+  "unifiedPreparing": {"message": "Previous settings remain active while the new settings are prepared."},
   "unifiedApplyFailed": {"message": "Changes were not applied. Previous settings remain active."},
   "unifiedSiteSaved": {"message": "Site rule saved, but not applied. Previous settings remain active."},
   "unifiedPopupPending": {"message": "Other saved settings have not been applied. Applying this site rule will also apply those settings."},
@@ -86,7 +86,7 @@
     "message": "Runet Censorship Bypass"
   },
   "extDesc": {
-    "message": "Bypass Runet censorship with PAC-based proxy rules."
+    "message": "Bypass Runet censorship with configurable routing rules."
   },
   "popupTitle": {
     "message": "Runet Censorship Bypass"
@@ -101,7 +101,7 @@
     "message": "Could not open the extension"
   },
   "popupLoadErrorHelp": {
-    "message": "Try again, or open Settings to inspect the configuration."
+    "message": "Try again, or open Settings to review the saved settings."
   },
   "popupRetry": {
     "message": "Retry"
@@ -137,13 +137,13 @@
     "message": "Applying changes…"
   },
   "popupControlApplyingHelp": {
-    "message": "Saving the configuration and activating the current routing rules."
+    "message": "Saving the settings and activating the current routing rules."
   },
   "popupControlClearing": {
     "message": "Turning off extension proxy…"
   },
   "popupControlClearingHelp": {
-    "message": "Removing this extension's proxy settings while keeping your configuration."
+    "message": "Removing this extension's proxy settings while keeping your saved settings."
   },
   "popupControlUpdating": {
     "message": "Updating routing data…"
@@ -673,7 +673,7 @@
     "message": "Advanced PAC rules"
   },
   "optionsAdvancedPacRulesHint": {
-    "message": "Save changes here, then use Apply configuration to activate them."
+    "message": "Save changes here, then select Apply to activate them."
   },
   "optionsWhitelist": {
     "message": "Whitelist"
@@ -742,16 +742,16 @@
     "message": "Select a source first."
   },
   "popupPeriodicUpdateRunning": {
-    "message": "Periodic PAC update is already running."
+    "message": "A routing data update is already running."
   },
   "popupPacOperationRunning": {
-    "message": "Another PAC operation is already running."
+    "message": "Another routing data update is already running."
   },
   "popupMv2RulesWarning": {
     "message": "This advanced legacy rule is listed under About / Limitations."
   },
   "popupCredentialsRedactedWarning": {
-    "message": "Proxy passwords are hidden in PAC and used only for authentication."
+    "message": "Proxy passwords are kept out of routing data and used only for authentication."
   },
   "popupTorMustRunWarning": {
     "message": "Tor must be running locally."
@@ -826,7 +826,7 @@
     "message": "Notification preferences saved."
   },
   "optionsNotifyPacError": {
-    "message": "PAC errors"
+    "message": "Routing data update errors"
   },
   "optionsNotifyExtensionError": {
     "message": "Extension errors"
@@ -879,10 +879,10 @@
     "message": "Custom source saved. Select it when you are ready to use it."
   },
   "optionsCustomProviderUpdated": {
-    "message": "Custom source saved. Apply the configuration to activate changes."
+    "message": "Custom source saved. Select Apply to activate the changes."
   },
   "optionsCustomProviderDeleted": {
-    "message": "Custom source deleted. The active proxy configuration is unchanged until you apply or turn it off."
+    "message": "Custom source deleted. Active proxy settings are unchanged until you select Apply or turn protection off."
   },
   "optionsSelectedProviderCleared": {
     "message": "The selected custom source was disabled. Select another source. An already applied proxy remains active until you clear or replace it."
@@ -943,7 +943,7 @@
     "message": "Error"
   },
   "popupCheckProxy": {
-    "message": "Check proxy"
+    "message": "Check connection"
   },
   "popupCheckProxyAgain": {
     "message": "Check again"
@@ -1003,19 +1003,19 @@
     "message": "The Tor service is unavailable. Start Tor and try again."
   },
   "optionsAutoUpdateEveryTwelveHours": {
-    "message": "Automatically update PAC every 12 hours"
+    "message": "Automatically update routing data every 12 hours"
   },
   "optionsLastSuccessfulPacUpdate": {
-    "message": "Last successful PAC update"
+    "message": "Last successful routing data update"
   },
   "optionsNextAutomaticPacUpdate": {
-    "message": "Next automatic update"
+    "message": "Next automatic routing data update"
   },
   "periodicUpdateNotificationTitle": {
-    "message": "PAC update failed"
+    "message": "Routing data update failed"
   },
   "periodicUpdateNotificationBody": {
-    "message": "The automatic PAC update failed. Open settings for details."
+    "message": "The automatic routing data update failed. Open settings for details."
   },
   "optionsPageTitle": {
     "message": "Runet Censorship Bypass settings"
@@ -1078,7 +1078,7 @@
     "message": "View version, release, project, license, and attribution information."
   },
   "optionsLoadingPage": {
-    "message": "Loading saved configuration and current proxy status…"
+    "message": "Loading saved settings and current proxy status…"
   },
   "optionsLoadFailedTitle": {
     "message": "Could not load settings"
@@ -1093,7 +1093,7 @@
     "message": "Routing source"
   },
   "optionsSavedConfiguration": {
-    "message": "Saved configuration"
+    "message": "Saved settings"
   },
   "optionsApplyRequired": {
     "message": "Apply required"
@@ -1120,7 +1120,7 @@
     "message": "Needs attention"
   },
   "optionsControlErrorHelp": {
-    "message": "The last proxy operation failed. Review the configuration and try again."
+    "message": "The last proxy operation failed. Review the settings and try again."
   },
   "optionsChooseSourceTitle": {
     "message": "Choose a routing source"
@@ -1225,7 +1225,7 @@
     "message": "Use source"
   },
   "optionsRoutingSourceSaved": {
-    "message": "Source saved. Apply the configuration to activate it."
+    "message": "Source saved. Select Apply to activate it."
   },
   "optionsNoDescription": {
     "message": "No description provided."
@@ -1286,7 +1286,7 @@
     "message": "Could not save this source. Check the fields and try again."
   },
   "optionsSourceSavedAndSelected": {
-    "message": "Source saved and selected. Apply the configuration to activate it."
+    "message": "Source saved and selected. Select Apply to activate it."
   },
   "optionsSourceSavedNotSelected": {
     "message": "Source saved, but it could not be selected. Review the source list and try selecting it again."
@@ -1397,10 +1397,10 @@
     }
   },
   "optionsRuleSavedApplyRequired": {
-    "message": "Site rule saved. Apply the configuration to activate it."
+    "message": "Site rule saved. Select Apply to activate it."
   },
   "optionsRuleRemovedApplyRequired": {
-    "message": "Site rule removed. Apply the configuration to activate the change."
+    "message": "Site rule removed. Select Apply to activate the change."
   },
   "optionsProxyMethodAvailability": {
     "message": "Local and custom connection availability"
@@ -1556,7 +1556,7 @@
     "message": "Choose Replace or Remove password when changing the proxy type, host, or port."
   },
   "optionsProxyMethodsSavedApplyRequired": {
-    "message": "Proxy connections saved. Apply the configuration to activate routing changes."
+    "message": "Proxy connections saved. Select Apply to activate the routing changes."
   },
   "optionsAutomaticUpdates": {
     "message": "Routing data updates"
@@ -1658,13 +1658,13 @@
     "message": "Enter a host pattern."
   },
   "optionsAdvancedRulesSavedApplyRequired": {
-    "message": "Advanced routing rules saved. Apply the configuration to activate them."
+    "message": "Advanced routing rules saved. Select Apply to activate them."
   },
   "optionsExpertOperations": {
     "message": "Expert routing operations"
   },
   "optionsExpertOperationsHelp": {
-    "message": "Normal use needs only Apply configuration. These individual stages are for controlled troubleshooting."
+    "message": "Normal use needs only Apply. These individual stages are for controlled troubleshooting."
   },
   "optionsRebuildRoutingRules": {
     "message": "Rebuild routing rules"
@@ -1682,7 +1682,7 @@
     "message": "Prepared routing rules activated."
   },
   "optionsConfigurationActions": {
-    "message": "Configuration status and actions"
+    "message": "Settings status and actions"
   },
   "optionsConflictTitle": {
     "message": "Saved settings changed while you were editing"
@@ -1716,7 +1716,7 @@
     }
   },
   "optionsSaveSectionBeforeApply": {
-    "message": "Save or discard local section edits before applying the configuration."
+    "message": "Save or discard local section edits before selecting Apply."
   },
   "optionsReviewChanges": {
     "message": "Review changes"
@@ -1740,7 +1740,7 @@
     "message": "Wait for the current operation to finish before starting another one."
   },
   "optionsChooseSourceBeforeApply": {
-    "message": "Select a trusted source before applying the configuration."
+    "message": "Select a trusted source before selecting Apply."
   },
   "optionsSavedAndActive": {
     "message": "Saved settings are active"
@@ -1749,10 +1749,10 @@
     "message": "Turning off the extension proxy keeps rules and downloaded routing data."
   },
   "optionsReadyToApply": {
-    "message": "Configuration is ready"
+    "message": "Settings are ready to apply"
   },
   "optionsApplyWorkflowHelp": {
-    "message": "Apply configuration updates, validates, prepares, verifies, and activates routing rules as one protected workflow."
+    "message": "Apply validates, prepares, verifies, and activates routing settings as one protected workflow."
   },
   "optionsApplyConfiguration": {
     "message": "Apply"
@@ -1761,7 +1761,7 @@
     "message": "Applying…"
   },
   "optionsConfigurationApplied": {
-    "message": "Configuration applied successfully."
+    "message": "Settings applied successfully."
   },
   "optionsConfigurationTurnedOff": {
     "message": "Extension proxy turned off. Saved settings were kept."
@@ -1770,7 +1770,7 @@
     "message": "Fix the highlighted fields. Your draft was kept."
   },
   "optionsApplyFailedSafe": {
-    "message": "Could not apply the configuration. Saved settings and local drafts were kept."
+    "message": "Could not apply the settings. Saved settings and local drafts were kept."
   },
   "optionsOperationFailedSafe": {
     "message": "The operation could not be completed. Your local edits were kept."
