@@ -1005,14 +1005,14 @@ describe('MV3 options UI', function() {
         const setup = harness.root.querySelector('#initial-setup-card');
         expect(setup).to.exist;
         expect(setup.textContent).to.include('Set up routing');
-        expect(setup.textContent).to.include('Choose automatic routing');
+        expect(setup.textContent).to.include('Choose a routing source');
         expect(setup.textContent).to.include('Not selected');
         expect(setup.textContent).to.include('Proxy connections — optional');
         expect(setup.textContent).to.include(
             'Optional — none configured',
         );
         expect(setup.textContent).to.include('Waiting for a source');
-        expect(findButton(setup, 'Apply configuration')).not.to.exist;
+        expect(findButton(setup, 'Apply')).not.to.exist;
         expect(harness.root.querySelector('#global-action-bar').hidden)
             .to.equal(false);
         expect(harness.root.querySelectorAll('button').filter((button) =>
@@ -1104,7 +1104,7 @@ describe('MV3 options UI', function() {
         expect(refreshedSetup.textContent).to.include('Ready to apply');
         const setupApply = findButton(
             refreshedSetup,
-            'Apply configuration',
+            'Apply',
         );
         expect(setupApply).to.exist;
         expect(setupApply.getAttribute('aria-describedby'))
@@ -1128,11 +1128,11 @@ describe('MV3 options UI', function() {
         expect(setupWithDraft.textContent).to.include(
             'Save pending changes first',
         );
-        expect(findButton(setupWithDraft, 'Apply configuration').disabled)
+        expect(findButton(setupWithDraft, 'Apply').disabled)
             .to.equal(true);
         expect(findButton(
             setupWithDraft,
-            'Apply configuration',
+            'Apply',
         ).getAttribute('aria-describedby'))
             .to.equal('options-setup-apply-status');
         expect(getInput(harness.root, 'localTor.host').value)
@@ -1173,7 +1173,7 @@ describe('MV3 options UI', function() {
           },
         });
         const setup = harness.root.querySelector('#initial-setup-card');
-        const apply = findButton(setup, 'Apply configuration');
+        const apply = findButton(setup, 'Apply');
         await apply.onclick();
         await flush();
 
@@ -1208,7 +1208,7 @@ describe('MV3 options UI', function() {
         });
         await findButton(
             failed.root.querySelector('#initial-setup-card'),
-            'Apply configuration',
+            'Apply',
         ).onclick();
         expect(failed.root.querySelector('#initial-setup-card').textContent)
             .to.include('Apply needs attention');
@@ -1251,14 +1251,14 @@ describe('MV3 options UI', function() {
           'getState',
         ]);
         expect(harness.root.textContent).to.include('Overview');
-        expect(harness.root.textContent).to.include('Automatic routing');
+        expect(harness.root.textContent).to.include('Routing source');
         expect(harness.root.textContent).to.include('0.0.3.00');
         expect(harness.root.textContent).to.include('Stable release');
         expect(harness.root.textContent).not.to.include('Legacy MV2 migration');
         const navigation = harness.root.querySelectorAll('.options-nav a');
         expect(navigation.map((link) => link.textContent)).to.deep.equal([
           'Overview',
-          'Automatic routing',
+          'Routing source',
           'Site rules',
           'Proxy connections',
           'Maintenance',
@@ -1689,7 +1689,7 @@ describe('MV3 options UI', function() {
         expect(external.root.textContent).to.include(
             'Another extension or browser policy controls proxy settings',
         );
-        expect(findButton(external.root, 'Apply configuration')).not.to.exist;
+        expect(findButton(external.root, 'Apply')).not.to.exist;
         const turnOff = findButton(external.root, 'Turn off extension proxy');
         expect(turnOff).to.exist;
 
@@ -1723,7 +1723,7 @@ describe('MV3 options UI', function() {
         expect(harness.root.textContent).to.include(
             'Another extension or browser policy controls proxy settings',
         );
-        expect(findButton(harness.root, 'Apply configuration')).not.to.exist;
+        expect(findButton(harness.root, 'Apply')).not.to.exist;
         expect(findButton(harness.root, 'Turn off extension proxy')).to.exist;
         expect(harness.calls.filter((call) => call.method === 'getState'))
             .to.have.length(2);
@@ -2407,7 +2407,7 @@ describe('MV3 options UI', function() {
         const name = getInput(harness.root, 'newProvider.label');
         name.value = 'Discard me';
         name.dispatch('input');
-        await findButton(harness.root, 'Discard all').onclick();
+        await findButton(harness.root, 'Discard edits').onclick();
         expect(confirmations).to.equal(1);
         expect(getInput(harness.root, 'newProvider.label').value).to.equal('');
         expect(harness.calls.map((call) => call.method)).to.deep.equal([
@@ -2626,6 +2626,36 @@ describe('MV3 options UI', function() {
     });
     expect(CATALOGS.ru.optionsPageSubtitle.message)
         .not.to.match(/[A-Za-z]{4,}/);
+    expect(CATALOGS.en.unifiedSaveSection.message).to.equal('Save settings');
+    expect(CATALOGS.ru.unifiedSaveSection.message)
+        .to.equal('Сохранить настройки');
+    expect(CATALOGS.en.optionsDiscardAllChanges.message)
+        .to.equal('Discard edits');
+    expect(CATALOGS.ru.optionsDiscardAllChanges.message)
+        .to.equal('Отменить несохранённые правки');
+    expect(CATALOGS.en.optionsApplyConfiguration.message).to.equal('Apply');
+    expect(CATALOGS.ru.optionsApplyConfiguration.message)
+        .to.equal('Применить');
+    expect(CATALOGS.en.optionsNavRoutingSources.message)
+        .to.equal('Routing source');
+    expect(CATALOGS.ru.optionsNavRoutingSources.message)
+        .to.equal('Источник правил');
+    expect(CATALOGS.en.providerLifecycleName.message)
+        .to.equal('Routing data');
+    expect(CATALOGS.ru.providerLifecycleName.message)
+        .to.equal('Данные маршрутизации');
+    for (const key of [
+      'popupTurnOffProxyHelp',
+      'popupRefreshRoutingDataHelp',
+      'popupBrowserProxyControl',
+      'popupRoutingDataUpdated',
+      'actionTitleOff',
+      'optionsSetupIntro',
+      'optionsSetupApplyHelp',
+    ]) {
+      expect(CATALOGS.en[key].message, key).not.to.match(/\b(?:Chrome|Chromium)\b/);
+      expect(CATALOGS.ru[key].message, key).not.to.match(/\b(?:Chrome|Chromium)\b/);
+    }
 
   });
 
@@ -2639,7 +2669,7 @@ describe('MV3 options UI', function() {
             '.options-nav a',
         ).map((link) => link.textContent)).to.deep.equal([
           'Обзор',
-          'Автоматическая маршрутизация',
+          'Источник правил',
           'Правила сайтов',
           'Прокси-подключения',
           'Обслуживание',
@@ -2655,7 +2685,7 @@ describe('MV3 options UI', function() {
             'Сообщить о проблеме',
         );
         expect(
-            harness.root.textContent.includes('Применить конфигурацию') ||
+            harness.root.textContent.includes('Применить') ||
             harness.root.textContent.includes('Выключить прокси расширения'),
         ).to.equal(true);
         expect(harness.root.textContent).not.to.include(
@@ -2731,7 +2761,7 @@ describe('MV3 options UI', function() {
             .to.equal('options-update-requires-source');
         expect(initial.root.querySelector(
             '#options-update-requires-source',
-        ).textContent).to.include('Choose an Automatic routing source');
+        ).textContent).to.include('Choose a routing source');
 
         const disabledSourceSnapshot = createInitialSetupSnapshot();
         disabledSourceSnapshot.providers[0].enabled = false;
