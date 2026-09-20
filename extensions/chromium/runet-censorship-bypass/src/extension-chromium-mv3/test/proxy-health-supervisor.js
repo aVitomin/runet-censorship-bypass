@@ -643,6 +643,8 @@ Mocha.describe('MV3 proxy-health supervisor', function() {
           }),
         });
         probe.harness = harness;
+        // Legacy passwords have no provable Effective binding until explicit Apply.
+        Chai.expect((await harness.audit.applyCookedPacAndPersist({})).ok).to.equal(true);
         await runDueAutomaticCheck(harness, seed.clock);
         const health = harness.getState().proxyHealth;
         const rpcHealth = await harness.callRpc('getProxyHealth');

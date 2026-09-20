@@ -24,6 +24,7 @@ const MODULE_FILES = Object.freeze([
   'pac-cook.js',
   'proxy-auth.js',
   'proxy-settings.js',
+  'effective-config.js',
 ]);
 
 const RAW_PAC =
@@ -151,6 +152,7 @@ async function createRuntimeHarness(options = {}) {
     tabReplaced: createEvent(),
     tabUpdated: createEvent(),
     webAuth: createEvent(),
+    webBeforeRequest: createEvent(),
     webCompleted: createEvent(),
     webError: createEvent(),
     windowFocus: createEvent(),
@@ -501,6 +503,7 @@ async function createRuntimeHarness(options = {}) {
       },
     },
     webRequest: {
+      onBeforeRequest: events.webBeforeRequest,
       onAuthRequired: events.webAuth,
       onCompleted: events.webCompleted,
       onErrorOccurred: events.webError,
@@ -696,6 +699,8 @@ async function createRuntimeHarness(options = {}) {
   if (options.initialState) {
     storageData.mv3State = clone(options.initialState);
   }
+  if (options.initialLocalStorage) Object.assign(storageData, clone(options.initialLocalStorage));
+  if (!options.initialProxyDetails) proxyDetails.value.pacScript.data = seededCook.cookedPacData;
 
   function countIndexedDb(type) {
 
@@ -1018,6 +1023,11 @@ async function createRuntimeHarness(options = {}) {
     getSessionStorage() {
 
       return clone(sessionStorageData);
+
+    },
+    getLocalStorage() {
+
+      return clone(storageData);
 
     },
     failNextSessionStorageGet(message) {

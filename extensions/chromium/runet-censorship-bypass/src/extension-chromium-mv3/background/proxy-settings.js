@@ -147,10 +147,10 @@
           'Cooked PAC data is required before applying proxy settings.',
       );
     }
+    await assertCanControl();
     if (typeof beforeSet === 'function') {
       await beforeSet();
     }
-    await assertCanControl();
     if (typeof ifCurrent === 'function' && !ifCurrent()) {
       throw createError(
           'PAC_APPLY_STALE',

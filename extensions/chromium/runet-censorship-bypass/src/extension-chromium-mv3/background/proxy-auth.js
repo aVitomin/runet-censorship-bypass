@@ -226,12 +226,14 @@
     ) {
       return null;
     }
-    return {
+    const normalized = {
       requestId,
       challengerKey,
       count: Math.min(count, MAX_ATTEMPTS_PER_CHALLENGER),
       updatedAt,
     };
+    if (typeof value.generationId === 'string') normalized.generationId = value.generationId;
+    return normalized;
 
   }
 
@@ -408,7 +410,7 @@
 
   }
 
-  async function reserveProxyAuthAttempt(details, challengerKey, credentials) {
+  async function reserveProxyAuthAttempt(details, challengerKey, credentials, generationId) {
 
     return runAttemptOperation(async () => {
       const now = Date.now();
@@ -419,7 +421,9 @@
         entry.challengerKey === challengerKey,
       );
       const count = currentAttempt ? currentAttempt.count : 0;
-      if (count >= MAX_ATTEMPTS_PER_CHALLENGER) {
+      if (count >= MAX_ATTEMPTS_PER_CHALLENGER ||
+          currentAttempt && currentAttempt.generationId !== generationId ||
+          !currentAttempt && entries.length >= 4096) {
         await writeAttemptEntries(entries);
         return {allowed: false};
       }
@@ -429,12 +433,14 @@
         entry.requestId !== requestId ||
         entry.challengerKey !== challengerKey,
       );
-      updatedEntries.push({
+      const entry = {
         requestId,
         challengerKey,
         count: count + 1,
         updatedAt: now,
-      });
+      };
+      if (generationId) entry.generationId = generationId;
+      updatedEntries.push(entry);
       await writeAttemptEntries(updatedEntries);
       return {allowed: true, credential};
     });
@@ -454,6 +460,7 @@
           details,
           prepared.challengerKey,
           prepared.credentials,
+          state.authGenerationId,
       );
     } catch (error) {
       return createResult(

@@ -116,13 +116,13 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
           'alarmCreates',
         ];
         const expected = {
-          storageGets: 5,
-          storageSets: 2,
-          indexedDbOpens: 0,
+          storageGets: 8,
+          storageSets: 3,
+          indexedDbOpens: 1,
           tabQueries: 1,
           actionCalls: 5,
-          hashOperations: 1,
-          proxySettingsReads: 1,
+          hashOperations: 3,
+          proxySettingsReads: 2,
           alarmGets: 2,
           alarmCreates: 1,
         };
@@ -277,14 +277,14 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
           'proxySettingsWrites',
           'actionCalls',
         ])).to.deep.equal({
-          indexedDbReads: 2,
+          indexedDbReads: 3,
           indexedDbWrites: 2,
-          storageGets: 31,
+          storageGets: 44,
           storageSets: 13,
           tabGets: 2,
           pacDownloads: 1,
           pacCooks: 1,
-          hashOperations: 9,
+          hashOperations: 13,
           proxySettingsWrites: 1,
           actionCalls: 8,
         });
@@ -322,14 +322,14 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
           'proxySettingsWrites',
           'actionCalls',
         ])).to.deep.equal({
-          storageGets: 20,
-          storageSets: 8,
+          storageGets: 23,
+          storageSets: 6,
           indexedDbReads: 2,
           indexedDbWrites: 0,
           tabGets: 2,
           pacCooks: 0,
           hashOperations: 6,
-          proxySettingsReads: 1,
+          proxySettingsReads: 2,
           proxySettingsWrites: 0,
           actionCalls: 8,
         });
@@ -370,12 +370,7 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
         gate.release();
         const result = await cook;
 
-        Chai.expect(result).to.include({
-          ok: true,
-          status: 'not_modified',
-        });
-        Chai.expect(result.stale.stale).to.equal(true);
-        Chai.expect(result.stale.reasons).to.include('PAC modifiers changed');
+        Chai.expect(result).to.include({ok: false, status: 'stale'});
 
       });
 
@@ -394,10 +389,8 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
           applyIfSafe: true,
         });
 
-        Chai.expect(result.autoApply).to.include({
-          allowed: false,
-          status: 'skipped',
-        });
+        Chai.expect(result).to.include({ok: false, status: 'skipped'});
+        Chai.expect(result.error.code).to.equal('EFFECTIVE_GENERATION_UNPROVEN');
         Chai.expect(harness.counts.proxySettingsReads).to.equal(1);
         Chai.expect(harness.counts.proxySettingsWrites).to.equal(0);
 
@@ -433,7 +426,7 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
 
       });
 
-  Mocha.it('clears both PAC artifacts and refreshes status without proxy writes',
+  Mocha.it('clears cache pointers but retains Effective artifacts without proxy writes',
       async function() {
 
         const harness = await createRuntimeHarness();
@@ -449,7 +442,7 @@ Mocha.describe('MV3 runtime performance operation counts', function() {
         ])).to.deep.equal({
           runtimeRpcs: 2,
           storageSets: 4,
-          indexedDbWrites: 2,
+          indexedDbWrites: 0,
           proxySettingsWrites: 0,
         });
         Chai.expect(harness.getState().pacCache.rawPacSha256).to.equal(null);
