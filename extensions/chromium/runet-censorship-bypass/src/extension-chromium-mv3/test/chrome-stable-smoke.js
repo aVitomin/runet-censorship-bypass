@@ -1423,6 +1423,54 @@ async function readAppliedPacData(page) {
 
 }
 
+async function readEffectiveGenerationProof(page) {
+
+  // Project private state to non-secret identities inside the extension context.
+  const proof = await page.evaluate(async () => {
+    const stored = await chrome.storage.local.get([
+      'mv3State', 'mv3EffectiveConfigurations',
+    ]);
+    const store = stored.mv3EffectiveConfigurations;
+    const record = store && store.records.find((item) => item.id === store.effectiveId);
+    return record ? {
+      generationId: record.id,
+      savedRevision: record.savedRevision,
+      pacHash: record.cookedPacCache.cookedPacSha256,
+      blocked: store.blocked,
+      promotionPending: Boolean(store.transaction),
+      applyStatus: stored.mv3State.proxyApply.status,
+    } : null;
+  });
+  Assert.ok(proof, 'The applied configuration has no durable Effective generation.');
+  Assert.strictEqual(proof.blocked, false);
+  Assert.strictEqual(proof.promotionPending, false);
+  Assert.strictEqual(proof.applyStatus, 'applied');
+  assertProxyControl(await readProxySettings(page));
+  Assert.strictEqual(
+      Crypto.createHash('sha256').update(await readAppliedPacData(page)).digest('hex'),
+      proof.pacHash,
+      'The installed PAC does not match the durable Effective generation.',
+  );
+  return proof;
+
+}
+
+async function observeRequestGenerations(page) {
+
+  // Terminal events remove bindings; observe their creation without retaining URLs/secrets.
+  return page.evaluateHandle(() => {
+    const entries = new Map();
+    const listener = (changes, area) => {
+      if (area !== 'session' || !changes.mv3RequestGenerations) return;
+      const value = changes.mv3RequestGenerations.newValue;
+      if (value) value.entries.forEach((entry) => entries.set(entry.requestId, entry.generationId));
+    };
+    chrome.storage.onChanged.addListener(listener);
+    return {entries, stop: () => chrome.storage.onChanged.removeListener(listener)};
+  });
+
+}
+
 async function openPopupPage(session) {
 
   const page = await session.browser.newPage();
@@ -2197,47 +2245,67 @@ async function assertNoCredentialProxyFailure(
     scenario,
 ) {
 
-  await clearProxyAuthEvents(optionsPage);
-  const trafficStart = infrastructure.traffic.length;
-  const result = await navigateForAuthScenario(
-      session,
-      scenario.host,
-      infrastructure.origin.port,
-      {name: scenario.name, timeout: AUTH_FAILURE_TIMEOUT_MS},
-  );
-  Assert.notStrictEqual(
-      result.responseStatus,
-      200,
-      `${scenario.name}: challenge unexpectedly succeeded.`,
-  );
-  const hits = getTrafficForToken(
-      infrastructure,
-      trafficStart,
-      result.token,
-  );
-  Assert.ok(hits.length >= 1, `${scenario.name}: proxy received no request.`);
-  Assert.ok(
-      hits.every((entry) => entry.kind === scenario.endpoint.kind),
-      `${scenario.name}: request reached an unintended receiver or DIRECT.`,
-  );
-  Assert.ok(
-      hits.every((entry) => entry.auth === 'none'),
-      `${scenario.name}: a configured credential was reused.`,
-  );
-  const observed = await waitForProxyAuthEvent(
-      optionsPage,
-      'missing_credentials',
-      scenario.endpoint.port,
-  );
-  assertNoCredentialCanary(
-      [result.errorMessage, observed],
-      session.credentialCanaries,
-      `${scenario.name} observations`,
-  );
-  return {
-    errorMessage: result.errorMessage,
-    receiverEvidence: hits.map((entry) => entry.auth),
-  };
+  const effective = await readEffectiveGenerationProof(optionsPage);
+  const observer = await observeRequestGenerations(optionsPage);
+  try {
+    await clearProxyAuthEvents(optionsPage);
+    const trafficStart = infrastructure.traffic.length;
+    const result = await navigateForAuthScenario(
+        session,
+        scenario.host,
+        infrastructure.origin.port,
+        {name: scenario.name, timeout: AUTH_FAILURE_TIMEOUT_MS},
+    );
+    Assert.notStrictEqual(
+        result.responseStatus,
+        200,
+        `${scenario.name}: challenge unexpectedly succeeded.`,
+    );
+    const hits = getTrafficForToken(
+        infrastructure,
+        trafficStart,
+        result.token,
+    );
+    Assert.ok(hits.length >= 1, `${scenario.name}: proxy received no request.`);
+    Assert.ok(
+        hits.every((entry) => entry.kind === scenario.endpoint.kind),
+        `${scenario.name}: request reached an unintended receiver or DIRECT.`,
+    );
+    Assert.ok(
+        hits.every((entry) => entry.auth === 'none'),
+        `${scenario.name}: a configured credential was reused.`,
+    );
+    const observed = await waitForProxyAuthEvent(
+        optionsPage,
+        // Effective rejects an endpoint without credentials before the legacy
+        // resolver can emit missing_credentials. The rejection cancels the request.
+        'error',
+        scenario.endpoint.port,
+    );
+    assertExactProxyAuthEvent(observed, scenario.endpoint, scenario.name);
+    Assert.strictEqual(observed.event.message, 'Proxy auth handler failed safely.');
+    Assert.strictEqual(observed.event.hasCredentials, false);
+    Assert.ok(!observed.status.lastEvents.some((event) => event.type === 'provided'));
+    Assert.strictEqual(
+        await observer.evaluate((value, requestId) => value.entries.get(requestId),
+            observed.event.requestId),
+        effective.generationId,
+        `${scenario.name}: the rejected request was not bound to recovered Effective.`,
+    );
+    Assert.deepStrictEqual(await readEffectiveGenerationProof(optionsPage), effective);
+    assertNoCredentialCanary(
+        [result.errorMessage, observed],
+        session.credentialCanaries,
+        `${scenario.name} observations`,
+    );
+    return {
+      errorMessage: result.errorMessage,
+      receiverEvidence: hits.map((entry) => entry.auth),
+    };
+  } finally {
+    await observer.evaluate((value) => value.stop());
+    await observer.dispose();
+  }
 
 }
 
@@ -2593,6 +2661,7 @@ async function runSmoke() {
     chromeVersion = await browser.version();
     const optionsPage = await openExtensionPage(session);
     await configureExtension(optionsPage, infrastructure);
+    const initialEffective = await readEffectiveGenerationProof(optionsPage);
     console.log('Chrome smoke: applied synthetic PAC configuration.');
     await assertRoute(session, infrastructure, {
       expectedReceiver: 'provider-proxy',
@@ -2652,6 +2721,11 @@ async function runSmoke() {
     );
     const restartedOptionsPage = await openExtensionPage(session);
     assertProxyControl(await waitForProxyControl(restartedOptionsPage));
+    Assert.deepStrictEqual(
+        await readEffectiveGenerationProof(restartedOptionsPage),
+        initialEffective,
+        'Browser restart did not recover the exact applied Effective generation.',
+    );
     await assertRoute(session, infrastructure, {
       expectedReceiver: 'explicit-proxy',
       host: TEST_HOSTS.proxy,

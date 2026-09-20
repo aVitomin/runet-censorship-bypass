@@ -277,8 +277,16 @@ describe('Chromium Saved and Effective generations', function() {
   it('never supplies generation credentials to an unknown endpoint or unbound request', async function() {
 
     const h = await active();
+    await save(h, {ownProxies: [proxy(),
+      Object.assign(proxy('saved-only'), {host: 'other.example'})]});
     start(h, 'known');
     Assert.equal((await challenge(h, 'known', 'other.example')).cancel, true);
+    const status = await h.callRpc('getProxyAuthStatus');
+    const rejection = status.lastEvents.find((event) => event.requestId === 'known');
+    Assert.equal(rejection.type, 'error');
+    Assert.equal(rejection.isProxy, true);
+    Assert.equal(rejection.host, 'other.example');
+    Assert.equal(rejection.port, '8443');
     Assert.equal((await challenge(h, 'missing')).cancel, true);
 
   });

@@ -1444,7 +1444,7 @@ function handleWebRequestAuthRequired(details, asyncCallback) {
           requestId: details && details.requestId || null,
           isProxy: details && details.isProxy === true,
           host: details && details.challenger && details.challenger.host || null,
-          port: details && details.challenger && details.challenger.port || null,
+          port: details && details.challenger && String(details.challenger.port || '') || null,
           message: 'Proxy auth handler failed safely.',
         });
       })
