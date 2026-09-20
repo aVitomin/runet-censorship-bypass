@@ -82,6 +82,7 @@ const firefoxMv3RuntimeSrc = [
   './src/extension-firefox-mv3/background/product-config.js',
   './src/extension-firefox-mv3/background/production-provider.js',
   './src/extension-firefox-mv3/background/settings-control.js',
+  './src/extension-firefox-mv3/background/configuration-transfer.js',
   './src/extension-firefox-mv3/background/site-control.js',
   './src/extension-firefox-mv3/background/activation-controller.js',
   './src/extension-firefox-mv3/background/operational-status.js',
@@ -100,6 +101,8 @@ const firefoxMv3RuntimeSrc = [
   './src/extension-firefox-mv3/provider/anticensority-hosts-v1.envelope.json',
 ];
 const firefoxMv3CommonSrc = [
+  './src/extension-mv3-common/configuration-transfer.js',
+  './src/extension-mv3-common/configuration-transfer-ui.js',
   './src/extension-mv3-common/routing-contract.js',
   './src/extension-mv3-common/provider-dataset.js',
   './src/extension-mv3-common/provider-dataset-state.js',
@@ -149,6 +152,17 @@ const copyChromiumMv3Common = function(cb) {
       {base: './src/extension-common', encoding: false},
   )
     .pipe(gulp.dest(chromiumMv3Dst))
+    .on('end', cb);
+
+};
+
+const copyChromiumTransfer = function(cb) {
+
+  gulp.src([
+    './src/extension-mv3-common/configuration-transfer.js',
+    './src/extension-mv3-common/configuration-transfer-ui.js',
+  ], {base: './src/extension-mv3-common', encoding: false})
+    .pipe(gulp.dest(`${chromiumMv3Dst}/background/common`))
     .on('end', cb);
 
 };
@@ -220,6 +234,7 @@ const buildChromiumMv3 = gulp.series(
     gulp.parallel(
         copyChromiumMv3,
         copyChromiumMv3Common,
+        copyChromiumTransfer,
         copyChromiumMv3Tldts,
     ),
 );

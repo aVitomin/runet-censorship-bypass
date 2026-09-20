@@ -13,6 +13,8 @@
   const productionProviderApi = root.rucbFirefoxProductionProvider;
   const datasetPromotionApi = root.rucbFirefoxDatasetPromotion;
   const settingsControlApi = root.rucbFirefoxSettingsControl;
+  const transfer = root.rucbConfigurationTransfer;
+  const transferAdapter = root.rucbFirefoxConfigurationTransfer;
   const siteControlApi = root.rucbFirefoxSiteControl;
   const operationalStatusApi = root.rucbFirefoxOperationalStatus;
   let activationController = null;
@@ -606,6 +608,43 @@
 
     await initialization;
     const type = message && typeof message === 'object' ? message.type : null;
+    if (['firefox.transfer.export', 'firefox.transfer.preview', 'firefox.transfer.import'].includes(type)) {
+      return enqueueRpcControlOperation(async () => {
+        try {
+          const saved = await settingsController.get();
+          if (type === 'firefox.transfer.export') {
+            const info = await browser.runtime.getBrowserInfo();
+            const platform = await browser.runtime.getPlatformInfo();
+            const metadata = {exportedAt: new Date().toISOString(),
+              browser: {family: 'firefox', version: info.version},
+              extensionVersion: browser.runtime.getManifest().version,
+              locale: browser.i18n.getUILanguage(), platform: platform.os};
+            const status = message.support === true ? await configurationStatus() : null;
+            return {ok: true, result: transfer.create(message.support === true ? null :
+              transferAdapter.fromSettings(saved.settings), metadata,
+            status ? Object.assign({}, status,
+                {sourceAvailable: providerBootstrapState.datasetAvailable === true}) : null)};
+          }
+          const parsed = transfer.parse(message.text);
+          if (!parsed.configuration) transfer.fail('TRANSFER_NO_CONFIGURATION');
+          const candidate = transferAdapter.toSettings(parsed.configuration);
+          if (type === 'firefox.transfer.preview') {
+            return {ok: true, result: {expectedRevision: saved.revision,
+              summary: transfer.preview(transferAdapter.fromSettings(saved.settings),
+                  parsed.configuration, candidate.unsupported)}};
+          }
+          // This uses the existing revision/journal transaction. No activation,
+          // provider request or Effective write is part of importing settings.
+          const result = await settingsController.replace(
+              message.expectedRevision, candidate.settings,
+          );
+          return {ok: true, result: {savedRevision: result.revision}};
+        } catch (error) {
+          return errorResponse(['TRANSFER_INVALID', 'TRANSFER_VERSION', 'TRANSFER_LIMIT',
+            'TRANSFER_NO_CONFIGURATION'].includes(error.code) ? error.code : safeSettingsErrorCode(error));
+        }
+      });
+    }
     if (type === 'firefox.capabilities.get') {
       const manifest = browser.runtime.getManifest();
       const activation = activationController.snapshot();

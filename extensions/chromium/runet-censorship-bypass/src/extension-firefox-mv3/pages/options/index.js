@@ -52,6 +52,7 @@
     ['site-rules', 'optionsNavSiteRules'],
     ['proxy-connections', 'optionsNavProxyConnections'],
     ['maintenance', 'optionsNavMaintenance'],
+    ['import-export', 'transferTitle'],
     ['advanced', 'optionsNavAdvanced'],
     ['about', 'optionsNavAbout'],
   ]);
@@ -125,7 +126,7 @@
           Array.isArray(proxy.credentials)) {
         return false;
       }
-      const credentialKeys = proxy.credentials.mode === 'NONE' ? ['mode'] :
+      const credentialKeys = ['NONE', 'MISSING'].includes(proxy.credentials.mode) ? ['mode'] :
         proxy.credentials.mode === 'KEEP' ? ['mode', 'username'] : [];
       if (!credentialKeys.length ||
           !Ui.hasExactKeys(proxy.credentials, credentialKeys) ||
@@ -241,8 +242,8 @@
 
   function credentialPayload(existing, action, username, password) {
 
-    if (action === 'NONE') {
-      return {mode: 'NONE'};
+    if (['NONE', 'MISSING'].includes(action)) {
+      return {mode: action};
     }
     if (action === 'KEEP' && existing && existing.mode === 'KEEP') {
       return {mode: 'KEEP', username: String(username)};
@@ -586,6 +587,7 @@
 
   function userErrorKey(code) {
 
+    if (code === 'REQUIRED_CREDENTIAL_MISSING') return 'transferCredentialsRequired';
     if (code === 'SAVED_REVISION_CHANGED') return 'unifiedConflict';
     if (code === 'PRIVATE_ACCESS_REQUIRED') return 'popupErrorPrivateAccess';
     if (code === 'PRIVATE_ACCESS_CHECK_FAILED') return 'popupErrorPrivateAccessCheck';
@@ -627,6 +629,16 @@
     const controller = createController({
       rpc: Ui.createRpc(browserApi),
       changed: render,
+    });
+    let renderTransfer = () => {};
+    const transferUi = document.defaultView && document.defaultView.rucbConfigurationTransferUi;
+    const transferRpc = Ui.createRpc(browserApi);
+    const transferModel = transferUi && transferUi.createController({
+      hasDraft: () => controller.snapshot().dirty,
+      call: (action, params) => transferRpc.call(Object.assign({type: `firefox.transfer.${action}`}, params)),
+      changed: () => renderTransfer(),
+      onImported: () => controller.load(),
+      download: (value, support) => transferUi.download(document, value, support),
     });
 
     function field(parent, labelKey, name, value, type = 'text') {
@@ -905,11 +917,13 @@
       Ui.appendText(modeLabel, 'span', t('fieldCredentials'));
       const mode = Ui.append(modeLabel, 'select');
       mode.name = 'credentialMode';
-      const modes = existing ? ['KEEP', 'SET', 'NONE'] : ['NONE', 'SET'];
+      const modes = proxy.credentials && proxy.credentials.mode === 'MISSING' ?
+        ['MISSING', 'SET', 'NONE'] : existing ? ['KEEP', 'SET', 'NONE'] : ['NONE', 'SET'];
       for (const value of modes) {
         const option = Ui.append(mode, 'option');
         option.value = value;
-        option.textContent = t(`credential${value}`);
+        option.textContent = t(value === 'MISSING' ?
+          'transferCredentialsMissingLabel' : `credential${value}`);
       }
       mode.value = proxy.credentials && proxy.credentials.mode || 'NONE';
       field(
@@ -1136,6 +1150,13 @@
         link.textContent = t(labelKey);
       }
       const content = Ui.append(layout, 'div', 'options-content');
+      if (transferModel) {
+        const section = Ui.append(content, 'section', 'card section');
+        section.id = 'import-export';
+        transferUi.mount(section, {t, model: transferModel, bind: (render) => {
+          renderTransfer = render;
+        }});
+      }
       if (!state.editable) {
         Ui.appendText(
             content,
@@ -1530,6 +1551,9 @@
         statusClass = 'status warning';
       }
       const status = Ui.appendText(actions, 'p', t(statusKey), statusClass);
+      if (state.notice === 'APPLY_FAILED_SAFE' && state.errorCode === 'REQUIRED_CREDENTIAL_MISSING') {
+        status.textContent += ` ${t('transferCredentialsRequired')}`;
+      }
       status.setAttribute('aria-live', 'polite');
       const configurationStatus = Ui.appendText(actions, 'p', '', 'status');
       configurationStatus.setAttribute('role', 'status');

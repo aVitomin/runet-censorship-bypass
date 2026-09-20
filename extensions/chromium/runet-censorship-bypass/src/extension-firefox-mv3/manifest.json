@@ -34,6 +34,8 @@
       "background/dataset-promotion.js",
       "background/production-provider.js",
       "background/settings-control.js",
+      "background/common/configuration-transfer.js",
+      "background/configuration-transfer.js",
       "background/site-control.js",
       "background/activation-controller.js",
       "background/operational-status.js",

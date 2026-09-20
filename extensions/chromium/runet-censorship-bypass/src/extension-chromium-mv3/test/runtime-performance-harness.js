@@ -25,6 +25,8 @@ const MODULE_FILES = Object.freeze([
   'proxy-auth.js',
   'proxy-settings.js',
   'effective-config.js',
+  '../../extension-mv3-common/configuration-transfer.js',
+  'configuration-transfer.js',
 ]);
 
 const RAW_PAC =
@@ -259,6 +261,9 @@ async function createRuntimeHarness(options = {}) {
       },
     },
     i18n: {
+      getUILanguage() {
+        return 'en';
+      },
       getMessage() {
 
         return '';
@@ -369,6 +374,12 @@ async function createRuntimeHarness(options = {}) {
       },
     },
     runtime: {
+      async getPlatformInfo() {
+        return {os: 'win'};
+      },
+      getManifest() {
+        return {version: '0.0.4.0'};
+      },
       id: 'runtime-audit-extension',
       lastError: null,
       onInstalled: events.installed,
@@ -541,6 +552,7 @@ async function createRuntimeHarness(options = {}) {
       throw new Error('Unexpected network request in runtime audit harness.');
     }),
     importScripts() {},
+    navigator: {userAgent: 'Chrome/153.0.0.0'},
     Map,
     Math,
     Object,
