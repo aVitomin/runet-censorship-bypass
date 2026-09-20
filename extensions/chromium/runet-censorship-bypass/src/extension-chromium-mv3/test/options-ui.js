@@ -1417,7 +1417,7 @@ describe('MV3 options UI', function() {
         expect(getInput(proxies, 'localTor.host')).to.exist;
         expect(getInput(maintenance, 'updates.enabled')).to.exist;
         expect(findButton(maintenance, 'Apply update')).to.exist;
-        expect(findButton(maintenance, 'Check proxy')).to.exist;
+        expect(findButton(maintenance, 'Check connection')).to.exist;
         expect(maintenance.querySelector('#diagnostics')).to.exist;
         expect(about.querySelectorAll('.about-links a')).to.have.length(5);
 
@@ -2470,7 +2470,7 @@ describe('MV3 options UI', function() {
         expect(diagnostics.textContent).not.to.include('hidden');
         expect(diagnostics.textContent).not.to.match(/artifact(?:Ref|:)/i);
         expect(diagnostics.textContent).not.to.match(/sha-?256/i);
-        await findButton(harness.root, 'Check proxy').onclick();
+        await findButton(harness.root, 'Check connection').onclick();
         expect(harness.root.textContent).not.to.include('synthetic-secret');
         expect(harness.document.title).not.to.include('synthetic-secret');
 
@@ -2640,10 +2640,42 @@ describe('MV3 options UI', function() {
         .to.equal('Routing source');
     expect(CATALOGS.ru.optionsNavRoutingSources.message)
         .to.equal('Источник правил');
+    expect(CATALOGS.en.popupCheckProxy.message)
+        .to.equal('Check connection');
+    expect(CATALOGS.ru.popupCheckProxy.message)
+        .to.equal('Проверить подключение');
     expect(CATALOGS.en.providerLifecycleName.message)
         .to.equal('Routing data');
     expect(CATALOGS.ru.providerLifecycleName.message)
         .to.equal('Данные маршрутизации');
+    for (const key of [
+      'popupPeriodicUpdateRunning',
+      'popupPacOperationRunning',
+      'popupCredentialsRedactedWarning',
+      'optionsNotifyPacError',
+      'optionsAutoUpdateEveryTwelveHours',
+      'optionsLastSuccessfulPacUpdate',
+      'optionsNextAutomaticPacUpdate',
+      'periodicUpdateNotificationTitle',
+      'periodicUpdateNotificationBody',
+    ]) {
+      expect(CATALOGS.en[key].message, key).not.to.match(/\bPAC\b/);
+      expect(CATALOGS.ru[key].message, key).not.to.match(/\bPAC\b/);
+    }
+    for (const key of [
+      'optionsAdvancedPacRulesHint',
+      'optionsExpertOperationsHelp',
+      'optionsApplyWorkflowHelp',
+    ]) {
+      expect(CATALOGS.en[key].message, key)
+          .not.to.include('Apply configuration');
+      expect(CATALOGS.ru[key].message, key)
+          .not.to.include('Применить конфигурацию');
+    }
+    expect(Object.values(CATALOGS.en).map(({message}) => message).join('\n'))
+        .not.to.match(/(?:Apply|applying) (?:the )?configuration/i);
+    expect(Object.values(CATALOGS.ru).map(({message}) => message).join('\n'))
+        .not.to.match(/примен(?:ите|ением|ить) конфигураци/i);
     for (const key of [
       'popupTurnOffProxyHelp',
       'popupRefreshRoutingDataHelp',
