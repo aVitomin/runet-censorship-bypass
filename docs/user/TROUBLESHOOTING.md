@@ -34,9 +34,9 @@
 - **Требуется настройка** — в Chromium не выбран источник.
   Откройте **Автоматическую маршрутизацию**, выберите источник и повторите
   применение.
-- **Не применено** — изменения сохранены, но ещё не активны. В
-  Chromium нажмите **Применить конфигурацию**. В Firefox выключите защиту,
-  сохраните настройки и снова включите её.
+- **Не применено** — изменения сохранены, но ещё не активны. Нажмите
+  **Применить конфигурацию** в Chromium или **Применить сохранённые настройки**
+  в Firefox. Защиту выключать не нужно.
 - Если явный режим **Прокси** сообщает об отсутствии подключения, включите и
   настройте хотя бы один подходящий прокси-кандидат.
 - Если Firefox сообщает, что нужен доступ к приватным окнам, разрешите его на
@@ -97,8 +97,8 @@ Anticensority/Tor; подходящая локальная служба долж
 2. Проверьте счётчик доступных подключений.
 3. Включите и исправьте нужное локальное или пользовательское подключение.
 4. В Chromium нажмите **Сохранить настройки прокси**, затем **Применить
-   конфигурацию**. В Firefox сохраните настройки при выключенной защите и снова
-   включите её.
+   конфигурацию**. В Firefox сохраните настройки и нажмите **Применить
+   сохранённые настройки**; защиту выключать не нужно.
 
 Не включайте случайный сервер только для прохождения проверки.
 
@@ -167,8 +167,8 @@ Firefox после двух неудачных ответов прокси-ау�
 
 Меняйте адрес только если локальное приложение действительно использует другой.
 В Chromium нажмите **Сохранить настройки прокси**, затем **Применить
-конфигурацию**. В Firefox сначала выключите защиту, сохраните изменения и снова
-включите её. После этого повторите проверку соединения.
+конфигурацию**. В Firefox сохраните изменения и нажмите **Применить сохранённые
+настройки**. После этого повторите проверку соединения.
 
 ## Выключение не вернуло прежнюю настройку прокси
 
@@ -234,8 +234,9 @@ Firefox после двух неудачных ответов прокси-ау�
 
 Start with Overview and Maintenance, note the browser/version, extension state,
 site mode, rule scope, and sanitized error code. Do not clear browser storage as
-a first step. Firefox settings are editable only while protection is off, and
-its packaged Auto policy requires compatible local Anticensority/Tor services.
+a first step. Firefox settings can be saved while protection is active; Apply
+makes the saved settings active. Its packaged Auto policy requires compatible
+local Anticensority/Tor services.
 If an unpacked Chromium update appears as a second extension or has no settings,
 check whether it was loaded from a different path. Never publish credentials,
 private proxy/source URLs, cookies, NetLog, browser profiles, or browsing

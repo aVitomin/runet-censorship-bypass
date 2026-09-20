@@ -1519,6 +1519,23 @@ describe('Firefox production UI controllers', function() {
 
   });
 
+  it('describes active provider updates without requiring protection to be off', function() {
+
+    const catalogs = ['en', 'ru'].map((language) => JSON.parse(
+        Fs.readFileSync(
+            Path.join(sourceRoot, '_locales', language, 'messages.json'),
+            'utf8',
+        ),
+    ));
+    Assert.match(catalogs[0].providerUpdateHelp.message, /protection active/i);
+    Assert.doesNotMatch(catalogs[0].providerUpdateHelp.message, /protection off/i);
+    Assert.match(catalogs[0].providerUpdateActiveHelp.message, /saved changes stay pending/i);
+    Assert.match(catalogs[1].providerUpdateHelp.message, /включённой защите/i);
+    Assert.doesNotMatch(catalogs[1].providerUpdateHelp.message, /выключенной защите/i);
+    Assert.match(catalogs[1].providerUpdateActiveHelp.message, /ожидающими применения/i);
+
+  });
+
   it('defines every static and generated UI message in both catalogs', function() {
 
     const catalogs = ['en', 'ru'].map((language) => JSON.parse(
