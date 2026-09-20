@@ -1,8 +1,9 @@
-# Chromium extension tooling
+# Chromium and Firefox MV3 tooling
 
 This directory contains the maintained Chromium MV3 and Firefox MV3 sources,
 tests, and build tooling. MV2 is historical and is not built from current
-`main`.
+`main`. The historical `extensions/chromium` parent does not limit ownership to
+Chromium; both targets share this tooling package and its lockfile.
 
 Canonical instructions are maintained at repository level:
 

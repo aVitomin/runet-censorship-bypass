@@ -8,6 +8,8 @@ description: Review changes to permissions, background lifecycle, PAC/provider d
 Read root instructions and only scoped instructions for changed paths. Review
 the complete relevant diff and enough callers to prove each affected boundary.
 Never print credentials, browsing data, full custom URLs, or profile contents.
+Choose affected targets by runtime/build consumers, not Chromium-first parent
+paths; shared modules and icons can enter different per-browser package rules.
 
 If dependencies, Actions, or vendored code changed, also use
 `$dependency-review` for that delta rather than repeating it here.
@@ -34,11 +36,15 @@ Check only those affected:
 3. Input/final URLs, credentials, redirects, streaming bounds, deadlines,
    referrer policy, fallback, and disabled-by-default network paths.
 4. Credential routing and redaction across PAC/datasets, UI/DOM, storage, RPC,
-   events, errors, notifications, and diagnostics.
+   events, errors, notifications, and diagnostics; Effective/request-generation
+   binding must not follow newer Saved credentials.
 5. IndexedDB/storage atomicity, journals/pointers, concurrent writers, restart
-   reconstruction, alarms, and destructive cleanup.
+   reconstruction, alarms, and destructive cleanup. Save/import affects Saved
+   only; exact Apply and provider refresh must preserve pending-settings isolation.
 6. Direct/fail-open paths, callback authorization, live proxy ownership,
    control loss, private access, and proxy/listener errors.
+   Keep Chromium live PAC/control reconciliation separate from Firefox's
+   private-access prerequisite, owned floor and blocked recovery.
 7. Package allowlists, source/runtime correspondence, inactive production
    paths, and unreferenced executable code.
 
