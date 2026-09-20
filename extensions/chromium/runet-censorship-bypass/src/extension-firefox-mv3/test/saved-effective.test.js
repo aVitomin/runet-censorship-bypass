@@ -26,11 +26,12 @@ function gate() {
 
 }
 
-async function fixture() {
+async function fixture(options = {}) {
 
-  const artifact = Helpers.artifact({providerKey: Production.PROVIDER_KEY});
+  const artifact = options.artifact || Helpers.artifact({providerKey: Production.PROVIDER_KEY});
+  const datasetBackend = Helpers.memoryBackend();
   const datasetStore = DatasetStore.createStore({
-    backend: Helpers.memoryBackend(), sha256,
+    backend: datasetBackend, sha256,
   });
   await datasetStore.commitPackagedBaseline(artifact);
   const config = structuredClone(await Production.createProductionProductConfig(sha256));
@@ -116,7 +117,15 @@ async function fixture() {
     const settings = Settings.createController({
       storageArea, sha256,
       activationSnapshot: () => activation.snapshot(),
-      datasetIdentityAvailable: () => true,
+      async datasetIdentityAvailable(identity) {
+
+        const stored = await datasetStore.loadVerifications(identity.providerKey);
+        return [stored.active, stored.previousLkg, stored.packagedBaseline].some((item) =>
+          item && item.ok && item.dataset.identity.providerKey === identity.providerKey &&
+          item.dataset.identity.artifactSha256 === identity.artifactSha256 &&
+          item.dataset.identity.datasetVersion === identity.datasetVersion);
+
+      },
     });
     const ready = await activation.initializeFromDurable();
     return {activation, adapter, auth, settings, ready};
@@ -124,7 +133,7 @@ async function fixture() {
   }
   const runtime = await boot();
   return Object.assign(runtime, {
-    boot, control, factoryOptions, prepare, values, datasetStore, storageArea,
+    boot, control, factoryOptions, prepare, values, datasetBackend, datasetStore, storageArea,
   });
 
 }
@@ -162,6 +171,145 @@ function challenge(test, requestId) {
 }
 
 describe('Firefox Saved and Effective generations', function() {
+
+  function bundled(version, routeRef) {
+
+    return Helpers.artifact({providerKey: Production.PROVIDER_KEY, datasetVersion: version,
+      payload: Helpers.payload([{width: 12, routeRef, hosts: 'data.example'}])});
+
+  }
+
+  for (const pending of [false, true]) {
+    it(`recovers bundled A after release B with pending Saved=${pending}, retaining routing and auth`, async function() {
+
+      const old = bundled('release-a', 'PROVIDER_PROXY');
+      const next = bundled('release-b', 'PROVIDER_DIRECT');
+      const test = await fixture({artifact: old});
+      await test.settings.replace(0, authenticatedSettings());
+      Assert.strictEqual((await test.activation.activatePrepared(await test.prepare(1))).ok, true);
+      if (pending) {
+        const changed = authenticatedSettings('pending-release-password');
+        changed.rules.proxy = [];
+        changed.rules.direct = ['beta.example'];
+        await test.settings.replace(1, changed);
+      }
+      const before = structuredClone(test.values);
+      Assert.strictEqual((await test.datasetStore.commitPackagedBaseline(next)).ok, true);
+      const {pointers} = await test.datasetStore.loadVerifications(Production.PROVIDER_KEY);
+      Assert.strictEqual(pointers.packagedBaselineArtifactSha256, next.envelope.artifactSha256);
+      Assert.strictEqual(pointers.activeArtifactSha256, old.envelope.artifactSha256);
+      Assert.ok(test.datasetBackend.artifacts.has(old.envelope.artifactSha256));
+      Assert.strictEqual(test.activation.snapshot().runtimeState, 'READY');
+      Assert.strictEqual(test.adapter.onProxyRequest({requestId: 'during-upgrade',
+        url: 'https://data.example/'})[0].port, 18611);
+      Assert.strictEqual(test.control.writes, 1);
+      Assert.strictEqual(test.control.clears, 0);
+      for (let restart = 0; restart < 2; restart += 1) {
+        const recovered = await test.boot();
+        Assert.strictEqual(recovered.ready.ok, true, JSON.stringify(recovered.ready));
+        Assert.strictEqual(recovered.activation.snapshot().runtimeState, 'READY');
+        Assert.strictEqual((await recovered.settings.getEffective()).revision, 1);
+        Assert.strictEqual((await recovered.settings.get()).revision, pending ? 2 : 1);
+        const route = recovered.adapter.onProxyRequest({
+          requestId: `provider-${restart}`, url: 'https://data.example/',
+        });
+        Assert.strictEqual(route[0].port, 18611); // A proxies this host; B would use Direct.
+        Assert.strictEqual(recovered.auth.onAuthRequired(challenge(recovered, `auth-${restart}`))
+            .authCredentials.password, 'fixture-old');
+        Assert.deepStrictEqual(test.values, before);
+      }
+      // The retained identity must also remain valid for ordinary Saved writes.
+      const recovered = await test.boot();
+      const current = await recovered.settings.get();
+      Assert.strictEqual((await recovered.settings.replace(current.revision,
+          authenticatedSettings('later-password'))).revision, current.revision + 1);
+      Assert.strictEqual((await recovered.settings.getEffective()).revision, 1);
+      Assert.strictEqual(test.control.writes, 1);
+      Assert.strictEqual(test.control.clears, 0);
+
+    });
+  }
+
+  for (const damage of ['missing', 'bytes', 'trust']) {
+    it(`blocks release recovery instead of selecting B when retained A is ${damage}`, async function() {
+
+      const old = bundled('release-a', 'PROVIDER_PROXY');
+      const test = await fixture({artifact: old});
+      await test.settings.replace(0, authenticatedSettings());
+      await test.activation.activatePrepared(await test.prepare(1));
+      await test.datasetStore.commitPackagedBaseline(bundled('release-b', 'PROVIDER_DIRECT'));
+      const key = old.envelope.artifactSha256;
+      if (damage === 'missing') test.datasetBackend.artifacts.delete(key);
+      if (damage === 'bytes') test.datasetBackend.artifacts.get(key).artifactBytes[0] ^= 1;
+      if (damage === 'trust') {
+        test.datasetBackend.artifacts.get(key).trust = Helpers.Dataset.TRUST.REMOTE_UNAUTHENTICATED;
+      }
+      const before = structuredClone(test.values);
+      const recovered = await test.boot();
+      Assert.strictEqual(recovered.ready.ok, false);
+      Assert.strictEqual(recovered.ready.floorRetained, true);
+      Assert.strictEqual(recovered.activation.snapshot().runtimeState, 'FAILED');
+      Assert.strictEqual(recovered.activation.snapshot().active, false);
+      Assert.deepStrictEqual(recovered.adapter.onBeforeRequest({requestId: 'blocked'}), {cancel: true});
+      Assert.deepStrictEqual(recovered.auth.onAuthRequired({requestId: 'blocked', isProxy: true,
+        challenger: {host: 'proxy.example', port: 18080}}), {cancel: true});
+      Assert.deepStrictEqual(test.values, before);
+      Assert.strictEqual(test.control.writes, 1);
+      Assert.strictEqual(test.control.clears, 0);
+
+    });
+  }
+
+  it('accepts an unchanged older release-default descriptor without rewriting revision zero', async function() {
+
+    const test = await fixture({artifact: bundled('release-a', 'PROVIDER_PROXY')});
+    test.values[Config.CONFIG_STORAGE_KEY].routingDescriptor.configurationVersion = 'old-release';
+    Assert.strictEqual((await test.activation.activatePrepared(await test.prepare(0))).ok, true);
+    const before = structuredClone(test.values);
+    await test.datasetStore.commitPackagedBaseline(bundled('release-b', 'PROVIDER_DIRECT'));
+    const recovered = await test.boot();
+    Assert.strictEqual(recovered.ready.ok, true);
+    Assert.strictEqual((await recovered.settings.initialize()).ok, true);
+    Assert.strictEqual((await recovered.settings.get()).revision, 0);
+    Assert.strictEqual((await recovered.settings.getEffective()).revision, 0);
+    Assert.deepStrictEqual(test.values, before);
+    await recovered.settings.replace(0, authenticatedSettings());
+    Assert.strictEqual((await recovered.settings.getEffective()).revision, 0);
+    Assert.strictEqual(test.control.clears, 0);
+
+  });
+
+  it('does not infer old defaults from a different verified routing configuration', async function() {
+
+    const test = await fixture();
+    const config = test.values[Config.CONFIG_STORAGE_KEY];
+    config.routingConfig.flags.noDirect = true;
+    test.values[Config.CONFIG_STORAGE_KEY] = await Config.createProductConfig({
+      configurationKey: Production.CONFIGURATION_KEY, configurationVersion: 'old-release',
+      datasetIdentity: config.datasetIdentity, providerKey: config.providerKey,
+      routingConfig: config.routingConfig, sha256,
+    });
+    Assert.strictEqual((await test.settings.initialize()).ok, false);
+    await Assert.rejects(test.settings.get(), {code: 'SETTINGS_STATE_UNAVAILABLE'});
+    Assert.strictEqual(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY], undefined);
+
+  });
+
+  it('starts a fresh profile with bundled B OFF and uses B only after explicit Apply', async function() {
+
+    const next = bundled('release-b', 'PROVIDER_DIRECT');
+    const test = await fixture({artifact: next});
+    Assert.strictEqual(test.activation.snapshot().runtimeState, 'OFF');
+    Assert.strictEqual(test.control.writes, 0);
+    Assert.strictEqual((await test.settings.get()).revision, 0);
+    Assert.strictEqual((await test.activation.activatePrepared(await test.prepare(0))).ok, true);
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
+        test.values[Config.CONFIG_STORAGE_KEY].datasetIdentity);
+    Assert.strictEqual(test.adapter.onProxyRequest({requestId: 'fresh-b',
+      url: 'https://data.example/'}), null);
+    Assert.strictEqual((await test.boot()).ready.ok, true);
+
+  });
 
   it('imported missing credentials leave active routing/auth intact across restart', async function() {
     const test = await activeFixture();

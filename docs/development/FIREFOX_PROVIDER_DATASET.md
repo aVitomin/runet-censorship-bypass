@@ -118,6 +118,19 @@ write the default product configuration and a small readiness marker. Existing
 product configuration is never overwritten. Apply and durable recovery still
 reverify the exact stored artifact before publishing `READY`.
 
+When a later extension release bundles dataset B, registration preserves the
+previous verified baseline A in the existing active pointer if A was the selected
+dataset. That reference and B's baseline are committed in one IndexedDB
+transaction; existing active/LKG selections take precedence and are not replaced.
+Existing profiles continue using A, including after restart, without changing
+Saved/Effective revisions, credentials, or proxy ownership. Pending Saved edits
+stay pending. Fresh profiles use B and remain OFF. This compatibility step does
+not automatically promote B for existing profiles. Missing, invalid, or untrusted
+A cannot be replaced by guessing B during exact recovery: the existing blocked
+recovery requires user action and retains the owned protection floor.
+Release-default revision zero remains readable across a version-label change
+only when its verified routing content/key is identical and it has no credentials.
+
 The bootstrap performs no external request: its only reads use
 `browser.runtime.getURL()` for fixed package paths. It does not set proxy
 settings or activate routing. Remote update configuration remains disabled and

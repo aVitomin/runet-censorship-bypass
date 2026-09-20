@@ -505,6 +505,24 @@
           const providerKey = verification.dataset.identity.providerKey;
           const current = await readPointerState(providerKey);
           const pointers = current.pointers;
+          if (pointers.packagedBaselineArtifactSha256 &&
+              pointers.packagedBaselineArtifactSha256 !==
+                verification.dataset.identity.artifactSha256) {
+            const stored = await loadVerifications(providerKey);
+            const previous = DatasetState.planDatasetActivation({
+              protectionIntended: true,
+              providerKey,
+              active: stored.active,
+              previousLkg: stored.previousLkg,
+              packagedBaseline: stored.packagedBaseline,
+            });
+            if (previous.kind === DatasetState.ACTIONS.USE_PACKAGED_BASELINE) {
+              // An existing Effective/config identity can still name the old
+              // release's baseline. Retain that verified selection in the same
+              // transaction as B, without promoting B or changing user state.
+              pointers.activeArtifactSha256 = previous.selected.artifactSha256;
+            }
+          }
           pointers.packagedBaselineArtifactSha256 =
             verification.dataset.identity.artifactSha256;
           await backend.commit(

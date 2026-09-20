@@ -689,8 +689,13 @@
             const expected = await ProductionProvider.createProductionProductConfig(
                 sha256,
             );
-            if (!sameDescriptor(config.routingDescriptor,
-                expected.routingDescriptor)) {
+            // Older release defaults may have a different version label. The
+            // config was verified above: only identical routing content/key
+            // qualifies as revision zero, never changed defaults or credentials.
+            if (!sameDescriptor(Object.assign({}, config.routingDescriptor, {
+              configurationVersion: expected.routingDescriptor.configurationVersion,
+            }),
+            expected.routingDescriptor)) {
               throw settingsError(ERRORS.SETTINGS_STATE_UNAVAILABLE);
             }
             commit = {
