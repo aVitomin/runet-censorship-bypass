@@ -19,6 +19,115 @@ function makeStore(backend = memoryBackend()) {
 
 describe('Firefox immutable provider dataset store', function() {
 
+  function release(version, trust = Dataset.TRUST.PACKAGED_TRUSTED) {
+
+    return artifact({datasetVersion: version, trust,
+      payload: payload([{width: 12, routeRef: 'PROVIDER_PROXY', hosts: `${version}.example`}])});
+
+  }
+
+  it('retains the verified old baseline atomically across successive release upgrades', async function() {
+
+    for (const schemaVersion of [1, 2]) {
+      const {backend, store} = makeStore();
+      const old = release('oldx');
+      await store.commitPackagedBaseline(old);
+      if (schemaVersion === 1) {
+        backend.pointers.set(PROVIDER_KEY, {
+          schemaVersion, providerKey: PROVIDER_KEY, activeArtifactSha256: null,
+          previousLkgArtifactSha256: null,
+          packagedBaselineArtifactSha256: old.envelope.artifactSha256,
+        });
+      }
+      for (const version of ['next', 'last']) {
+        const next = release(version);
+        const before = backend.commits.length;
+        await store.commitPackagedBaseline(next);
+        const stored = await store.loadVerifications(PROVIDER_KEY);
+        Assert.strictEqual(backend.commits.length, before + 1);
+        Assert.strictEqual(stored.active.dataset.identity.datasetVersion, 'oldx');
+        Assert.strictEqual(stored.packagedBaseline.dataset.identity.datasetVersion, version);
+        Assert.strictEqual(backend.commits.at(-1).artifactSha256, next.envelope.artifactSha256);
+        Assert.strictEqual(backend.commits.at(-1).pointers.activeArtifactSha256,
+            old.envelope.artifactSha256);
+        Assert.strictEqual(stored.active.trust, Dataset.TRUST.PACKAGED_TRUSTED);
+        Assert.strictEqual(stored.pointers.previousLkgArtifactSha256, null);
+      }
+    }
+
+  });
+
+  it('does not replace an active or LKG selection or updater metadata when registering a release', async function() {
+
+    for (const active of [true, false]) {
+      const {backend, store} = makeStore();
+      await store.commitPackagedBaseline(release('oldx'));
+      await store.activateCandidate(release('lkgx', Dataset.TRUST.REMOTE_AUTHENTICATED));
+      const current = release('curr', Dataset.TRUST.REMOTE_AUTHENTICATED);
+      await store.activateCandidate(current);
+      const pointers = backend.pointers.get(PROVIDER_KEY);
+      if (!active) pointers.activeArtifactSha256 = null;
+      pointers.stagedArtifactSha256 = 'a'.repeat(64);
+      pointers.stagedSequence = 8;
+      pointers.highestAuthenticatedSequence = 8;
+      pointers.highestAuthenticatedArtifactSha256 = pointers.stagedArtifactSha256;
+      const before = structuredClone(pointers);
+      const next = release('next');
+      await store.commitPackagedBaseline(next);
+      Assert.deepStrictEqual(backend.pointers.get(PROVIDER_KEY), Object.assign(before, {
+        packagedBaselineArtifactSha256: next.envelope.artifactSha256,
+      }));
+    }
+
+  });
+
+  it('leaves the old baseline/reference unchanged if the upgrade transaction aborts', async function() {
+
+    const {backend, store} = makeStore();
+    await store.commitPackagedBaseline(release('oldx'));
+    const before = structuredClone(backend.pointers.get(PROVIDER_KEY));
+    const next = release('next');
+    backend.commit = async () => {
+
+      throw Object.assign(new Error('injected commit failure'), {code: 'INDEXED_DB_COMMIT_ABORTED'});
+
+    };
+    await Assert.rejects(store.commitPackagedBaseline(next), {code: 'INDEXED_DB_COMMIT_ABORTED'});
+    Assert.deepStrictEqual(backend.pointers.get(PROVIDER_KEY), before);
+    Assert.strictEqual(backend.artifacts.has(next.envelope.artifactSha256), false);
+    Assert.strictEqual((await store.loadVerifications(PROVIDER_KEY)).packagedBaseline.ok, true);
+
+  });
+
+  it('does not change old references when the new release artifact fails verification', async function() {
+
+    const {backend, store} = makeStore();
+    await store.commitPackagedBaseline(release('oldx'));
+    const before = structuredClone(backend.pointers.get(PROVIDER_KEY));
+    const next = release('next');
+    next.artifactBytes[0] ^= 1;
+    Assert.strictEqual((await store.commitPackagedBaseline(next)).ok, false);
+    Assert.deepStrictEqual(backend.pointers.get(PROVIDER_KEY), before);
+    Assert.strictEqual(backend.commits.length, 1);
+
+  });
+
+  for (const damage of ['missing', 'bytes', 'trust']) {
+    it(`does not authorize a ${damage} old baseline during release registration`, async function() {
+
+      const {backend, store} = makeStore();
+      const old = release('oldx');
+      await store.commitPackagedBaseline(old);
+      const key = old.envelope.artifactSha256;
+      if (damage === 'missing') backend.artifacts.delete(key);
+      if (damage === 'bytes') backend.artifacts.get(key).artifactBytes[0] ^= 1;
+      if (damage === 'trust') backend.artifacts.get(key).trust = Dataset.TRUST.REMOTE_UNAUTHENTICATED;
+      Assert.strictEqual((await store.commitPackagedBaseline(release('next'))).ok, true);
+      Assert.strictEqual(backend.pointers.get(PROVIDER_KEY).activeArtifactSha256, null);
+
+    });
+  }
+
   const invalidArtifactCases = [
     {
       name: 'malformed JSON',

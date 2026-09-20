@@ -252,6 +252,50 @@ describe('Firefox production provider baseline', function() {
 
   });
 
+  it('preserves old release state and dataset across an interrupted bootstrap marker write', async function() {
+
+    const backend = Helpers.memoryBackend();
+    const store = DatasetStore.createStore({backend, sha256});
+    const old = Helpers.artifact({providerKey: Production.PROVIDER_KEY, datasetVersion: 'old-release'});
+    await store.commitPackagedBaseline(old);
+    const existing = structuredClone(await Production.createProductionProductConfig(sha256));
+    existing.datasetIdentity = {
+      providerKey: Production.PROVIDER_KEY, datasetVersion: old.envelope.datasetVersion,
+      artifactSha256: old.envelope.artifactSha256,
+    };
+    const storage = memoryStorage({
+      [ProductConfig.CONFIG_STORAGE_KEY]: existing,
+      [Production.BOOTSTRAP_STORAGE_KEY]: {schemaVersion: 1, providerKey: Production.PROVIDER_KEY,
+        artifactSha256: old.envelope.artifactSha256},
+    });
+    const before = structuredClone(storage.values);
+    const set = storage.set;
+    storage.set = async () => {
+
+      throw new Error('injected interruption after IndexedDB commit');
+
+    };
+    const create = () => Production.createBootstrap({
+      storageArea: storage, datasetStore: store, sha256, readPackagedAsset,
+    });
+    Assert.strictEqual((await create().initialize()).ok, false);
+    Assert.deepStrictEqual(storage.values, before);
+    let loaded = await store.loadVerifications(Production.PROVIDER_KEY);
+    Assert.strictEqual(loaded.active.dataset.identity.artifactSha256, old.envelope.artifactSha256);
+    Assert.strictEqual(loaded.packagedBaseline.dataset.identity.artifactSha256,
+        Production.ARTIFACT_SHA256);
+    storage.set = set;
+    Assert.strictEqual((await create().initialize()).status, 'BASELINE_INSTALLED_CONFIG_PRESERVED');
+    Assert.strictEqual((await create().initialize()).status, 'ALREADY_INSTALLED');
+    Assert.deepStrictEqual(storage.values[ProductConfig.CONFIG_STORAGE_KEY], existing);
+    Assert.ok(storage.writes.every((write) =>
+      Object.keys(write).length === 1 && write[Production.BOOTSTRAP_STORAGE_KEY]));
+    loaded = await store.loadVerifications(Production.PROVIDER_KEY);
+    Assert.strictEqual(loaded.active.dataset.identity.artifactSha256, old.envelope.artifactSha256);
+    Assert.strictEqual(loaded.active.trust, Dataset.TRUST.PACKAGED_TRUSTED);
+
+  });
+
   it('repairs a missing stored baseline instead of trusting its marker',
       async function() {
 
