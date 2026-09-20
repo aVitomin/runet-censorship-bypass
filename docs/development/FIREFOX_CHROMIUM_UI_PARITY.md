@@ -42,13 +42,13 @@ gate не проверяет эти новые изменения.
 | --- | --- | --- | --- |
 | Overview | Overview с protection/dataset/private-access state | PARITY | Та же card/status-pill визуальная модель. |
 | Routing sources | Automatic routing | EQUIVALENT | Anticensority представлен как проверенный packaged declarative dataset. |
-| Provider selector и custom PAC URL | Нет | INTENTIONAL_PLATFORM_DIFFERENCE | Firefox не выполняет arbitrary PAC; источник фиксирован продуктом. |
+| Provider selector и custom PAC URL | Нет | INTENTIONAL_PLATFORM_DIFFERENCE | Chromium поддерживает дополнительные расширенные PAC-источники; Firefox использует проверенные декларативные данные. |
 | Site rules | Direct / Proxy / whitelist editors | PARITY | Background остаётся авторитетным validator. |
 | Own proxy candidates и порядок | Own proxy candidates и порядок | PARITY | HTTP/HTTPS/SOCKS4/SOCKS5, timeout и proxy DNS. |
 | Proxy credentials | KEEP / SET / NONE | PARITY | Password никогда не читается обратно в page state. |
 | Local Tor / Tor Browser / WARP | Явные scoped controls | EQUIVALENT | Firefox показывает lossless runtime fields без Chromium-only master toggle. |
 | Safe routing defaults | Те же четыре browser-neutral defaults | PARITY | Provider=true, own-sites-only=true, replace-Direct=false, noDirect=false. |
-| Maintenance section | Packaged/current dataset, signed check, staged install | EQUIVALENT | Check не меняет active routing; install доступен только в полном OFF. |
+| Maintenance section | Packaged/current dataset, signed check, staged install | EQUIVALENT | Проверка не меняет active routing. Проверенные данные можно установить при Active; pending Saved остаётся неприменённым. |
 | Manual/periodic provider refresh | No-input manual check и 12-hour alarm | EQUIVALENT | Оба stage-ят проверенные данные. Firefox никогда не promote-ит автоматически и требует release-pinned URL/key; эти внешние значения пока отсутствуют. |
 | Proxy health и diagnostics | Maintenance check и redacted report/export | EQUIVALENT | Отчёт содержит только версии, состояния, public dataset version и proxy type/count; URL, endpoints, authRef, hashes, floor и credentials исключены. |
 | Advanced Direct policy | replaceDirectWithProxy / noDirect | PARITY | Общий routing contract остаётся авторитетным. |
@@ -63,9 +63,9 @@ gate не проверяет эти новые изменения.
   `PROXY + DIRECT` fallback в Firefox намеренно удаляется: если все proxy
   кандидаты исчерпаны, Firefox закрывает запрос. Это
   `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытая parity.
-- Firefox settings меняются только при полном `OFF`; во время Active/Initializing
-  Options и current-site controls read-only. Это
-  `INTENTIONAL_PLATFORM_DIFFERENCE`, сохраняющее exact durable config binding.
+- В обоих браузерах Draft, Saved и Effective разделены: сохранение не применяет
+  изменения, а Apply не требует выключать защиту. Firefox сохраняет свои
+  private-window и fail-closed ограничения при блокировке.
 - Firefox требует private-window access до Apply, чтобы отзыв разрешения не
   создавал обход protected routing. Chromium не имеет эквивалентного условия.
 
@@ -73,7 +73,7 @@ gate не проверяет эти новые изменения.
 
 В этой матрице больше нет `MISSING` user-visible классов. До release остаётся
 внешний blocker включения update flow: fixed HTTPS manifest endpoint и pinned
-raw Ed25519 public key/stable keyId. Произвольный PAC, browser-driven locale, OFF-only mutation и
+raw Ed25519 public key/stable keyId. Произвольный PAC, browser-driven locale и
 fail-closed terminal proxy exhaustion остаются явно
 зафиксированными `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытыми parity.
 
