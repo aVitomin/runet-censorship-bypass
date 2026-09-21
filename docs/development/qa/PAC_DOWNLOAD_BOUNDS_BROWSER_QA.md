@@ -1,6 +1,6 @@
 # PAC download bounds browser QA
 
-Use a completed unpacked MV3 build in current Chrome and Brave. Keep service-worker
+Use a completed unpacked Chromium build in current Chrome and Brave. Keep service-worker
 DevTools open. Use only a controlled loopback HTTP server; do not change the
 Windows system proxy and do not put credentials, private URLs, or repository
 files in any response.

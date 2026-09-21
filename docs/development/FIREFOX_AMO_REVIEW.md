@@ -121,7 +121,7 @@ Build instructions and archive layout are in
 [`FIREFOX_RELEASE_BUILD.md`](FIREFOX_RELEASE_BUILD.md). The short path is:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 npm ci --prefix $Project
 npm --prefix $Project run verify:firefox
 npm --prefix $Project run release:firefox

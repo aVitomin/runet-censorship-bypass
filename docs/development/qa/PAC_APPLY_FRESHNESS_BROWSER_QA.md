@@ -1,6 +1,6 @@
 # PAC apply freshness browser QA
 
-Use the completed unpacked MV3 build in current Chrome and Brave with service
+Use the completed unpacked Chromium build in current Chrome and Brave with service
 worker and options-page DevTools open. Use only synthetic settings and an
 authorized loopback PAC/proxy. Do not change the Windows system proxy.
 

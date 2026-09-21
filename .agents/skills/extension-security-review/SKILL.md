@@ -1,22 +1,22 @@
 ---
-name: mv3-security-review
+name: extension-security-review
 description: Review changes to permissions, background lifecycle, PAC/provider downloads or application, routing precedence or Direct/fail-open behavior, auth/credentials, migration, IndexedDB/persistent state, external requests, proxy ownership/errors, or browser error handling; exclude prose, styling, and tests with no boundary effect.
 ---
 
-# MV3 security review
+# Extension security review
 
 Read root instructions and only scoped instructions for changed paths. Review
 the complete relevant diff and enough callers to prove each affected boundary.
 Never print credentials, browsing data, full custom URLs, or profile contents.
-Choose affected targets by runtime/build consumers, not Chromium-first parent
-paths; shared modules and icons can enter different per-browser package rules.
+Choose affected targets by runtime/build consumers, not parent directory names;
+shared modules and icons can enter different per-browser package rules.
 
 If dependencies, Actions, or vendored code changed, also use
 `$dependency-review` for that delta rather than repeating it here.
 
 ## Scope and final gate
 
-- Chromium-only: review Chromium semantics; final gate `verify:mv3`.
+- Chromium-only: review Chromium semantics; final gate `verify:chromium`.
 - Firefox-only: review Firefox semantics; final gate `verify:firefox`.
 - Shared runtime, manifest/template, Gulp, or common packaged input: review both
   targets; final gate `verify` plus both package-tree comparisons.

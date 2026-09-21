@@ -2,8 +2,8 @@
 
 ## Emoji icon font
 
-The shipped `src/extension-common/pages/lib/fonts/emoji.woff` and the
-[archived SVG authoring sources](../../../../docs/legacy/assets/icon-font-sources/)
+The shipped `src/chromium-compat/pages/lib/fonts/emoji.woff` and the
+[archived SVG authoring sources](../../docs/legacy/assets/icon-font-sources/)
 were introduced together in legacy commit `653d415bee3200364d396cc65b0b0896d85dbc6d`.
 
 URL: https://github.com/jslegers/emoji-icon-font

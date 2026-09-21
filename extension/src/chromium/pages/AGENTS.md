@@ -1,4 +1,4 @@
-# Chromium MV3 pages
+# Chromium pages
 
 Use `pages/shared/rpc-client.js`; do not reach into background globals or load
 remote scripts. Build DOM with text nodes/`textContent` and existing helpers,
@@ -19,7 +19,7 @@ not HTML injection sinks.
   revision-safe composite RPC and requires explicit confirmation before also
   applying pre-existing pending Saved changes.
 
-For Chromium-only runtime/UI changes, the final gate is `verify:mv3`.
+For Chromium-only runtime/UI changes, the final gate is `verify:chromium`.
 Inspect affected pages in Chromium and manually cover the behavior changed:
 masking, keyboard/forms, both locales, and routing actions as applicable.
 Styling-only work does not trigger security or PAC skills unless it changes one

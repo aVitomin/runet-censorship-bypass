@@ -1,8 +1,8 @@
-# Разработка Chromium MV3 и Firefox MV3
+# Разработка Chromium и Firefox
 
 Поддерживаемые цели текущего `main` —
-`extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3` и
-`src/extension-firefox-mv3` в том же tooling root.
+`extension/src/chromium` и
+`src/firefox` в том же tooling root.
 Корневого npm-пакета нет. Старый Open Collective donation package удалён как
 не связанный со сборкой и содержавший устаревший lifecycle hook. Это не меняет
 [GPL-3.0](../../LICENSE), upstream-атрибуцию или историю спонсоров в
@@ -19,31 +19,31 @@
 ## Клонирование и установка
 
 ```powershell
-git clone https://github.com/aVitomin/runet-censorship-bypass-mv3.git
-Set-Location .\runet-censorship-bypass-mv3
-npm ci --prefix .\extensions\chromium\runet-censorship-bypass
+git clone https://github.com/aVitomin/runet-censorship-bypass-mv3.git runet-censorship-bypass
+Set-Location .\runet-censorship-bypass
+npm ci --prefix .\extension
 ```
 
 Не запускайте `npm install`, `npm ci` или npm-скрипты в корне репозитория.
 Используйте только extension-scoped команды: канонический пакет и его lockfile
-находятся в `extensions/chromium/runet-censorship-bypass`.
+находятся в `extension`.
 
 ## Основные команды
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 ```
 
 | Этап | Команда | Когда нужна |
 | --- | --- | --- |
 | Документация | `node .\scripts\verify-docs.mjs` | Любое изменение документации или инструкций |
 | Фокусная обратная связь | `npm --prefix $Project run test:pac` | Во время изменения PAC-семантики |
-| Финальная Chromium-проверка | `npm --prefix $Project run verify:mv3` | Только Chromium runtime/UI |
+| Финальная Chromium-проверка | `npm --prefix $Project run verify:chromium` | Только Chromium runtime/UI |
 | Финальная Firefox-проверка | `npm --prefix $Project run verify:firefox` | Только Firefox runtime/UI |
 | Финальная общая проверка | `npm --prefix $Project run verify` | Shared runtime, templates, Gulp или общий packaged input |
 
-`verify:mv3` и `verify:firefox` запускают target lint, deterministic tests и
-проверенную сборку. `test:pac` входит в `test:mv3`, а тот — в `verify:mv3`.
+`verify:chromium` и `verify:firefox` запускают target lint, deterministic tests и
+проверенную сборку. `test:pac` входит в `test:chromium`, а тот — в `verify:chromium`.
 `verify` выполняет все maintained deterministic suites и обе сборки один раз.
 Фокусную команду можно использовать во время разработки, но после неизменённого
 финального gate повторять её не нужно.
@@ -51,6 +51,33 @@ $Project = '.\extensions\chromium\runet-censorship-bypass'
 изменённым путям; CI и правила `AGENTS.md` остаются авторитетными.
 Dependency-free docs verifier запускается из корня и не требует корневого
 `package.json` или `npm install`.
+
+## Совместимость структуры 1.0
+
+Единственный npm-root — `extension/`: `src/chromium`, `src/firefox`,
+`src/shared`, `src/tooling` и Chromium-only `src/chromium-compat`.
+Сборки находятся в `extension/build/chromium` и `extension/build/firefox`;
+пути внутри пакетов не меняются. Старых aliases npm-команд нет: используются
+`lint:chromium`, `test:chromium`, `build:chromium`, `verify:chromium` и
+`test:browser:chromium`. Firefox, tooling и aggregate gates сохраняют смысл.
+
+Workflow — `.github/workflows/extension.yml` (**Verify extension**). Итоговый
+check **Verify MV3** и browser job labels оставлены как compatibility names:
+ruleset требует первый, а classic branch protection не удалось прочитать.
+Не переименовывайте check names без согласованной проверки remote protection.
+
+При перемещении package root supply-chain verifier требует парные Git renames
+manifest/lock из одного root и уникальную совпадающую package identity.
+Порог similarity 40% позволяет перенос script-heavy manifest (49% в этом
+refactor); это не отменяет проверки полного lockfile, pins и возраста новых
+версий. Копии, частичные и неоднозначные переносы блокируются.
+
+Имя GitHub-репозитория пока не изменено. При отдельном будущем переименовании
+проверьте Git remote, README badges/downloads, support/security/template URLs,
+ссылки в manifests/templates и проверку current-release URLs в
+`scripts/verify-docs.mjs`. Public release filenames, frozen provenance и
+runtime/storage/RPC identifiers не меняются автоматически вместе с repository
+name. Release tooling получает корень через Git, а не имя папки или её глубину.
 
 ## Опциональный Chrome DevTools MCP
 
@@ -114,30 +141,30 @@ process и listener: эти данные быстро устаревают, а `
 
 | Назначение | Путь |
 | --- | --- |
-| Chromium MV3 runtime | `extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3` |
+| Chromium runtime | `extension/src/chromium` |
 | Service worker | `…/background/service-worker.js` |
 | Popup и settings | `…/pages/popup` и `…/pages/options` |
 | Manifest template | `…/manifest.tmpl.json` |
-| Firefox MV3 runtime | `extensions/chromium/runet-censorship-bypass/src/extension-firefox-mv3` |
-| Shared MV3 contracts | `extensions/chromium/runet-censorship-bypass/src/extension-mv3-common` |
-| Версия Chromium и template values | `extensions/chromium/runet-censorship-bypass/src/templates-data.js` |
-| Gulp orchestration | `extensions/chromium/runet-censorship-bypass/gulpfile.js` |
-| Chromium unpacked-сборка | `extensions/chromium/runet-censorship-bypass/build/extension-chromium-mv3` |
-| Firefox unpacked-сборка | `extensions/chromium/runet-censorship-bypass/build/extension-firefox-mv3` |
+| Firefox runtime | `extension/src/firefox` |
+| Shared contracts | `extension/src/shared` |
+| Версия Chromium и template values | `extension/src/templates-data.js` |
+| Gulp orchestration | `extension/gulpfile.js` |
+| Chromium unpacked-сборка | `extension/build/chromium` |
+| Firefox unpacked-сборка | `extension/build/firefox` |
 
 MV2 удалён из maintained `main`; его исходники и сборочные инструкции доступны
 через Git history и frozen development branch. Chromium рекурсивно включает в
-пакет всё содержимое `extension-common/pages/lib`, поэтому новый файл там меняет
+пакет всё содержимое `chromium-compat/pages/lib`, поэтому новый файл там меняет
 packaged bytes. Nested legacy Options package отсутствует. Chromium и Firefox
 build очищают только собственные output-каталоги и не зависят от порядка запуска.
 
 ## Загрузка локальной сборки
 
-1. Выполните `build:mv3`.
+1. Выполните `build:chromium`.
 2. Откройте `brave://extensions` или `chrome://extensions`.
 3. Включите Developer mode.
 4. Нажмите Load unpacked и выберите каталог
-   `build/extension-chromium-mv3` внутри tooling root.
+   `build/chromium` внутри tooling root.
 5. После изменений исходников снова соберите пакет и нажмите Reload.
 
 Используйте отдельный тестовый профиль без личной истории, bookmarks и других
@@ -148,13 +175,13 @@ Git.
 
 Пользовательская строка должна появиться в `en` и `ru` затронутой цели:
 
-- `src/extension-chromium-mv3/_locales/en/messages.json`;
-- `src/extension-chromium-mv3/_locales/ru/messages.json`;
-- `src/extension-firefox-mv3/_locales/en/messages.json`;
-- `src/extension-firefox-mv3/_locales/ru/messages.json`.
+- `src/chromium/_locales/en/messages.json`;
+- `src/chromium/_locales/ru/messages.json`;
+- `src/firefox/_locales/en/messages.json`;
+- `src/firefox/_locales/ru/messages.json`.
 
 Сохраняйте одинаковые ключи и формы placeholders. После изменения проверьте обе
-локали в затронутом интерфейсе и выполните `verify:mv3` для Chromium либо
+локали в затронутом интерфейсе и выполните `verify:chromium` для Chromium либо
 `verify:firefox` для Firefox; если затронуты оба, нужны оба соответствующих gate.
 Интерфейс создаёт DOM через безопасные текстовые API; не добавляйте HTML injection
 sinks для сохранённых значений.
@@ -164,17 +191,17 @@ sinks для сохранённых значений.
 Состояния action генерируются детерминированным скриптом. Из tooling root:
 
 ```powershell
-Set-Location .\extensions\chromium\runet-censorship-bypass
-node .\src\extension-chromium-mv3\test\generate-action-icons.js
-npm run build:mv3
+Set-Location .\extension
+node .\src\chromium\test\generate-action-icons.js
+npm run build:chromium
 ```
 
-`build:mv3` автоматически проверяет наличие и точное имя каждого runtime icon.
+`build:chromium` автоматически проверяет наличие и точное имя каждого runtime icon.
 Не меняйте сгенерированные PNG вручную без обновления генератора и тестов.
 
 ## GitHub Actions
 
-Workflow [`.github/workflows/mv3.yml`](../../.github/workflows/mv3.yml) работает
+Workflow [`.github/workflows/extension.yml`](../../.github/workflows/extension.yml) работает
 на Node 22 для push и pull request в `main`. Независимые policy/supply-chain,
 Chromium и Firefox jobs исполняют каждую deterministic suite и build один раз;
 итоговый `Verify MV3` сохраняет стабильный required-check contract. Chrome smoke

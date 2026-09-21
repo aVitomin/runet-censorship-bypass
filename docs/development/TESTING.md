@@ -4,7 +4,7 @@
 extension tooling root:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 npm ci --prefix $Project
 ```
 
@@ -12,14 +12,14 @@ npm ci --prefix $Project
 
 | Уровень | Назначение | Примеры |
 | --- | --- | --- |
-| Фокусный | Быстрая обратная связь во время изменения; не доказывает готовность всего target | `test:pac`, `test:mv3`, `test:firefox`, `test:tooling` |
-| Финальный локальный | Один канонический gate для итогового дерева | `verify:mv3`, `verify:firefox` или общий `verify` |
+| Фокусный | Быстрая обратная связь во время изменения; не доказывает готовность всего target | `test:pac`, `test:chromium`, `test:firefox`, `test:tooling` |
+| Финальный локальный | Один канонический gate для итогового дерева | `verify:chromium`, `verify:firefox` или общий `verify` |
 | CI | Независимые policy, supply-chain, tooling, browser и Chrome smoke jobs | GitHub Actions после push/PR |
 | Release | Воспроизводимые архивы, addons-linter, trusted-main provenance и browser QA | Только процесс выпуска |
 
 Не запускайте фокусный тест повторно после неизменённого финального gate,
-который уже его включает. `test:pac` входит в `test:mv3`; `verify:mv3` включает
-`test:mv3`; общий `verify` запускает все maintained deterministic suites один
+который уже его включает. `test:pac` входит в `test:chromium`; `verify:chromium` включает
+`test:chromium`; общий `verify` запускает все maintained deterministic suites один
 раз. `scripts/required-checks.mjs` — advisory mapper, а не замена правилам
 `AGENTS.md` или CI.
 
@@ -102,17 +102,17 @@ npm --prefix $Project run test:pac
 ```
 
 Это фокусная команда для разработки. Финальная Chromium-проверка выполняется
-через `verify:mv3`, поэтому рядом с ней `test:pac` не повторяется.
+через `verify:chromium`, поэтому рядом с ней `test:pac` не повторяется.
 
 Тесты исполняют итоговый `FindProxyForURL` и проверяют exact/wildcard scope,
 Auto/Proxy/Direct, порядок кандидатов, provider fallback, safe defaults и
 конфликтующие правила. Изменение строк генератора без проверки наблюдаемого
 результата недостаточно.
 
-### Все MV3 tests
+### Все Chromium tests
 
 ```powershell
-npm --prefix $Project run test:mv3
+npm --prefix $Project run test:chromium
 ```
 
 Набор покрывает фоновые модули, сериализацию состояния, PAC download/security,
@@ -134,15 +134,15 @@ aggregate `npm test`/`verify`, но не дублируются внутри bro
 ### Lint
 
 ```powershell
-npm --prefix $Project run lint:mv3
+npm --prefix $Project run lint:chromium
 ```
 
 Используйте сфокусированный lint только для быстрой обратной связи. Финальный
 target gate уже запускает его; не используйте lint как замену tests/build и не
 начинайте массовое форматирование соседнего кода.
 
-`lint:mv3`, `lint:firefox` и общий `lint` включают
-`src/extension-mv3-common/**/*.js`. Для shared modules включены correctness
+`lint:chromium`, `lint:firefox` и общий `lint` включают
+`src/shared/**/*.js`. Для shared modules включены correctness
 rules с поддержкой существующего ES2018-синтаксиса, без переноса browser UI
 style rules. Два input validator намеренно используют regex для отбрасывания
 управляющих символов; исключение `no-control-regex` ограничено этими файлами.
@@ -151,10 +151,10 @@ Browser-specific rules не изменены.
 ### Build, package integrity и runtime icons
 
 ```powershell
-npm --prefix $Project run build:mv3
+npm --prefix $Project run build:chromium
 ```
 
-Скрипт собирает `build/extension-chromium-mv3`, затем автоматически запускает:
+Скрипт собирает `build/chromium`, затем автоматически запускает:
 
 - `test/verify-runtime-icons.js` — каждый используемый icon существует с
   правильным регистром и попал в пакет;
@@ -164,14 +164,14 @@ npm --prefix $Project run build:mv3
 Количество файлов выводится проверкой; не фиксируйте его в документации без
 необходимости.
 
-### Chrome Stable MV3 smoke
+### Chrome Stable smoke
 
-После MV3 build можно запустить короткий browser-level smoke на установленном
+После Chromium build можно запустить короткий browser-level smoke на установленном
 Google Chrome Stable:
 
 ```powershell
 $env:CHROME_BIN = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
-npm --prefix $Project run test:browser:mv3
+npm --prefix $Project run test:browser:chromium
 ```
 
 Тот же smoke принимает путь к Edge или Brave через `CHROME_BIN`. Он использует
@@ -243,13 +243,13 @@ browser session/extension reload. Тест не изменяет machine policy,
 утечек в произвольной реальной
 сети.
 
-### Полная MV3 verification
+### Полная Chromium verification
 
 ```powershell
-npm --prefix $Project run verify:mv3
+npm --prefix $Project run verify:chromium
 ```
 
-`test:pac` уже входит в `test:mv3`; рядом с `verify:mv3` повторять его не нужно.
+`test:pac` уже входит в `test:chromium`; рядом с `verify:chromium` повторять его не нужно.
 CI проверяет `git diff --exit-code` после target gate.
 
 ### Полная Firefox verification

@@ -1,7 +1,7 @@
-# Chromium / Firefox MV3: матрица пользовательского интерфейса
+# Chromium / Firefox: матрица пользовательского интерфейса
 
 Эта матрица фиксирует состояние milestone `0.0.4.0`. Она сравнивает только
-пользовательские функции поддерживаемых Chromium MV3 и Firefox MV3 targets.
+пользовательские функции поддерживаемых Chromium и Firefox targets.
 `PARITY` означает одинаковый workflow, `EQUIVALENT` — одинаковый результат при
 разной browser-specific реализации, `INTENTIONAL_PLATFORM_DIFFERENCE` — явно
 принятое безопасное отличие, а `MISSING` — оставшаяся работа. Последняя
@@ -13,7 +13,7 @@ Apply. Firefox Site rules теперь представлены единым с�
 без переноса настроек между профилями. Проверенный dataset можно устанавливать
 при Active из Effective settings, не применяя pending Saved. Production update
 trust по-прежнему не настроен. Текущие контракты и recovery описаны в
-[Firefox architecture](FIREFOX_MV3_ARCHITECTURE.md); приведённый ниже старый visual
+[Firefox architecture](FIREFOX_ARCHITECTURE.md); приведённый ниже старый visual
 gate не проверяет эти новые изменения.
 
 ## Popup и управление

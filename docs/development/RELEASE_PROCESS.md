@@ -1,4 +1,4 @@
-# Процесс выпуска Chromium MV3 и Firefox MV3
+# Процесс выпуска Chromium и Firefox
 
 Chromium публикуется как ZIP готовой MV3-сборки. Firefox release candidate
 состоит из детерминированного unsigned XPI, checksum и reviewer source archive;
@@ -31,7 +31,7 @@ output-каталоги и не имеют требования к взаимн�
 Из корня репозитория:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 node .\scripts\verify-docs.mjs
 node .\scripts\verify-supply-chain.mjs
 node --test .\scripts\verify-supply-chain.test.mjs
@@ -52,7 +52,7 @@ tracked tree должен остаться чистым.
 
 ## 3. Подтвердить trusted-main CI
 
-Для exact main SHA workflow **Verify MV3** должен завершиться успешно как
+Для exact main SHA workflow **Verify extension** должен завершиться успешно как
 trusted push в `main`. Если GitHub не создал ожидаемый push run, не переписывайте
 и не дополняйте `main`: вручную запустите тот же workflow на `main`. Такой run
 допустим только при `event = workflow_dispatch`, `ref = refs/heads/main`,
@@ -63,7 +63,7 @@ artifact этого run. Dispatch другой ветки не является 
 
 - documentation integrity;
 - static supply-chain policy, focused verifier tests и registry signatures;
-- tooling, PAC, Chromium MV3 и Firefox deterministic tests без повторов;
+- tooling, PAC, Chromium и Firefox deterministic tests без повторов;
 - focused Chromium/Firefox lint, builds и package integrity;
 - runtime icons и package integrity внутри build;
 - tracked-worktree checks;
@@ -72,7 +72,10 @@ artifact этого run. Dispatch другой ветки не является 
 
 Если обязательного шага нет, release блокирован до исправления workflow и
 нового успешного trusted-main run. Артефакт PR не является trusted release
-source: upload на pull request намеренно пропускается.
+source: upload на pull request намеренно пропускается. Итоговый check сохраняет
+имя **Verify MV3**, требуемое действующим ruleset; его переименование требует
+отдельного согласованного изменения branch protection. Имена существующих
+release artifacts также сохранены независимо от имени исходных каталогов.
 
 ## 4. Скачать и проверить trusted artifact
 

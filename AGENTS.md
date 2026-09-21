@@ -13,23 +13,25 @@ only when its description matches the task.
 
 ## Repository map and working boundary
 
-- The only npm root is `extensions/chromium/runet-censorship-bypass`
+- The only npm root is `extension`
   (`$Project`). Run commands from the repository root in PowerShell and never
   run root npm install/scripts. If dependencies are missing, use
   `npm ci --prefix $Project`.
-- Chromium MV3 (`src/extension-chromium-mv3`) and Firefox MV3
-  (`src/extension-firefox-mv3`) are equal supported targets, with browser-neutral
-  modules in `src/extension-mv3-common`. Chromium-first paths do not establish
-  ownership: inspect consumers, including Firefox's use of Chromium icons.
+- Chromium (`extension/src/chromium`) and Firefox (`extension/src/firefox`)
+  are equal supported Manifest V3 targets. Browser-neutral modules live in
+  `extension/src/shared`; repository-only build helpers/tests are in
+  `extension/src/tooling`. Inspect consumers, including Firefox's use of
+  Chromium icons; source location alone does not establish ownership.
   MV2 is historical; use Git history or the frozen development branch rather
   than rebuilding it on `main`.
 - Chromium background starts at `background/service-worker.js`; Chromium UI is
   under `pages/`; Firefox starts at `background/event-page.js`.
 - Version/build authority is `src/templates-data.js`, `gulpfile.js`, and the
   maintained manifests/templates. Chromium recursively packages every file
-  under `src/extension-common/pages/lib`; additions change packaged bytes.
+  under `src/chromium-compat/pages/lib`; additions change packaged bytes.
   Shared modules have target-specific copy rules; Firefox uses explicit Gulp
   allowlists. Do not broaden package globs or assume identical package contents.
+  `src/chromium-compat` is Chromium-only compatibility input, not shared code.
 - For user-facing UI strings, update both `en` and `ru` locale catalogs for
   every affected browser target.
 - Build output, `dist`, `node_modules`, coverage, archives, profiles, logs,
@@ -96,13 +98,13 @@ detailed command or browser-QA matrix is needed.
 Run commands from the repository root in PowerShell after setting:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 ```
 
 | Final affected scope | Required local gate |
 | --- | --- |
 | Agent/skill/docs only | `node .\scripts\verify-docs.mjs`, relevant skill/metadata validation, `git diff --check` |
-| Chromium runtime/UI only | `npm --prefix $Project run verify:mv3` |
+| Chromium runtime/UI only | `npm --prefix $Project run verify:chromium` |
 | Firefox runtime/UI only | `npm --prefix $Project run verify:firefox` |
 | Shared runtime/templates/Gulp/common packaged input | `npm --prefix $Project run verify`, then compare both package trees with baselines |
 | Dependency/Action/vendored code | `$dependency-review` checks plus the affected final gate |
@@ -113,8 +115,8 @@ in addition to the applicable row. For agent/skill/docs-only work, those checks
 and relevant skill/metadata validation are the final gate; do not run product,
 browser, or release commands.
 
-For PAC work, `test:pac` is the fast focused check; `verify:mv3` includes
-`test:mv3`, and `test:mv3` includes PAC regression. Aggregate `verify` includes
+For PAC work, `test:pac` is the fast focused check; `verify:chromium` includes
+`test:chromium`, and `test:chromium` includes PAC regression. Aggregate `verify` includes
 all maintained deterministic suites once. `scripts/required-checks.mjs` is an
 advisory path mapper; this table, applicable skills, and CI are authoritative.
 CI additionally runs policy/supply-chain helpers, tooling verification,

@@ -1,4 +1,4 @@
-# Chromium MV3 background
+# Chromium background
 
 This target uses a service worker, Chromium PAC execution and `chrome.*` APIs,
 not Firefox's event-page/proxy-floor model. Preserve top-level `importScripts`
@@ -25,8 +25,8 @@ synchronously.
 - Use module APIs and the state queue; do not split same-field updates across
   calls when concurrent writers can intervene.
 
-Use `$mv3-security-review` for the boundaries named in its trigger and
+Use `$extension-security-review` for the boundaries named in its trigger and
 `$pac-regression` when routing semantics change. `test:pac` is optional focused
-feedback; the Chromium-only runtime gate is `verify:mv3`, which includes it.
+feedback; the Chromium-only runtime gate is `verify:chromium`, which includes it.
 Add targeted browser QA when behavior depends on real proxy/auth, PAC parsing or
 fallback, ownership, worker interruption, alarms, IndexedDB, or migration.

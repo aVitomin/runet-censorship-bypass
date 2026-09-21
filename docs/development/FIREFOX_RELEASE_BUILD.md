@@ -1,6 +1,6 @@
 # Firefox release candidate build
 
-Firefox MV3 follows the repository release train. Its manifest version is the
+Firefox follows the repository release train. Its manifest version is the
 same `0.0.<storeVersion>` derived from `src/templates-data.js` for Chromium;
 the current candidate is `0.0.4.0`. A future public release updates the shared
 release version through the normal release process rather than creating an
@@ -8,7 +8,7 @@ independent Firefox-only version.
 
 The immutable Firefox Gecko ID is
 `{adf5f697-1149-42a2-92eb-c163cb9a4146}`. It is a newly generated UUIDv4 for
-this Firefox MV3 product and is not a legacy AMO identity. Do not change it in
+this Firefox product and is not a legacy AMO identity. Do not change it in
 later releases.
 
 ## Reproducible local build
@@ -16,7 +16,7 @@ later releases.
 Use Node.js 22 and a clean checkout. From the repository root:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 npm ci --prefix $Project
 node .\scripts\verify-docs.mjs
 node .\scripts\verify-supply-chain.mjs

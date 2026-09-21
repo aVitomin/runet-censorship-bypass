@@ -1,7 +1,7 @@
-# Архитектура Firefox MV3
+# Архитектура Firefox
 
 Firefox production source находится в отдельной границе
-`src/extension-firefox-mv3`. Пакет готовится как воспроизводимый release
+`src/firefox`. Пакет готовится как воспроизводимый release
 candidate; Mozilla-подписанный пакет `0.0.4.0` опубликован и входит в
 пользовательские инструкции установки.
 
@@ -313,7 +313,7 @@ credential configuration по-прежнему отсутствует. Provider 
 изолирован от boot/recovery и не выбирает dataset для текущей session.
 
 Production Gecko ID — неизменяемый UUIDv4
-`{adf5f697-1149-42a2-92eb-c163cb9a4146}`. Он создан для этого Firefox MV3
+`{adf5f697-1149-42a2-92eb-c163cb9a4146}`. Он создан для этого Firefox
 продукта и не переиспользует legacy AMO identity. Firefox следует общей версии
 репозитория: текущий опубликованный release имеет manifest version `0.0.4.0`,
 совпадающую с `storeVersion` Chromium release train; следующий публичный
@@ -322,7 +322,7 @@ release обновляет обе версии согласованно чере
 Детерминированные проверки запускаются из корня репозитория:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 npm --prefix $Project run test:firefox
 npm --prefix $Project run lint:firefox
 npm --prefix $Project run build:firefox
@@ -330,7 +330,7 @@ npm --prefix $Project run build:firefox
 
 Сборка содержит `manifest.json`, Firefox background-скрипты, exact packaged
 HOST_BUCKETS_V1 artifact/envelope и точные копии browser-neutral contract в
-`build/extension-firefox-mv3`. Dataset runtime использует неизменяемые
+`build/firefox`. Dataset runtime использует неизменяемые
 SHA-256-addressed артефакты, строгую общую верификацию и fallback
 active -> previous LKG -> packaged baseline; parsed index хранится только в
 памяти event page. Неизменяемые bytes и маленькие provider pointers находятся
@@ -437,7 +437,7 @@ UI adapter не мигрирует storage: Direct/Proxy и whitelist сохра
 порядок и пересечения; старые wildcard patterns показываются отдельно без
 нормализации. Auto удаляет только выбранную запись, а whitelist не выдаётся за
 принудительный Auto. Правки остаются Draft до revision-checked Save и не
-синхронизируются между браузерными профилями. Как и Chromium MV3, plain host означает exact host, wildcard
+синхронизируются между браузерными профилями. Как и Chromium, plain host означает exact host, wildcard
 `*.example.com` — base + subdomains; defaults остаются
 `useProviderProxies=true`, `ownProxiesOnlyForOwnSites=true`,
 `replaceDirectWithProxy=false`, `noDirect=false`. Firefox-specific Tor scope

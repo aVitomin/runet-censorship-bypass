@@ -18,7 +18,7 @@ private provider URLs.
    `FindProxyForURL` results, not string fragments: exact host and `*.domain`,
    Auto/Proxy/Direct, candidate order, provider fallback, `noDirect`, safe defaults,
    and rule precedence. Add Chromium cases to
-   `src/extension-chromium-mv3/test/pac-regression.js` when semantics change;
+   `src/chromium/test/pac-regression.js` when semantics change;
    cover corresponding Firefox declarative decisions when that target is affected,
    rather than copying PAC assumptions.
 3. Preserve explicit Proxy semantics: a usable ordered candidate list, no
@@ -26,8 +26,8 @@ private provider URLs.
    Direct remains explicit.
 
 During Chromium PAC development, `test:pac` is the focused check. For an
-unchanged final tree, do not also run `test:mv3`: Chromium-only completion uses
-`verify:mv3`, which includes both. Firefox-only declarative changes use
+unchanged final tree, do not also run `test:chromium`: Chromium-only completion uses
+`verify:chromium`, which includes both. Firefox-only declarative changes use
 `verify:firefox`, not Chromium PAC checks; shared routing uses full `verify`,
 including Firefox/shared suites. Describe Firefox declarative behavior
 separately and never imply this target executes PAC.

@@ -1,6 +1,6 @@
 ---
 name: release-candidate
-description: Prepare or audit a dual-browser Chromium/Firefox MV3 release candidate, trusted-main artifacts, version consistency, reproducibility, packaging, signing boundaries, and release QA; exclude ordinary development builds.
+description: Prepare or audit a dual-browser Chromium/Firefox release candidate, trusted-main artifacts, version consistency, reproducibility, packaging, signing boundaries, and release QA; exclude ordinary development builds.
 ---
 
 # Dual-browser release preflight
