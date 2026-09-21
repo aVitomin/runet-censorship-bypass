@@ -1,1 +1,1 @@
-src/extension-chromium-mv3/**/*.js text eol=lf
+src/chromium/**/*.js text eol=lf

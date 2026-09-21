@@ -4,7 +4,7 @@
 (function publishFirefoxRoutingAdapter(root, factory) {
 
   const routingContract = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/routing-contract') :
+    require('../../shared/routing-contract') :
     root.mv3RoutingContract;
   const api = factory(routingContract);
   if (typeof module === 'object' && module.exports) {

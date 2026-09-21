@@ -47,7 +47,7 @@ function createTorPacMods() {
 
 }
 
-Mocha.describe('MV3 startup proxy-ownership recovery', function() {
+Mocha.describe('Chromium startup proxy-ownership recovery', function() {
   Mocha.it('restores an applied PAC when live system proxy is controllable',
       async function() {
 

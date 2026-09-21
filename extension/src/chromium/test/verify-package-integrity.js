@@ -6,19 +6,19 @@ const Fs = require('fs');
 const Os = require('os');
 const Path = require('path');
 
-const PACKAGED_MV3_ROOT = Path.resolve(
+const PACKAGED_CHROMIUM_ROOT = Path.resolve(
     __dirname,
     '..',
     '..',
     '..',
     'build',
-    'extension-chromium-mv3',
+    'chromium',
 );
 
-const MV3_SOURCE_ROOT = Path.resolve(__dirname, '..');
-const MV3_LOCALES = Object.freeze(['en', 'ru']);
-const EXPECTED_MV3_VERSION = '0.0.4.0';
-const EXPECTED_MV3_VERSION_NAME = '0.0.4.00';
+const CHROMIUM_SOURCE_ROOT = Path.resolve(__dirname, '..');
+const CHROMIUM_LOCALES = Object.freeze(['en', 'ru']);
+const EXPECTED_CHROMIUM_VERSION = '0.0.4.0';
+const EXPECTED_CHROMIUM_VERSION_NAME = '0.0.4.00';
 
 const ALLOWED_RUNTIME_DIRECTORIES = new Set([
   'background/vendor/tldts/dist',
@@ -175,7 +175,7 @@ function listPackageEntries(root) {
 
 function verifyPackageIntegrity(root) {
 
-  Assert.ok(Fs.existsSync(root), `Missing MV3 package directory: ${root}`);
+  Assert.ok(Fs.existsSync(root), `Missing Chromium package directory: ${root}`);
   Assert.ok(Fs.statSync(root).isDirectory(), `Not a directory: ${root}`);
   const entries = listPackageEntries(root);
   const forbidden = entries.filter(({reason}) => reason);
@@ -183,32 +183,32 @@ function verifyPackageIntegrity(root) {
     const details = forbidden
         .map(({path, reason}) => `- ${path} (${reason})`)
         .join('\n');
-    throw new Error(`Forbidden MV3 package entries:\n${details}`);
+    throw new Error(`Forbidden Chromium package entries:\n${details}`);
   }
   return entries.length;
 
 }
 
-function verifyPackagedLocalesMatchMv3Sources(
+function verifyPackagedLocalesMatchSources(
     root,
-    sourceRoot = MV3_SOURCE_ROOT,
+    sourceRoot = CHROMIUM_SOURCE_ROOT,
 ) {
 
-  for (const locale of MV3_LOCALES) {
+  for (const locale of CHROMIUM_LOCALES) {
     const relativePath = `_locales/${locale}/messages.json`;
     const sourcePath = Path.join(sourceRoot, ...relativePath.split('/'));
     const packagedPath = Path.join(root, ...relativePath.split('/'));
-    Assert.ok(Fs.existsSync(sourcePath), `Missing MV3 locale source: ${sourcePath}`);
+    Assert.ok(Fs.existsSync(sourcePath), `Missing Chromium locale source: ${sourcePath}`);
     Assert.ok(
         Fs.existsSync(packagedPath),
-        `Missing packaged MV3 locale: ${packagedPath}`,
+        `Missing packaged Chromium locale: ${packagedPath}`,
     );
     Assert.ok(
         Fs.readFileSync(packagedPath).equals(Fs.readFileSync(sourcePath)),
-        `Packaged MV3 locale does not match its MV3 source: ${relativePath}`,
+        `Packaged Chromium locale does not match its Chromium source: ${relativePath}`,
     );
   }
-  return MV3_LOCALES.length;
+  return CHROMIUM_LOCALES.length;
 
 }
 
@@ -217,11 +217,11 @@ function verifyPackagedManifestIdentity(root) {
   const manifestPath = Path.join(root, 'manifest.json');
   Assert.ok(
       Fs.existsSync(manifestPath),
-      `Missing MV3 manifest: ${manifestPath}`,
+      `Missing Chromium manifest: ${manifestPath}`,
   );
   const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
-  Assert.strictEqual(manifest.version, EXPECTED_MV3_VERSION);
-  Assert.strictEqual(manifest.version_name, EXPECTED_MV3_VERSION_NAME);
+  Assert.strictEqual(manifest.version, EXPECTED_CHROMIUM_VERSION);
+  Assert.strictEqual(manifest.version_name, EXPECTED_CHROMIUM_VERSION_NAME);
   return {
     version: manifest.version,
     versionName: manifest.version_name,
@@ -230,7 +230,7 @@ function verifyPackagedManifestIdentity(root) {
 }
 
 if (typeof describe === 'function') {
-  describe('MV3 package integrity', function() {
+  describe('Chromium package integrity', function() {
 
     it('rejects repository-only QA and audit documents', function() {
 
@@ -283,16 +283,16 @@ if (typeof describe === 'function') {
 
     });
 
-    it('requires packaged locales to match the MV3-specific sources', function() {
+    it('requires packaged locales to match the Chromium sources', function() {
 
       const packageRoot = Fs.mkdtempSync(
-          Path.join(Os.tmpdir(), 'runet-mv3-locales-'),
+          Path.join(Os.tmpdir(), 'runet-chromium-locales-'),
       );
       try {
-        for (const locale of MV3_LOCALES) {
+        for (const locale of CHROMIUM_LOCALES) {
           const relativePath = `_locales/${locale}/messages.json`;
           const sourcePath = Path.join(
-              MV3_SOURCE_ROOT,
+              CHROMIUM_SOURCE_ROOT,
               ...relativePath.split('/'),
           );
           const packagedPath = Path.join(
@@ -304,8 +304,8 @@ if (typeof describe === 'function') {
         }
 
         Assert.strictEqual(
-            verifyPackagedLocalesMatchMv3Sources(packageRoot),
-            MV3_LOCALES.length,
+            verifyPackagedLocalesMatchSources(packageRoot),
+            CHROMIUM_LOCALES.length,
         );
 
         Fs.appendFileSync(
@@ -313,8 +313,8 @@ if (typeof describe === 'function') {
             '\n',
         );
         Assert.throws(
-            () => verifyPackagedLocalesMatchMv3Sources(packageRoot),
-            /does not match its MV3 source/,
+            () => verifyPackagedLocalesMatchSources(packageRoot),
+            /does not match its Chromium source/,
         );
       } finally {
         Fs.rmSync(packageRoot, {recursive: true, force: true});
@@ -326,16 +326,16 @@ if (typeof describe === 'function') {
 }
 
 if (require.main === module) {
-  const fileCount = verifyPackageIntegrity(PACKAGED_MV3_ROOT);
-  const manifestIdentity = verifyPackagedManifestIdentity(PACKAGED_MV3_ROOT);
-  const localeCount = verifyPackagedLocalesMatchMv3Sources(PACKAGED_MV3_ROOT);
-  console.log(`Verified MV3 package integrity: ${fileCount} files.`);
+  const fileCount = verifyPackageIntegrity(PACKAGED_CHROMIUM_ROOT);
+  const manifestIdentity = verifyPackagedManifestIdentity(PACKAGED_CHROMIUM_ROOT);
+  const localeCount = verifyPackagedLocalesMatchSources(PACKAGED_CHROMIUM_ROOT);
+  console.log(`Verified Chromium package integrity: ${fileCount} files.`);
   console.log(
-      'Verified packaged MV3 version: ' +
+      'Verified packaged Chromium version: ' +
       `${manifestIdentity.version} (${manifestIdentity.versionName}).`,
   );
   console.log(
-      `Verified packaged MV3 locales: ${localeCount} source-identical files.`,
+      `Verified packaged Chromium locales: ${localeCount} source-identical files.`,
   );
 }
 
@@ -343,8 +343,8 @@ module.exports = {
   getForbiddenDirectoryReason,
   getForbiddenReason,
   listPackageEntries,
-  PACKAGED_MV3_ROOT,
+  PACKAGED_CHROMIUM_ROOT,
   verifyPackageIntegrity,
   verifyPackagedManifestIdentity,
-  verifyPackagedLocalesMatchMv3Sources,
+  verifyPackagedLocalesMatchSources,
 };

@@ -3,7 +3,7 @@
 const Assert = require('node:assert');
 const Config = require('../background/product-config');
 const OffState = require('../background/off-state');
-const Routing = require('../../extension-mv3-common/routing-contract');
+const Routing = require('../../shared/routing-contract');
 const Helpers = require('./dataset-test-helpers');
 
 function sha256(bytes) {

@@ -117,7 +117,7 @@ async function seedCredentialState(harness, secret, overrides = {}) {
 
 }
 
-Mocha.describe('MV3 RPC credential redaction', function() {
+Mocha.describe('Chromium RPC credential redaction', function() {
 
   Mocha.it('keeps configuration/support export and import responses credential-free', async function() {
     const harness = await createRuntimeHarness();

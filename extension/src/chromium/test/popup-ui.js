@@ -7,15 +7,15 @@ const Path = require('path');
 const Vm = require('vm');
 const {createRuntimeHarness} = require('./runtime-performance-harness');
 
-const MV3_DIRECTORY = Path.resolve(__dirname, '..');
+const CHROMIUM_DIRECTORY = Path.resolve(__dirname, '..');
 const POPUP_SOURCE = Fs.readFileSync(
-    Path.join(MV3_DIRECTORY, 'pages', 'popup', 'index.js'),
+    Path.join(CHROMIUM_DIRECTORY, 'pages', 'popup', 'index.js'),
     'utf8',
 );
 const CATALOGS = Object.fromEntries(['en', 'ru'].map((language) => [
   language,
   JSON.parse(Fs.readFileSync(
-      Path.join(MV3_DIRECTORY, '_locales', language, 'messages.json'),
+      Path.join(CHROMIUM_DIRECTORY, '_locales', language, 'messages.json'),
       'utf8',
   )),
 ]));
@@ -488,7 +488,7 @@ function createDeferred() {
 
 }
 
-describe('MV3 popup UI', () => {
+describe('Chromium popup UI', () => {
   function pendingConfiguration() {
 
     return {savedRevision: 5, effectiveId: 'generation-a', active: true, pending: true,

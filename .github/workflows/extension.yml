@@ -1,4 +1,4 @@
-name: Verify MV3
+name: Verify extension
 
 on:
   workflow_dispatch:
@@ -13,12 +13,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: mv3-${{ github.event.pull_request.number || github.ref }}
+  group: extension-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   CI: 'true'
-  PROJECT: ./extensions/chromium/runet-censorship-bypass
+  PROJECT: ./extension
 
 jobs:
   policy:
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: extensions/chromium/runet-censorship-bypass/package-lock.json
+          cache-dependency-path: extension/package-lock.json
 
       - name: Verify documentation integrity
         run: node ./scripts/verify-docs.mjs
@@ -92,16 +92,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: extensions/chromium/runet-censorship-bypass/package-lock.json
+          cache-dependency-path: extension/package-lock.json
 
       - name: Install extension dependencies
         run: npm ci --prefix "$PROJECT"
 
-      - name: Verify Chromium MV3
-        run: npm --prefix "$PROJECT" run verify:mv3
+      - name: Verify Chromium
+        run: npm --prefix "$PROJECT" run verify:chromium
 
       - name: Run Chrome Stable browser smoke
-        run: npm --prefix "$PROJECT" run test:browser:mv3
+        run: npm --prefix "$PROJECT" run test:browser:chromium
 
       - name: Validate tracked-worktree integrity
         run: git diff --exit-code
@@ -121,12 +121,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: extensions/chromium/runet-censorship-bypass/package-lock.json
+          cache-dependency-path: extension/package-lock.json
 
       - name: Install extension dependencies
         run: npm ci --prefix "$PROJECT"
 
-      - name: Verify Firefox MV3
+      - name: Verify Firefox
         run: npm --prefix "$PROJECT" run verify:firefox
 
       - name: Validate tracked-worktree integrity
@@ -155,7 +155,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: extensions/chromium/runet-censorship-bypass/package-lock.json
+          cache-dependency-path: extension/package-lock.json
 
       - name: Install extension dependencies
         run: npm ci --prefix "$PROJECT"
@@ -172,7 +172,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: runet-censorship-bypass-mv3-${{ github.sha }}
-          path: extensions/chromium/runet-censorship-bypass/dist/chromium-release
+          path: extension/dist/chromium-release
           if-no-files-found: error
           retention-days: 7
 
@@ -180,11 +180,12 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: runet-censorship-bypass-firefox-mv3-${{ github.sha }}
-          path: extensions/chromium/runet-censorship-bypass/dist/firefox-release
+          path: extension/dist/firefox-release
           if-no-files-found: error
           retention-days: 7
 
   verify:
+    # Required by the main ruleset. Rename only with a coordinated ruleset update.
     name: Verify MV3
     if: ${{ always() }}
     needs:

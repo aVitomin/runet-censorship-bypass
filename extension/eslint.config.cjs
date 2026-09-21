@@ -20,10 +20,10 @@ module.exports = [
     ],
   },
   {
-    name: 'project/mv3',
+    name: 'project/extension',
     files: [
-      'src/extension-chromium-mv3/**/*.js',
-      'src/extension-firefox-mv3/**/*.js',
+      'src/chromium/**/*.js',
+      'src/firefox/**/*.js',
     ],
     languageOptions: {
       ecmaVersion: 2017,
@@ -76,8 +76,8 @@ module.exports = [
   {
     // First lint coverage for browser-neutral modules: correctness rules only.
     // Do not reformat existing shared sources to adopt browser UI style rules.
-    name: 'project/shared-mv3',
-    files: ['src/extension-mv3-common/**/*.js'],
+    name: 'project/shared',
+    files: ['src/shared/**/*.js'],
     languageOptions: {
       ecmaVersion: 2018,
       sourceType: 'script',
@@ -96,15 +96,15 @@ module.exports = [
   {
     name: 'project/shared-input-validation',
     files: [
-      'src/extension-mv3-common/configuration-transfer.js',
-      'src/extension-mv3-common/provider-dataset.js',
+      'src/shared/configuration-transfer.js',
+      'src/shared/provider-dataset.js',
     ],
     // These validators deliberately reject control characters in untrusted strings.
     rules: {'no-control-regex': 'off'},
   },
   {
     name: 'project/firefox-runtime-compatibility',
-    files: ['src/extension-firefox-mv3/background/**/*.js'],
+    files: ['src/firefox/background/**/*.js'],
     languageOptions: {
       globals: {
         globalThis: 'readonly',
@@ -113,10 +113,10 @@ module.exports = [
     },
   },
   {
-    name: 'project/mv3-node-tests',
+    name: 'project/extension-node-tests',
     files: [
-      'src/extension-chromium-mv3/test/**/*.js',
-      'src/extension-firefox-mv3/test/**/*.js',
+      'src/chromium/test/**/*.js',
+      'src/firefox/test/**/*.js',
     ],
     languageOptions: {
       globals: {
@@ -126,16 +126,16 @@ module.exports = [
     },
   },
   {
-    name: 'project/mv3-mocha-tests',
+    name: 'project/extension-mocha-tests',
     files: [
-      'src/extension-chromium-mv3/test/**/*.js',
-      'src/extension-firefox-mv3/test/**/*.test.js',
+      'src/chromium/test/**/*.js',
+      'src/firefox/test/**/*.test.js',
     ],
     ignores: [
-      'src/extension-chromium-mv3/test/background-modules.js',
-      'src/extension-chromium-mv3/test/generate-action-icons.js',
-      'src/extension-chromium-mv3/test/runtime-performance-harness.js',
-      'src/extension-chromium-mv3/test/verify-runtime-icons.js',
+      'src/chromium/test/background-modules.js',
+      'src/chromium/test/generate-action-icons.js',
+      'src/chromium/test/runtime-performance-harness.js',
+      'src/chromium/test/verify-runtime-icons.js',
     ],
     languageOptions: {
       globals: globals.mocha,

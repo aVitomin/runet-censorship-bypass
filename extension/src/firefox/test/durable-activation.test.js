@@ -6,7 +6,7 @@ const DatasetStore = require('../background/dataset-store');
 const OffState = require('../background/off-state');
 const ProxyAuth = require('../background/proxy-auth');
 const ProxyControl = require('../background/proxy-control');
-const Routing = require('../../extension-mv3-common/routing-contract');
+const Routing = require('../../shared/routing-contract');
 const RoutingAdapter = require('../background/routing-adapter');
 const Helpers = require('./dataset-test-helpers');
 

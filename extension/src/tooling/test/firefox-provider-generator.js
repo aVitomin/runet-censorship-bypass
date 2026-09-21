@@ -2,7 +2,7 @@
 
 const Assert = require('node:assert');
 const Crypto = require('node:crypto');
-const Dataset = require('../../extension-mv3-common/provider-dataset');
+const Dataset = require('../../shared/provider-dataset');
 const Generator = require('../firefox-provider/generate-provider-dataset');
 
 function syntheticPac() {

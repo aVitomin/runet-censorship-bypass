@@ -69,7 +69,7 @@ async function authorize(harness, state, details) {
 
 }
 
-Mocha.describe('MV3 proxy-auth worker retry recovery', function() {
+Mocha.describe('Chromium proxy-auth worker retry recovery', function() {
 
   Mocha.it('allows two matching responses and rejects the third',
       async function() {

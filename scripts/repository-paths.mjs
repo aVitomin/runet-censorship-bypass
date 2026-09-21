@@ -1,12 +1,12 @@
 // Tooling ownership only; not build inputs or a package-discovery fallback.
 // Review these paths together with build rules, CI and scoped instructions on a move.
-export const TOOLING_ROOT = 'extensions/chromium/runet-censorship-bypass';
+export const TOOLING_ROOT = 'extension';
 export const SOURCES = Object.freeze({
-  chromium: `${TOOLING_ROOT}/src/extension-chromium-mv3`,
-  firefox: `${TOOLING_ROOT}/src/extension-firefox-mv3`,
-  shared: `${TOOLING_ROOT}/src/extension-mv3-common`,
-  commonAssets: `${TOOLING_ROOT}/src/extension-common`,
-  sharedIcons: `${TOOLING_ROOT}/src/extension-chromium-mv3/icons`,
+  chromium: `${TOOLING_ROOT}/src/chromium`,
+  firefox: `${TOOLING_ROOT}/src/firefox`,
+  shared: `${TOOLING_ROOT}/src/shared`,
+  chromiumCompat: `${TOOLING_ROOT}/src/chromium-compat`,
+  sharedIcons: `${TOOLING_ROOT}/src/chromium/icons`,
 });
 
 export const SCOPED_GUIDANCE = Object.freeze([

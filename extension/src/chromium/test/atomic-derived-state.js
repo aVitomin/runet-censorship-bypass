@@ -25,7 +25,7 @@ function createGate() {
 
 }
 
-Mocha.describe('MV3 atomic derived-state callers', function() {
+Mocha.describe('Chromium atomic derived-state callers', function() {
 
   Mocha.it('retains concurrent popup rules for different hosts',
       async function() {

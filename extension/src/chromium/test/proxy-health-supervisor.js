@@ -169,7 +169,7 @@ async function runDueAutomaticCheck(harness, clock) {
 
 }
 
-Mocha.describe('MV3 proxy-health supervisor', function() {
+Mocha.describe('Chromium proxy-health supervisor', function() {
 
   Mocha.it('keeps a fresh healthy startup result and schedules its TTL',
       async function() {

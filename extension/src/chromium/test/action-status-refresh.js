@@ -299,7 +299,7 @@ function createHarness(options = {}) {
 
 }
 
-Mocha.describe('MV3 active-tab action status refresh', function() {
+Mocha.describe('Chromium active-tab action status refresh', function() {
 
   Mocha.beforeEach(function() {
 

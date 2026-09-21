@@ -3,7 +3,7 @@
 /* eslint-disable no-bitwise */
 
 // From the extension tooling root:
-// node ./src/extension-chromium-mv3/test/generate-action-icons.js
+// node ./src/chromium/test/generate-action-icons.js
 
 const Fs = require('fs');
 const Path = require('path');

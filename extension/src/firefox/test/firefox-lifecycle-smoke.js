@@ -10,7 +10,7 @@ const Path = require('node:path');
 
 const MANUAL_PROXY_MARKER = 'FIREFOX_RUNTIME_MANUAL_PROXY';
 const projectRoot = Path.resolve(__dirname, '..', '..', '..');
-const packageRoot = Path.join(projectRoot, 'build', 'extension-firefox-mv3');
+const packageRoot = Path.join(projectRoot, 'build', 'firefox');
 
 function delay(milliseconds) {
 

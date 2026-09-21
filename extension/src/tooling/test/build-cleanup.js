@@ -27,27 +27,27 @@ describe('Build cleanup', function() {
 
   it('succeeds when the output directory is missing', function() {
 
-    Assert.doesNotThrow(() => cleanup.cleanChromiumMv3());
+    Assert.doesNotThrow(() => cleanup.cleanChromium());
 
   });
 
   it('can run repeatedly', function() {
 
-    Fs.mkdirSync(cleanup.paths.chromiumMv3Root, {recursive: true});
+    Fs.mkdirSync(cleanup.paths.chromiumRoot, {recursive: true});
 
-    Assert.doesNotThrow(() => cleanup.cleanChromiumMv3());
-    Assert.doesNotThrow(() => cleanup.cleanChromiumMv3());
+    Assert.doesNotThrow(() => cleanup.cleanChromium());
+    Assert.doesNotThrow(() => cleanup.cleanChromium());
 
   });
 
-  it('cleans the Firefox MV3 output without changing Chromium MV3', function() {
+  it('cleans the Firefox output without changing Chromium', function() {
 
     const chromiumManifest = Path.join(
-        cleanup.paths.chromiumMv3Root,
+        cleanup.paths.chromiumRoot,
         'manifest.json',
     );
     const firefoxManifest = Path.join(
-        cleanup.paths.firefoxMv3Root,
+        cleanup.paths.firefoxRoot,
         'manifest.json',
     );
     Fs.mkdirSync(Path.dirname(chromiumManifest), {recursive: true});
@@ -55,7 +55,7 @@ describe('Build cleanup', function() {
     Fs.writeFileSync(chromiumManifest, 'chromium');
     Fs.writeFileSync(firefoxManifest, 'firefox');
 
-    cleanup.cleanFirefoxMv3();
+    cleanup.cleanFirefox();
 
     Assert.strictEqual(Fs.readFileSync(chromiumManifest, 'utf8'), 'chromium');
     Assert.strictEqual(Fs.existsSync(firefoxManifest), false);
@@ -79,7 +79,7 @@ describe('Build cleanup', function() {
   it('rejects unlisted paths inside the build root', function() {
 
     const unlistedFile = Path.join(
-        Path.dirname(cleanup.paths.chromiumMv3Root),
+        Path.dirname(cleanup.paths.chromiumRoot),
         'extension-full',
         'keep.txt',
     );

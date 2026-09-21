@@ -6,32 +6,32 @@ const Fs = require('fs');
 const Path = require('path');
 const Vm = require('vm');
 
-const MV3_DIRECTORY = Path.resolve(__dirname, '..');
+const CHROMIUM_DIRECTORY = Path.resolve(__dirname, '..');
 const OPTIONS_SOURCE = Fs.readFileSync(
-    Path.join(MV3_DIRECTORY, 'pages', 'options', 'index.js'),
+    Path.join(CHROMIUM_DIRECTORY, 'pages', 'options', 'index.js'),
     'utf8',
 );
 const OPTIONS_HTML = Fs.readFileSync(
-    Path.join(MV3_DIRECTORY, 'pages', 'options', 'index.html'),
+    Path.join(CHROMIUM_DIRECTORY, 'pages', 'options', 'index.html'),
     'utf8',
 );
 const OPTIONS_CSS = Fs.readFileSync(
-    Path.join(MV3_DIRECTORY, 'pages', 'options', 'options.css'),
+    Path.join(CHROMIUM_DIRECTORY, 'pages', 'options', 'options.css'),
     'utf8',
 );
 const POPUP_CSS = Fs.readFileSync(
-    Path.join(MV3_DIRECTORY, 'pages', 'popup', 'popup.css'),
+    Path.join(CHROMIUM_DIRECTORY, 'pages', 'popup', 'popup.css'),
     'utf8',
 );
 const UI_TOKENS = Fs.readFileSync(
-    Path.join(MV3_DIRECTORY, 'pages', 'shared', 'ui-tokens.css'),
+    Path.join(CHROMIUM_DIRECTORY, 'pages', 'shared', 'ui-tokens.css'),
     'utf8',
 );
 const CATALOGS = Object.fromEntries(['en', 'ru'].map((language) => [
   language,
   JSON.parse(Fs.readFileSync(
       Path.join(
-          MV3_DIRECTORY,
+          CHROMIUM_DIRECTORY,
           '_locales',
           language,
           'messages.json',
@@ -697,7 +697,7 @@ async function createHarness(options = {}) {
     setTimeout,
   });
   context.window = context;
-  context.rucbConfigurationTransferUi = require('../../extension-mv3-common/configuration-transfer-ui');
+  context.rucbConfigurationTransferUi = require('../../shared/configuration-transfer-ui');
   context.window.location = location;
   context.window.confirm = options.confirm || (() => true);
   context.window.addEventListener = (type, listener) => {
@@ -788,7 +788,7 @@ function getSection(root, id) {
 
 }
 
-describe('MV3 options UI', function() {
+describe('Chromium options UI', function() {
 
   it('renders provider phases from existing records without internal data or connection claims', async function() {
 

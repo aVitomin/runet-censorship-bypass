@@ -26,7 +26,7 @@ export function planForPaths(inputPaths) {
   const chromium = sourcePaths.some((path) => isWithin(path, SOURCES.chromium));
   const firefox = sourcePaths.some((path) => isWithin(path, SOURCES.firefox));
   const shared = sourcePaths.some((path) =>
-    [SOURCES.shared, SOURCES.commonAssets, SOURCES.sharedIcons].some((root) => isWithin(path, root)) ||
+    [SOURCES.shared, SOURCES.chromiumCompat, SOURCES.sharedIcons].some((root) => isWithin(path, root)) ||
     [`${TOOLING_ROOT}/gulpfile.js`, `${TOOLING_ROOT}/build-cleanup.js`,
       `${TOOLING_ROOT}/src/templates-data.js`].includes(path));
   const runtimePaths = sourcePaths.filter((path) => !/\/(?:test|tests)\//u.test(path));
@@ -58,7 +58,7 @@ export function planForPaths(inputPaths) {
   if (shared || dependencies || release || unknown.length) {
     checks.add(npm('verify'));
   } else {
-    if (chromium) checks.add(npm('verify:mv3'));
+    if (chromium) checks.add(npm('verify:chromium'));
     if (firefox) checks.add(npm('verify:firefox'));
     if (tooling) {
       // Full lint includes tooling lint; retain only the separate tooling tests.
@@ -68,7 +68,7 @@ export function planForPaths(inputPaths) {
   }
   if (shared) notes.add('Compare both built package trees with their baselines.');
   if (unknown.length) notes.add('Unclassified paths: review ownership before any move; aggregate gate selected conservatively.');
-  if (security) skills.add('mv3-security-review');
+  if (security) skills.add('extension-security-review');
   if (pac) skills.add('pac-regression');
   if (dependencies) skills.add('dependency-review');
   if (policy || dependencies) checks.add(POLICY_TESTS);

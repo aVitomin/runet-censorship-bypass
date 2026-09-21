@@ -1,10 +1,10 @@
 'use strict';
 
 const Assert = require('node:assert/strict');
-const Format = require('../../extension-mv3-common/configuration-transfer');
-const Ui = require('../../extension-mv3-common/configuration-transfer-ui');
-const Firefox = require('../../extension-firefox-mv3/background/configuration-transfer');
-const FirefoxSettings = require('../../extension-firefox-mv3/background/settings-control');
+const Format = require('../../shared/configuration-transfer');
+const Ui = require('../../shared/configuration-transfer-ui');
+const Firefox = require('../../firefox/background/configuration-transfer');
+const FirefoxSettings = require('../../firefox/background/settings-control');
 const {createRuntimeHarness} = require('./runtime-performance-harness');
 
 const metadata = {exportedAt: '2026-09-20T00:00:00.000Z', browser: {family: 'firefox', version: '154'},
