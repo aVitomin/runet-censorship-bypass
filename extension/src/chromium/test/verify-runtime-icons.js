@@ -108,14 +108,27 @@ function readPngSize(filePath) {
 function verifyRuntimeIcons(root) {
 
   const iconData = getRuntimeIconData();
+  const manifestPath = root === SHARED_ASSET_ROOT ?
+    Path.resolve(__dirname, '..', 'manifest.tmpl.json') :
+    Path.join(root, 'manifest.json');
+  const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
+  const iconMaps = [
+    ...Object.values(iconData.variants),
+    manifest.icons,
+    manifest.action.default_icon,
+  ];
+  const referencedPaths = [...new Set([
+    ...iconData.paths,
+    ...iconMaps.flatMap((paths) => Object.values(paths)),
+  ])];
   const resolvedByPath = new Map();
-  for (const resourcePath of iconData.paths) {
+  for (const resourcePath of referencedPaths) {
     assertExtensionRelativePath(resourcePath);
     const resolved = resolveExactCase(root, resourcePath);
     Assert.ok(Fs.statSync(resolved).isFile(), `Runtime icon is not a file: ${resolved}`);
     resolvedByPath.set(resourcePath, resolved);
   }
-  for (const paths of Object.values(iconData.variants)) {
+  for (const paths of iconMaps) {
     for (const [declaredSize, resourcePath] of Object.entries(paths)) {
       const size = readPngSize(resolvedByPath.get(resourcePath));
       Assert.deepStrictEqual(
@@ -128,15 +141,15 @@ function verifyRuntimeIcons(root) {
   const packagedIcons = Fs.readdirSync(Path.join(root, 'icons'))
       .filter((fileName) => fileName.toLowerCase().endsWith('.png'))
       .sort();
-  const referencedIcons = iconData.paths
+  const referencedIcons = referencedPaths
       .map((resourcePath) => Path.posix.basename(resourcePath))
       .sort();
   Assert.deepStrictEqual(
       packagedIcons,
       referencedIcons,
-      'The icon directory must contain only referenced runtime assets.',
+      'The icon directory must contain only runtime or manifest icon assets.',
   );
-  return iconData.paths;
+  return referencedPaths;
 
 }
 
@@ -145,6 +158,11 @@ if (require.main === module) {
   const packagedPaths = verifyRuntimeIcons(PACKAGED_CHROMIUM_ROOT);
   Assert.deepStrictEqual(packagedPaths, sourcePaths);
   for (const resourcePath of packagedPaths) {
+    Assert.deepStrictEqual(
+        Fs.readFileSync(Path.join(PACKAGED_CHROMIUM_ROOT, resourcePath)),
+        Fs.readFileSync(Path.join(SHARED_ASSET_ROOT, resourcePath)),
+        `Packaged icon differs from shared source: ${resourcePath}`,
+    );
     console.log(`Verified packaged runtime icon: ${resourcePath}`);
   }
 }

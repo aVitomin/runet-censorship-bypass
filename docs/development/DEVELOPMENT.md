@@ -189,16 +189,31 @@ sinks для сохранённых значений.
 
 ## Значки
 
-Состояния action генерируются детерминированным скриптом. Из tooling root:
+Единственный авторитетный источник рисунка — процедурный генератор
+[`generate-action-icons.js`](../../extension/src/chromium/test/generate-action-icons.js).
+Он задаёт shield/routing geometry, палитру, 4× supersampling и PNG encoding;
+PNG — производные, отдельного SVG/master нет. Несмотря на расположение
+генератора, artwork общий для Chromium и Firefox. Из корня репозитория:
 
 ```powershell
-Set-Location .\extension
-node .\src\chromium\test\generate-action-icons.js
-npm run build:chromium
+node .\extension\src\chromium\test\generate-action-icons.js
+npm --prefix .\extension run verify
 ```
 
-`build:chromium` автоматически проверяет наличие и точное имя каждого runtime icon.
-Не меняйте сгенерированные PNG вручную без обновления генератора и тестов.
+`extension/src/assets/icons` содержит состояния `active`, `off`, `loading`,
+`busy`, `warning`, `external`: все имеют 16/19/20/32/38 px, а `active` дополнительно
+48/64/128 px для общего значка расширения. Оба пакета сохраняют пути `icons/...`;
+Gulp копирует общие ресурсы отдельно от browser runtime. General icons Firefox
+объявляют 32/48/64/128 px, Chromium — 16/32/48/64/128 px. Runtime action maps
+не меняются при добавлении general sizes.
+
+Тот же запуск создаёт прозрачный
+[`src/assets/brand/icon-512.png`](../../extension/src/assets/brand/icon-512.png) —
+детерминированную high-resolution производную `active` для будущего store artwork,
+не второй master и не готовый promotional tile. `brand/` не входит в browser
+packages. Не редактируйте PNG вручную. Tests проверяют точные размеры,
+декодирование RGBA, прозрачность, отсутствие metadata и равенство генератору;
+package verification проверяет ссылки manifest/runtime и shared source bytes.
 
 ## GitHub Actions
 

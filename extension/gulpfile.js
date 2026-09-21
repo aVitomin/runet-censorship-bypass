@@ -125,6 +125,7 @@ const firefoxIconSrc = [
   `./src/assets/icons/action-${state}-${size}.png`,
 )).concat([
   './src/assets/icons/action-active-48.png',
+  './src/assets/icons/action-active-64.png',
   './src/assets/icons/action-active-128.png',
 ]);
 
