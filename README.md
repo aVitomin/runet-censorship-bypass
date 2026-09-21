@@ -1,7 +1,7 @@
 # Runet Censorship Bypass
 
-[![Stable release](https://img.shields.io/github/v/release/aVitomin/runet-censorship-bypass-mv3?label=stable)](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases)
-[![Verify extension](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/extension.yml/badge.svg?branch=main)](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/extension.yml)
+[![Stable release](https://img.shields.io/github/v/release/aVitomin/runet-censorship-bypass?label=stable)](https://github.com/aVitomin/runet-censorship-bypass/releases)
+[![Verify extension](https://github.com/aVitomin/runet-censorship-bypass/actions/workflows/extension.yml/badge.svg?branch=main)](https://github.com/aVitomin/runet-censorship-bypass/actions/workflows/extension.yml)
 
 Расширение выбирает, какие сайты открыть напрямую, а какие направить через
 прокси. Для текущего сайта доступны три понятных режима: **Авто**, **Прокси** и
@@ -11,7 +11,7 @@
 применяет правила маршрутизации и использует подключения выбранного источника,
 ваш прокси или запущенное локальное приложение.
 
-[Скачать / Releases](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases) ·
+[Скачать / Releases](https://github.com/aVitomin/runet-censorship-bypass/releases) ·
 [Установка](docs/user/INSTALLATION.md) ·
 [Первый запуск](#первый-запуск) ·
 [Помощь](docs/user/TROUBLESHOOTING.md)
@@ -37,13 +37,13 @@ Microsoft Edge 153.0.4234.32, Brave 1.95.101 (Chromium 153.0.8010.37) и Firefox
 ## Скачать для своего браузера
 
 Текущий опубликованный стабильный выпуск —
-[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0) —
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0) —
 первый общий выпуск для Chromium и Firefox.
 
 | Браузер | Скачать | Как устанавливается |
 | --- | --- | --- |
-| Chrome, Edge, Brave и совместимые Chromium | [ZIP для Chromium](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip) | Распаковать, включить режим разработчика и выбрать **Загрузить распакованное расширение / Load unpacked** |
-| Firefox 154.0+ | [Подписанный XPI для Firefox](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi) | Открыть XPI в Firefox и подтвердить установку и разрешения |
+| Chrome, Edge, Brave и совместимые Chromium | [ZIP для Chromium](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip) | Распаковать, включить режим разработчика и выбрать **Загрузить распакованное расширение / Load unpacked** |
+| Firefox 154.0+ | [Подписанный XPI для Firefox](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi) | Открыть XPI в Firefox и подтвердить установку и разрешения |
 
 Публичной страницы расширения в каталоге Mozilla Add-ons (AMO) пока нет. Для
 обычной установки нужен именно Mozilla-подписанный XPI из GitHub Release.
@@ -62,7 +62,7 @@ Chromium:
 
 `e702dff6ba3fe9bb3291de413c4e106f95dcd9b83f9cf8fc98f9635f5990f236`
 
-[Контрольная сумма Chromium](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt)
+[Контрольная сумма Chromium](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt)
 
 Firefox:
 
@@ -70,7 +70,7 @@ Firefox:
 
 `c7e3042e48819644673db92b9150a9d54a551281046212d896a7f7202bc9c34c`
 
-[Контрольная сумма Firefox](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt)
+[Контрольная сумма Firefox](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt)
 
 </details>
 
@@ -160,7 +160,7 @@ Tor. Расширение их не устанавливает и не запу�
 - [Решение проблем](docs/user/TROUBLESHOOTING.md)
 - [Приватность и безопасность](docs/user/PRIVACY_AND_SECURITY.md)
 - [Вся документация](docs/README.md)
-- [Сообщить о проблеме](https://github.com/aVitomin/runet-censorship-bypass-mv3/issues/new/choose)
+- [Сообщить о проблеме](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose)
 - [Политика безопасности](SECURITY.md)
 
 <details>
@@ -186,7 +186,7 @@ configured proxy, or a direct connection. It does **not** provide a VPN or proxy
 service and does not guarantee anonymity.
 
 The current stable release is
-[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0).
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0).
 This README and the user guides describe that release, not the
 [unreleased 1.0 workflows](docs/development/UPCOMING_1_0_USER_GUIDE.md).
 Use the published Chromium ZIP with **Developer mode → Load unpacked**, or the

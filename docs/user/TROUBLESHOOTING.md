@@ -24,7 +24,7 @@
 ### Firefox
 
 Используйте Mozilla-подписанный XPI из опубликованного
-[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0).
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0).
 Публичной страницы в каталоге Mozilla для нового идентификатора Firefox пока
 нет. Неподписанный XPI предназначен только для временной проверки разработчиком
 и не является обычной пользовательской установкой.
@@ -241,7 +241,7 @@ Firefox после двух неудачных ответов прокси-ау�
    согласования: они могут содержать чувствительные данные.
 
 Обычную проблему отправляйте через
-[шаблон issue](https://github.com/aVitomin/runet-censorship-bypass-mv3/issues/new/choose).
+[шаблон issue](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
 О потенциальной уязвимости сообщайте приватно по
 [политике безопасности](../../SECURITY.md).
 

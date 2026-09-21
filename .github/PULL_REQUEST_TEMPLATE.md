@@ -11,7 +11,7 @@
 ## Проверки
 
 - [ ] Выполнены `node .\scripts\verify-docs.mjs` и `git diff --check`.
-- [ ] По [правилам репозитория](https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/AGENTS.md) и [описанию проверок](https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/docs/development/TESTING.md) выбран и успешно выполнен подходящий финальный gate.
+- [ ] По [правилам репозитория](https://github.com/aVitomin/runet-censorship-bypass/blob/main/AGENTS.md) и [описанию проверок](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/development/TESTING.md) выбран и успешно выполнен подходящий финальный gate.
 - [ ] Изменённое поведение покрыто тестами или ниже объяснено, почему новый тест не нужен.
 - [ ] Нужная браузерная QA выполнена либо явно перечислена как оставшаяся.
 - [ ] Обязательные проверки CI прошли или их сбой и полный статус указаны ниже.

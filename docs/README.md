@@ -4,7 +4,7 @@
 для разработчиков: выберите свою задачу ниже.
 
 Текущий опубликованный стабильный выпуск —
-[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0) —
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0) —
 первый общий выпуск Chromium и Firefox. Для Chromium опубликован ZIP, для
 Firefox 154.0+ — Mozilla-подписанный XPI. Публичной страницы расширения в
 каталоге Mozilla Add-ons (AMO) пока нет.

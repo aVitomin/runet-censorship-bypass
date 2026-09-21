@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Установка
-    url: https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/docs/user/INSTALLATION.md
+    url: https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/INSTALLATION.md
     about: Выберите браузер и следуйте актуальной инструкции по установке и обновлению.
   - name: Решение проблем
-    url: https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/docs/user/TROUBLESHOOTING.md
+    url: https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/TROUBLESHOOTING.md
     about: Проверьте безопасные действия для вашего симптома перед созданием отчёта.
   - name: Сообщить об уязвимости приватно
-    url: https://github.com/aVitomin/runet-censorship-bypass-mv3/security/advisories/new
+    url: https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new
     about: Не раскрывайте уязвимости публично; отправьте детали только через приватную форму GitHub.

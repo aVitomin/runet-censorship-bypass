@@ -19,7 +19,7 @@
 ## Клонирование и установка
 
 ```powershell
-git clone https://github.com/aVitomin/runet-censorship-bypass-mv3.git runet-censorship-bypass
+git clone https://github.com/aVitomin/runet-censorship-bypass.git runet-censorship-bypass
 Set-Location .\runet-censorship-bypass
 npm ci --prefix .\extension
 ```
