@@ -1,7 +1,7 @@
 # Runet Censorship Bypass
 
 [![Stable release](https://img.shields.io/github/v/release/aVitomin/runet-censorship-bypass-mv3?label=stable)](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases)
-[![Verify MV3](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/mv3.yml/badge.svg?branch=main)](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/mv3.yml)
+[![Verify extension](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/extension.yml/badge.svg?branch=main)](https://github.com/aVitomin/runet-censorship-bypass-mv3/actions/workflows/extension.yml)
 
 Расширение выбирает, какие сайты открыть напрямую, а какие направить через
 прокси. Для текущего сайта доступны три понятных режима: **Авто**, **Прокси** и

@@ -2,8 +2,8 @@
 
 This is repository-only QA documentation and is not part of the extension package.
 
-Run `npm --prefix .\extensions\chromium\runet-censorship-bypass run build:mv3`,
-then load `extensions/chromium/runet-censorship-bypass/build/extension-chromium-mv3`
+Run `npm --prefix .\extension run build:chromium`,
+then load `extension/build/chromium`
 as an unpacked extension in current Brave and Chrome builds.
 
 - Open two HTTP(S) sites with different Auto, Proxy, and Direct rules. Switch tabs and windows; confirm the icon, badge, title, popup host, and selected mode follow the focused tab immediately.

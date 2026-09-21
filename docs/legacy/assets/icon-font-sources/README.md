@@ -8,6 +8,6 @@ historical authoring sources rather than active tooling assets.
 
 `jslegers-emoji.svg` comes from John Slegers' `emoji-icon-font` project. The
 source, copyright notice, and MIT license are recorded in the current
-[asset attribution file](../../../../extensions/chromium/runet-censorship-bypass/assets/README.md).
+[asset attribution file](../../../../extension/assets/README.md).
 The four `my-circled-information-*` files are the accompanying local icon
 alignment variants preserved from the same legacy commit.

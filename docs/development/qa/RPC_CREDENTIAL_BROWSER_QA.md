@@ -1,17 +1,17 @@
-# MV3 RPC credential browser QA
+# Chromium RPC credential browser QA
 
-Use an unpacked MV3 build and a dedicated test proxy account. Never record the
+Use an unpacked Chromium build and a dedicated test proxy account. Never record the
 test password in screenshots, logs, issue text, or this checklist.
 
 ## Automated Chrome Stable 407 coverage
 
-After `build:mv3`, the repository browser smoke uses installed Google Chrome
+After `build:chromium`, the repository browser smoke uses installed Google Chrome
 Stable and local dynamic loopback infrastructure only:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 $env:CHROME_BIN = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
-npm --prefix $Project run test:browser:mv3
+npm --prefix $Project run test:browser:chromium
 ```
 
 The smoke configures own-proxy credentials through production RPC and proves

@@ -1,6 +1,6 @@
 # Firefox production provider dataset
 
-The Firefox MV3 target packages one declarative Anticensority hostname baseline.
+The Firefox target packages one declarative Anticensority hostname baseline.
 It contains no PAC program and no executable provider content. A clean install
 verifies and stores the baseline plus its default routing configuration, then
 remains `OFF` until the explicit Apply RPC is invoked.
@@ -68,7 +68,7 @@ Example from the repository root (the key and output stay outside tracked
 source):
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
+$Project = '.\extension'
 node "$Project\src\tooling\firefox-provider\generate-provider-dataset.js" `
   --source-url 'https://raw.githubusercontent.com/anticensority/generated-pac-scripts/0448d748585ce0ed31434097d83b2b18236acbfb/anticensority.pac' `
   --source-sha256 '47334452e4075e1be3e20dca842a9ee62f694ae5404dfc3c154b3de8215ba4f5' `
@@ -156,5 +156,5 @@ changes remain pending. The existing `storage.local` journal resolves cross-stor
 crashes: v1 preserves the OFF path; v2 uses durable ON as the active commit decision
 before finalizing active/LKG pointers and Saved dataset metadata. Ambiguity blocks
 recovery rather than selecting latest Saved. See
-[active installation and recovery](FIREFOX_MV3_ARCHITECTURE.md) for the transaction.
+[active installation and recovery](FIREFOX_ARCHITECTURE.md) for the transaction.
 The alarm still checks/stages only; no automatic installation policy is added.

@@ -1,13 +1,12 @@
-# Архитектура MV3: общие границы и Chromium
+# Архитектура: общие границы и Chromium
 
-Поддерживаемый `main` содержит отдельные Chromium MV3 и Firefox MV3 runtime и
-browser-neutral `extension-mv3-common`. Исторический MV2 runtime удалён из
+Поддерживаемый `main` содержит отдельные Chromium и Firefox реализации Manifest
+V3 и browser-neutral `extension/src/shared`. Исторический MV2 runtime удалён из
 maintained source tree и доступен через Git history/frozen development branch.
-Chromium и Firefox — равноправные поддерживаемые цели. Историческое имя
-tooling root `extensions/chromium/runet-censorship-bypass` не означает владение
-кодом только Chromium. Ниже описаны общие границы и реализация Chromium;
+Chromium и Firefox — равноправные поддерживаемые цели в npm-root `extension`.
+Ниже описаны общие границы и реализация Chromium;
 event page, proxy floor и восстановление Firefox описаны в
-[отдельной архитектуре](FIREFOX_MV3_ARCHITECTURE.md).
+[отдельной архитектуре](FIREFOX_ARCHITECTURE.md).
 
 ## Общие контракты и упаковка
 
@@ -21,9 +20,9 @@ Gulp определяет потребителей каждого входа, а
 
 | Вход | Chromium | Firefox |
 | --- | --- | --- |
-| `src/extension-mv3-common` | `configuration-transfer.js` и `configuration-transfer-ui.js` | Эти модули, `routing-contract.js`, `provider-dataset.js` и `provider-dataset-state.js` |
-| `src/extension-common/pages/lib` | Рекурсивное копирование всего содержимого | Не включается |
-| `src/extension-chromium-mv3/icons` | Runtime icons | Явно выбранные те же product icons |
+| `src/shared` | `configuration-transfer.js` и `configuration-transfer-ui.js` | Эти модули, `routing-contract.js`, `provider-dataset.js` и `provider-dataset-state.js` |
+| `src/chromium-compat/pages/lib` | Рекурсивное копирование всего содержимого | Не включается |
+| `src/chromium/icons` | Runtime icons | Явно выбранные те же product icons |
 
 Общие модули копируются в `background/common`. Chromium runtime копируется без
 тестов и scoped AGENTS; Firefox runtime имеет отдельный явный allowlist. Оба
@@ -32,6 +31,18 @@ Browser-neutral routing contract используется Firefox и сравн�
 Chromium; это не означает, что оба браузера исполняют одну routing-реализацию.
 Изменение shared input требует проверки фактических потребителей и обоих
 package trees, без неявного расширения glob/allowlist.
+
+`src/chromium-compat` сохраняет прежние пять Chromium-only файлов, включая
+исторические font/checkbox assets; перенос не удаляет их и не меняет packaged
+`pages/lib`. Общие icons пока находятся под Chromium, но принадлежат обоим
+пакетам. `src/tooling` в пакеты не входит.
+
+Для byte-equivalent переноса Firefox `src/tooling/package-source.js` сохраняет
+старое написание Node-only CommonJS imports в выходных файлах. Исходники и Node
+тесты используют `shared`; браузер использует прежние UMD globals. Это узкая
+совместимость packaged bytes, не второй исходный каталог и не runtime resolver.
+Имена `mv3State`, `mv3PacArtifacts`, RPC/globals и persistent identifiers также
+не переименованы: это отдельная compatibility boundary, не задача структуры.
 
 ## Схема Chromium
 

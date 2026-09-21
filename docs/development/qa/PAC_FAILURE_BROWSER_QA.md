@@ -33,7 +33,7 @@ extension behaviors:
 - a WARP `proxyString` of `INVALID` currently reaches an explicit Proxy result.
   This is a candidate-validation gap, not a supported configuration.
 
-`test:mv3` also proves that proxy application rejects blank PAC data but passes
+`test:chromium` also proves that proxy application rejects blank PAC data but passes
 non-empty PAC text to `chrome.proxy.settings.set` with `mandatory: false`. These
 tests do not run Chromium's PAC resolver, make browser network requests, prove
 DNS or egress behavior, or establish Chrome/Brave parity.
@@ -69,9 +69,9 @@ events, bad-proxy caching, and Chrome/Brave differences.
 Build the extension and launch each browser with a unique disposable profile:
 
 ```powershell
-$Project = '.\extensions\chromium\runet-censorship-bypass'
-npm --prefix $Project run build:mv3
-$Extension = (Resolve-Path "$Project\build\extension-chromium-mv3").Path
+$Project = '.\extension'
+npm --prefix $Project run build:chromium
+$Extension = (Resolve-Path "$Project\build\chromium").Path
 $Profile = Join-Path $env:TEMP ("rucb-pac-failure-" + [guid]::NewGuid().ToString('N'))
 $Browser = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe"
 if (-not (Test-Path -LiteralPath $Browser)) {

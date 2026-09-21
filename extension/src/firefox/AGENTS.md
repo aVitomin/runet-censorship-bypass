@@ -1,4 +1,4 @@
-# Firefox MV3
+# Firefox
 
 This target uses a non-persistent event page, `browser.*` APIs and verified
 declarative provider data, not Chromium's service worker or PAC execution.
@@ -24,7 +24,7 @@ declarative provider data, not Chromium's service worker or PAC execution.
   Chromium source directory. A file's location alone does not define its target.
 
 For lifecycle/recovery changes, consult
-`docs/development/FIREFOX_MV3_ARCHITECTURE.md`; for dataset changes, consult
+`docs/development/FIREFOX_ARCHITECTURE.md`; for dataset changes, consult
 `docs/development/FIREFOX_PROVIDER_DATASET.md`. Keep trust verification and the
 unconfigured remote channel intact. Firefox-only runtime/UI uses
 `verify:firefox`; shared packaged inputs use the root aggregate gate. Guidance

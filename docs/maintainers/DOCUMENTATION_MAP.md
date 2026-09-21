@@ -14,7 +14,7 @@
 | Устранить обычную проблему | [решение проблем](../user/TROUBLESHOOTING.md) |
 | Проверить границы приватности | [приватность и безопасность](../user/PRIVACY_AND_SECURITY.md) |
 | Подготовить среду разработки | [разработка](../development/DEVELOPMENT.md) |
-| Понять устройство поддерживаемого кода | [архитектура](../development/ARCHITECTURE.md) и [Firefox MV3](../development/FIREFOX_MV3_ARCHITECTURE.md) |
+| Понять устройство поддерживаемого кода | [архитектура](../development/ARCHITECTURE.md) и [Firefox](../development/FIREFOX_ARCHITECTURE.md) |
 | Выбрать проверки | [тестирование](../development/TESTING.md) |
 | Подготовить выпуск | [процесс выпуска](../development/RELEASE_PROCESS.md) |
 | Сообщить об уязвимости | [`SECURITY.md`](../../SECURITY.md) |
@@ -27,11 +27,11 @@
 
 | Область | Где находится | Граница |
 | --- | --- | --- |
-| Chromium MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3/` | Фоновая часть начинается в `background/service-worker.js`; локальные требования находятся в scoped `AGENTS.md`. |
-| Firefox MV3 | `extensions/chromium/runet-censorship-bypass/src/extension-firefox-mv3/` | Фоновая часть начинается в `background/event-page.js`; target-scoped `AGENTS.md` задаёт локальные границы, архитектура — в документации Firefox. |
-| Browser-neutral модули | `extensions/chromium/runet-censorship-bypass/src/extension-mv3-common/` | Состав копируемых модулей различается по target; shared routing проверяется также тестами под Chromium. |
-| Статические ресурсы Chromium | `extensions/chromium/runet-censorship-bypass/src/extension-common/pages/lib/` | Рекурсивный Gulp glob включает всё содержимое только в Chromium. Новый файл меняет packaged bytes. |
-| Общие product icons | `extensions/chromium/runet-censorship-bypass/src/extension-chromium-mv3/icons/` | Несмотря на путь, выбранные значки используются обоими браузерами. |
+| Chromium | `extension/src/chromium/` | Фоновая часть начинается в `background/service-worker.js`; локальные требования находятся в scoped `AGENTS.md`. |
+| Firefox | `extension/src/firefox/` | Фоновая часть начинается в `background/event-page.js`; target-scoped `AGENTS.md` задаёт локальные границы, архитектура — в документации Firefox. |
+| Browser-neutral модули | `extension/src/shared/` | Состав копируемых модулей различается по target; shared routing проверяется также тестами под Chromium. |
+| Статические ресурсы Chromium | `extension/src/chromium-compat/pages/lib/` | Рекурсивный Gulp glob включает всё содержимое только в Chromium. Новый файл меняет packaged bytes. |
+| Общие product icons | `extension/src/chromium/icons/` | Несмотря на путь, выбранные значки используются обоими браузерами. |
 | Сборка и версии | tooling package, `gulpfile.js`, `src/templates-data.js`, manifest templates | Корневого npm-пакета нет; команды npm запускаются только с `--prefix` для tooling package. |
 | Проверки документации | `scripts/verify-docs.mjs`, `docs/release-current.json` | Проверяются навигация, локальные цели и метаданные опубликованного выпуска. |
 | Локальные инструкции | корневой и scoped `AGENTS.md`, `.agents/skills/` | Читайте только применимые инструкции; внешние helper skills вызываются явно. |
@@ -51,7 +51,7 @@ Git history, frozen development branch и явно помеченные архи
   опубликованного выпуска; README описывает именно этот выпуск.
 - `CONTRIBUTING.md` и `SECURITY.md` — участие и приватное сообщение об
   уязвимостях.
-- `extensions/chromium/runet-censorship-bypass/assets/README.md` — происхождение
+- `extension/assets/README.md` — происхождение
   и лицензии графических и шрифтовых материалов.
 
 ## История и происхождение
