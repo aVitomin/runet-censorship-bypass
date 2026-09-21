@@ -83,7 +83,7 @@ for (const [browser, file] of [
 }
 
 test('shared assets select aggregate once even with per-browser or tooling edits', () => {
-  for (const shared of [SOURCES.sharedIcons, SOURCES.shared, SOURCES.chromiumCompat]) {
+  for (const shared of [SOURCES.sharedAssets, SOURCES.shared, SOURCES.chromiumCompat]) {
     const plan = planForPaths([
       `${shared}/example.js`, `${SOURCES.firefox}/pages/options/index.js`,
       `${SOURCES.chromium}/background/service-worker.js`, `${TOOLING_ROOT}/src/tooling/test/example.js`,
@@ -128,7 +128,7 @@ test('detects staged/unstaged changes, deletions, untracked files and both renam
   try {
     git('init', '--quiet');
     const removed = `${SOURCES.firefox}/background/event-page.js`;
-    const renamed = `${SOURCES.chromium}/icons/action-active-16.png`;
+    const renamed = `${SOURCES.sharedAssets}/icons/action-active-16.png`;
     for (const name of [removed, renamed, 'staged-delete.txt', 'staged.txt', 'unstaged.txt', 'net-unchanged.txt', '.gitignore']) write(name, name);
     write('.gitignore', '.local/\n');
     git('add', '--', '.');
@@ -170,13 +170,14 @@ test('current manifests, shared icon ownership and scoped instructions match the
       assert.ok(fs.existsSync(path.join(root, SOURCES[browser], ui)), ui);
     }
     for (const icon of Object.values({...manifest.icons, ...manifest.action.default_icon})) {
-      assert.ok(fs.existsSync(path.join(root, SOURCES.chromium, icon)), icon);
-      assert.ok(planForPaths([`${SOURCES.chromium}/${icon}`]).checks.includes(`npm --prefix ${project} run verify`));
+      assert.ok(fs.existsSync(path.join(root, SOURCES.sharedAssets, icon)), icon);
+      assert.ok(planForPaths([`${SOURCES.sharedAssets}/${icon}`]).checks.includes(`npm --prefix ${project} run verify`));
     }
   }
   for (const scope of SCOPED_GUIDANCE) assert.ok(read(scope).trim(), `Missing scoped instructions: ${scope}`);
   // Static tripwire, not a replacement for comparing packages after build changes.
   const gulp = read(`${TOOLING_ROOT}/gulpfile.js`);
-  assert.ok(gulp.includes('./src/chromium/icons/action-${state}-${size}.png'));
+  assert.ok(gulp.includes('./src/assets/icons/action-${state}-${size}.png'));
+  assert.ok(gulp.includes('gulp.src(sharedIconSrc'));
   assert.ok(gulp.includes('gulp.src(firefoxIconSrc'));
 });

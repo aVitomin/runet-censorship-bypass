@@ -55,7 +55,8 @@ Dependency-free docs verifier запускается из корня и не т�
 ## Совместимость структуры 1.0
 
 Единственный npm-root — `extension/`: `src/chromium`, `src/firefox`,
-`src/shared`, `src/tooling` и Chromium-only `src/chromium-compat`.
+`src/shared`, общие product assets в `src/assets`, `src/tooling` и Chromium-only
+`src/chromium-compat`.
 Сборки находятся в `extension/build/chromium` и `extension/build/firefox`;
 пути внутри пакетов не меняются. Старых aliases npm-команд нет: используются
 `lint:chromium`, `test:chromium`, `build:chromium`, `verify:chromium` и

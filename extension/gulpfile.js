@@ -68,6 +68,7 @@ const chromiumRuntimeSrc = [
   '!./src/chromium/**/AGENTS.md',
 ];
 const chromiumCommonSrc = './src/chromium-compat/pages/lib/**/*';
+const sharedIconSrc = './src/assets/icons/**/*';
 const firefoxRuntimeSrc = [
   './src/firefox/manifest.json',
   './src/firefox/background/off-state.js',
@@ -121,10 +122,10 @@ const firefoxIconSrc = [
   'off',
   'warning',
 ].flatMap((state) => [16, 19, 20, 32, 38].map((size) =>
-  `./src/chromium/icons/action-${state}-${size}.png`,
+  `./src/assets/icons/action-${state}-${size}.png`,
 )).concat([
-  './src/chromium/icons/action-active-48.png',
-  './src/chromium/icons/action-active-128.png',
+  './src/assets/icons/action-active-48.png',
+  './src/assets/icons/action-active-128.png',
 ]);
 
 const cleanChromium = function(cb) {
@@ -152,6 +153,14 @@ const copyChromiumCommon = function(cb) {
       chromiumCommonSrc,
       {base: './src/chromium-compat', encoding: false},
   )
+    .pipe(gulp.dest(chromiumDst))
+    .on('end', cb);
+
+};
+
+const copyChromiumIcons = function(cb) {
+
+  gulp.src(sharedIconSrc, {base: './src/assets', encoding: false})
     .pipe(gulp.dest(chromiumDst))
     .on('end', cb);
 
@@ -234,7 +243,7 @@ const copyFirefoxTldts = function(cb) {
 const copyFirefoxIcons = function(cb) {
 
   gulp.src(firefoxIconSrc, {
-    base: './src/chromium',
+    base: './src/assets',
     encoding: false,
   })
     .pipe(gulp.dest(firefoxDst))
@@ -247,6 +256,7 @@ const buildChromium = gulp.series(
     gulp.parallel(
         copyChromium,
         copyChromiumCommon,
+        copyChromiumIcons,
         copyChromiumTransfer,
         copyChromiumTldts,
     ),

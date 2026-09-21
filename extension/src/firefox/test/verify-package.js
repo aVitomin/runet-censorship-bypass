@@ -128,7 +128,7 @@ function verifyPackage(packageRoot, sourceRoot) {
       sourcePath = Path.resolve(
           sourceRoot,
           '..',
-          'chromium',
+          'assets',
           relativePath,
       );
     }

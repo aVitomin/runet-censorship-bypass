@@ -19,9 +19,9 @@ only when its description matches the task.
   `npm ci --prefix $Project`.
 - Chromium (`extension/src/chromium`) and Firefox (`extension/src/firefox`)
   are equal supported Manifest V3 targets. Browser-neutral modules live in
-  `extension/src/shared`; repository-only build helpers/tests are in
-  `extension/src/tooling`. Inspect consumers, including Firefox's use of
-  Chromium icons; source location alone does not establish ownership.
+  `extension/src/shared`; shared product assets are in `extension/src/assets`;
+  repository-only build helpers/tests are in `extension/src/tooling`. Inspect
+  consumers rather than inferring ownership from a browser source location.
   MV2 is historical; use Git history or the frozen development branch rather
   than rebuilding it on `main`.
 - Chromium background starts at `background/service-worker.js`; Chromium UI is

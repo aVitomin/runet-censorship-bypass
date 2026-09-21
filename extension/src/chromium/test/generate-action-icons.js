@@ -9,7 +9,7 @@ const Fs = require('fs');
 const Path = require('path');
 const Zlib = require('zlib');
 
-const ICON_DIRECTORY = Path.resolve(__dirname, '..', 'icons');
+const ICON_DIRECTORY = Path.resolve(__dirname, '..', '..', 'assets', 'icons');
 const VARIANT_SIZES = Object.freeze({
   active: Object.freeze([16, 19, 20, 32, 38, 48, 128]),
   off: Object.freeze([16, 19, 20, 32, 38]),

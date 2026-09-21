@@ -26,7 +26,7 @@ export function planForPaths(inputPaths) {
   const chromium = sourcePaths.some((path) => isWithin(path, SOURCES.chromium));
   const firefox = sourcePaths.some((path) => isWithin(path, SOURCES.firefox));
   const shared = sourcePaths.some((path) =>
-    [SOURCES.shared, SOURCES.chromiumCompat, SOURCES.sharedIcons].some((root) => isWithin(path, root)) ||
+    [SOURCES.shared, SOURCES.sharedAssets, SOURCES.chromiumCompat].some((root) => isWithin(path, root)) ||
     [`${TOOLING_ROOT}/gulpfile.js`, `${TOOLING_ROOT}/build-cleanup.js`,
       `${TOOLING_ROOT}/src/templates-data.js`].includes(path));
   const runtimePaths = sourcePaths.filter((path) => !/\/(?:test|tests)\//u.test(path));

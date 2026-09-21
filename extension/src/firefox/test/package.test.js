@@ -35,7 +35,7 @@ function makePackage() {
       source = Path.resolve(
           sourceRoot,
           '..',
-          'chromium',
+          'assets',
           relativePath,
       );
     }
