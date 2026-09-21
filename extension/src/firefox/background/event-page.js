@@ -349,6 +349,19 @@
   let rpcControlQueue = Promise.resolve();
   let configurationApplying = false;
 
+  function invalidateOptionsStatus() {
+
+    // A wake-up hint only: consumers must reread authoritative, redacted RPCs.
+    // No receiver is normal when Options is closed; UI delivery cannot fail Apply.
+    try {
+      Promise.resolve(browser.runtime.sendMessage({type: 'firefox.status.changed'}))
+          .catch(() => undefined);
+    } catch (_error) {
+      // Notification delivery is best effort, not part of routing promotion.
+    }
+
+  }
+
   async function configurationStatus() {
 
     const saved = await settingsController.get();
@@ -402,6 +415,7 @@
     }
     if (before.pending && message.applyAll !== true) return errorResponse('PENDING_CONFIRMATION_REQUIRED');
     configurationApplying = true;
+    invalidateOptionsStatus();
     let saved;
     try {
       saved = await savedSiteController.replace(message);
@@ -415,6 +429,7 @@
       return errorResponse(safeSettingsErrorCode(error));
     } finally {
       configurationApplying = false;
+      invalidateOptionsStatus();
     }
 
   }
@@ -586,7 +601,11 @@
     try {
       return await operation();
     } finally {
-      await operationalController.endOperation(token);
+      try {
+        await operationalController.endOperation(token);
+      } finally {
+        invalidateOptionsStatus();
+      }
     }
 
   }
@@ -681,6 +700,7 @@
           'APPLY',
           async () => {
             configurationApplying = true;
+            invalidateOptionsStatus();
             try {
               const result = await applyPersistedProductConfiguration(message);
               if (result.ok === true) await operationalController.resetHealth();

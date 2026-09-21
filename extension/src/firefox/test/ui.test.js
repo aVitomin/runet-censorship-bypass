@@ -167,6 +167,136 @@ function deferred() {
 
 }
 
+describe('Firefox Options external status synchronization', function() {
+  function fixture() {
+    let revision = 0;
+    let status = {savedRevision: 0, effectiveId: null, active: false,
+      pending: false, applying: false, blocked: false, reason: null, pendingCategories: []};
+    let gate = null;
+    const rendered = [];
+    const controller = Options.createController({changed: (state) => rendered.push(state), rpc: {
+      async call(message) {
+        const value = message.type === 'firefox.configuration.get' ? Object.assign({}, status) :
+          message.type === 'firefox.capabilities.get' ? capabilities({
+            runtimeState: status.active ? 'READY' : status.blocked ? 'FAILED' : 'OFF',
+            privateWindowAccess: status.reason === 'PRIVATE_ACCESS_REQUIRED' ? 'DENIED' : 'GRANTED',
+          }) : message.type === 'firefox.settings.get' ? settingsResult(revision) :
+          message.type === 'firefox.operational.get' ? operationalResult() : providerUpdateResult();
+        if (message.type === 'firefox.configuration.get' && gate) {
+          const waiting = gate;
+          gate = null;
+          await waiting.promise;
+        }
+        return value;
+      },
+    }});
+    return {controller, rendered,
+      status(patch) {
+        status = Object.assign({}, status, patch);
+      },
+      revision(value) {
+        revision = value; status.savedRevision = value;
+      },
+      hold() {
+        gate = deferred(); return gate;
+      },
+    };
+  }
+
+  it('observes external Apply start, success and OFF without a reload', async function() {
+    const f = fixture();
+    await f.controller.load();
+    f.status({applying: true});
+    await f.controller.refresh();
+    Assert.strictEqual(f.controller.snapshot().configuration.applying, true);
+    f.status({applying: false, active: true, effectiveId: 'active-a'});
+    await f.controller.refresh();
+    Assert.strictEqual(f.controller.snapshot().configuration.applying, false);
+    Assert.strictEqual(f.controller.snapshot().capabilities.runtimeState, 'READY');
+    Assert.strictEqual(f.controller.snapshot().pending, false);
+    f.status({active: false, effectiveId: null});
+    await f.controller.refresh();
+    Assert.strictEqual(f.controller.snapshot().capabilities.runtimeState, 'OFF');
+  });
+
+  for (const initial of [true, false]) {
+    for (const when of ['during', 'before-resolution', 'after-resolution']) {
+      it(`coalesces ${when} invalidation of ${initial ? 'initial' : 'status'} load without rendering an old response`, async function() {
+        const f = fixture();
+        if (!initial) await f.controller.load();
+        const gate = f.hold();
+        const loading = f.controller.load();
+        f.status({active: true, effectiveId: 'newest', applying: false});
+        if (when === 'before-resolution') {
+          gate.resolve();
+          void f.controller.refresh();
+        } else if (when === 'after-resolution') {
+          gate.resolve();
+          await loading;
+          await f.controller.refresh();
+        } else {
+          void f.controller.refresh();
+          void f.controller.refresh();
+          gate.resolve();
+        }
+        await loading;
+        const final = f.controller.snapshot();
+        Assert.strictEqual(final.configuration.effectiveId, 'newest');
+        Assert.strictEqual(final.configuration.active, true);
+        Assert.strictEqual(final.pending, false);
+        if (when !== 'after-resolution') {
+          const completed = f.rendered.filter((s) => !s.pending && s.configuration);
+          Assert.strictEqual(completed.at(-1).configuration.effectiveId, 'newest');
+          Assert.strictEqual(
+              completed.slice(initial ? 0 : 1).every((s) => s.configuration.active), true,
+          );
+        }
+      });
+    }
+  }
+
+  it('preserves the draft base and dirty state through Apply and a newer Saved revision', async function() {
+    const f = fixture();
+    await f.controller.load();
+    const base = f.controller.snapshot().settings;
+    f.controller.edit();
+    f.status({applying: true});
+    await f.controller.refresh();
+    f.revision(1);
+    f.status({active: true, applying: false, effectiveId: 'newest'});
+    await f.controller.refresh();
+    const state = f.controller.snapshot();
+    Assert.strictEqual(state.settings, base);
+    Assert.strictEqual(state.revision, 0);
+    Assert.strictEqual(state.dirty, true);
+    Assert.strictEqual(state.stale, true);
+    Assert.strictEqual(state.configuration.active, true);
+    Assert.strictEqual(state.configuration.applying, false);
+    Assert.strictEqual(await f.controller.save(base), false);
+  });
+
+  for (const reason of [null, 'CONTROL_LOSS', 'PRIVATE_ACCESS_REQUIRED']) {
+    it(`converges after external failure (${reason || 'safe old active'}) without losing edits`, async function() {
+      const f = fixture();
+      f.status({active: true, effectiveId: 'old'});
+      await f.controller.load();
+      f.controller.edit();
+      const base = f.controller.snapshot().settings;
+      f.status({applying: true});
+      await f.controller.refresh();
+      f.status({applying: false, active: !reason, blocked: Boolean(reason), reason});
+      await f.controller.refresh();
+      const state = f.controller.snapshot();
+      Assert.strictEqual(state.configuration.applying, false);
+      Assert.strictEqual(state.configuration.active, !reason);
+      Assert.strictEqual(state.configuration.reason, reason);
+      Assert.strictEqual(state.settings, base);
+      Assert.strictEqual(state.dirty, true);
+      Assert.strictEqual(state.pending, false);
+    });
+  }
+});
+
 function fakeParent() {
 
   const document = {
