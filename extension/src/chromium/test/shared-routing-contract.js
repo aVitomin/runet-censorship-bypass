@@ -5,7 +5,7 @@ const Chai = require('chai');
 const Mocha = require('mocha');
 const vm = require('vm');
 const {loadBackgroundModules} = require('./background-modules');
-const Routing = require('../../extension-mv3-common/routing-contract');
+const Routing = require('../../shared/routing-contract');
 
 const PROVIDER = Object.freeze({key: 'routing-contract-provider'});
 const PROVIDER_PROXY = 'PROXY 192.0.2.10:8080';

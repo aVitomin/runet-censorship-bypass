@@ -4,10 +4,10 @@
 (function publishFirefoxProductionProvider(root, factory) {
 
   const dataset = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/provider-dataset') :
+    require('../../shared/provider-dataset') :
     root.mv3ProviderDataset;
   const routing = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/routing-contract') :
+    require('../../shared/routing-contract') :
     root.mv3RoutingContract;
   const productConfig = typeof module === 'object' && module.exports ?
     require('./product-config') : root.rucbFirefoxProductConfig;

@@ -11,24 +11,24 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = Path.resolve(Path.dirname(fileURLToPath(import.meta.url)), '..');
 const PROJECT = Path.join(
-    ROOT, 'extensions', 'chromium', 'runet-censorship-bypass',
+    ROOT, 'extension',
 );
 const BUILD = Path.join(PROJECT, 'build');
-const CHROMIUM_PACKAGE = Path.join(BUILD, 'extension-chromium-mv3');
-const FIREFOX_PACKAGE = Path.join(BUILD, 'extension-firefox-mv3');
+const CHROMIUM_PACKAGE = Path.join(BUILD, 'chromium');
+const FIREFOX_PACKAGE = Path.join(BUILD, 'firefox');
 const require = createRequire(import.meta.url);
 const Puppeteer = require(Path.join(PROJECT, 'node_modules', 'puppeteer-core'));
 const FirefoxSmoke = require(Path.join(
     PROJECT,
     'src',
-    'extension-firefox-mv3',
+    'firefox',
     'test',
     'firefox-lifecycle-smoke.js',
 ));
 const FirefoxSettings = require(Path.join(
     PROJECT,
     'src',
-    'extension-firefox-mv3',
+    'firefox',
     'background',
     'settings-control.js',
 ));

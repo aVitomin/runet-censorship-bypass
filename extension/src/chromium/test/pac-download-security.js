@@ -431,7 +431,7 @@ async function runPersistenceFlow(result, existingPacCache) {
 
 }
 
-Mocha.describe('MV3 PAC download redirect validation', function() {
+Mocha.describe('Chromium PAC download redirect validation', function() {
 
   Mocha.beforeEach(function() {
 

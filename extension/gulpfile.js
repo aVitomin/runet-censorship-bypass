@@ -3,6 +3,7 @@
 const gulp = require('gulp');
 const buildCleanup = require('./build-cleanup');
 const {Transform} = require('node:stream');
+const {firefoxPackageSource} = require('./src/tooling/package-source');
 
 function renderTemplate(source, context) {
 
@@ -57,62 +58,62 @@ const templatePlugin = (context) => new Transform({
 
 
 const contexts = require('./src/templates-data').contexts;
-const chromiumMv3Dst = './build/extension-chromium-mv3';
-const firefoxMv3Dst = './build/extension-firefox-mv3';
-const chromiumMv3RuntimeSrc = [
-  './src/extension-chromium-mv3/**/*',
-  '!./src/extension-chromium-mv3/test',
-  '!./src/extension-chromium-mv3/test/',
-  '!./src/extension-chromium-mv3/test/**/*',
-  '!./src/extension-chromium-mv3/**/AGENTS.md',
+const chromiumDst = './build/chromium';
+const firefoxDst = './build/firefox';
+const chromiumRuntimeSrc = [
+  './src/chromium/**/*',
+  '!./src/chromium/test',
+  '!./src/chromium/test/',
+  '!./src/chromium/test/**/*',
+  '!./src/chromium/**/AGENTS.md',
 ];
-const chromiumMv3CommonSrc = './src/extension-common/pages/lib/**/*';
-const firefoxMv3RuntimeSrc = [
-  './src/extension-firefox-mv3/manifest.json',
-  './src/extension-firefox-mv3/background/off-state.js',
-  './src/extension-firefox-mv3/background/proxy-control.js',
-  './src/extension-firefox-mv3/background/dataset-store.js',
-  './src/extension-firefox-mv3/background/provider-updater.js',
-  './src/extension-firefox-mv3/background/provider-update-control.js',
-  './src/extension-firefox-mv3/background/dataset-promotion.js',
-  './src/extension-firefox-mv3/background/provider-lookup.js',
-  './src/extension-firefox-mv3/background/dataset-runtime.js',
-  './src/extension-firefox-mv3/background/routing-adapter.js',
-  './src/extension-firefox-mv3/background/proxy-auth.js',
-  './src/extension-firefox-mv3/background/product-config.js',
-  './src/extension-firefox-mv3/background/production-provider.js',
-  './src/extension-firefox-mv3/background/settings-control.js',
-  './src/extension-firefox-mv3/background/configuration-transfer.js',
-  './src/extension-firefox-mv3/background/site-control.js',
-  './src/extension-firefox-mv3/background/activation-controller.js',
-  './src/extension-firefox-mv3/background/operational-status.js',
-  './src/extension-firefox-mv3/background/event-page.js',
-  './src/extension-firefox-mv3/pages/shared/ui-runtime.js',
-  './src/extension-firefox-mv3/pages/shared/ui-tokens.css',
-  './src/extension-firefox-mv3/pages/popup/index.html',
-  './src/extension-firefox-mv3/pages/popup/index.js',
-  './src/extension-firefox-mv3/pages/popup/popup.css',
-  './src/extension-firefox-mv3/pages/options/index.html',
-  './src/extension-firefox-mv3/pages/options/index.js',
-  './src/extension-firefox-mv3/pages/options/options.css',
-  './src/extension-firefox-mv3/_locales/en/messages.json',
-  './src/extension-firefox-mv3/_locales/ru/messages.json',
-  './src/extension-firefox-mv3/provider/anticensority-hosts-v1.data',
-  './src/extension-firefox-mv3/provider/anticensority-hosts-v1.envelope.json',
+const chromiumCommonSrc = './src/chromium-compat/pages/lib/**/*';
+const firefoxRuntimeSrc = [
+  './src/firefox/manifest.json',
+  './src/firefox/background/off-state.js',
+  './src/firefox/background/proxy-control.js',
+  './src/firefox/background/dataset-store.js',
+  './src/firefox/background/provider-updater.js',
+  './src/firefox/background/provider-update-control.js',
+  './src/firefox/background/dataset-promotion.js',
+  './src/firefox/background/provider-lookup.js',
+  './src/firefox/background/dataset-runtime.js',
+  './src/firefox/background/routing-adapter.js',
+  './src/firefox/background/proxy-auth.js',
+  './src/firefox/background/product-config.js',
+  './src/firefox/background/production-provider.js',
+  './src/firefox/background/settings-control.js',
+  './src/firefox/background/configuration-transfer.js',
+  './src/firefox/background/site-control.js',
+  './src/firefox/background/activation-controller.js',
+  './src/firefox/background/operational-status.js',
+  './src/firefox/background/event-page.js',
+  './src/firefox/pages/shared/ui-runtime.js',
+  './src/firefox/pages/shared/ui-tokens.css',
+  './src/firefox/pages/popup/index.html',
+  './src/firefox/pages/popup/index.js',
+  './src/firefox/pages/popup/popup.css',
+  './src/firefox/pages/options/index.html',
+  './src/firefox/pages/options/index.js',
+  './src/firefox/pages/options/options.css',
+  './src/firefox/_locales/en/messages.json',
+  './src/firefox/_locales/ru/messages.json',
+  './src/firefox/provider/anticensority-hosts-v1.data',
+  './src/firefox/provider/anticensority-hosts-v1.envelope.json',
 ];
-const firefoxMv3CommonSrc = [
-  './src/extension-mv3-common/configuration-transfer.js',
-  './src/extension-mv3-common/configuration-transfer-ui.js',
-  './src/extension-mv3-common/routing-contract.js',
-  './src/extension-mv3-common/provider-dataset.js',
-  './src/extension-mv3-common/provider-dataset-state.js',
+const firefoxCommonSrc = [
+  './src/shared/configuration-transfer.js',
+  './src/shared/configuration-transfer-ui.js',
+  './src/shared/routing-contract.js',
+  './src/shared/provider-dataset.js',
+  './src/shared/provider-dataset-state.js',
 ];
-const chromiumMv3TldtsSrc = [
+const chromiumTldtsSrc = [
   './node_modules/tldts/dist/index.umd.min.js',
   './node_modules/tldts/LICENSE',
 ];
-const firefoxMv3TldtsSrc = chromiumMv3TldtsSrc;
-const firefoxMv3IconSrc = [
+const firefoxTldtsSrc = chromiumTldtsSrc;
+const firefoxIconSrc = [
   'active',
   'busy',
   'external',
@@ -120,38 +121,38 @@ const firefoxMv3IconSrc = [
   'off',
   'warning',
 ].flatMap((state) => [16, 19, 20, 32, 38].map((size) =>
-  `./src/extension-chromium-mv3/icons/action-${state}-${size}.png`,
+  `./src/chromium/icons/action-${state}-${size}.png`,
 )).concat([
-  './src/extension-chromium-mv3/icons/action-active-48.png',
-  './src/extension-chromium-mv3/icons/action-active-128.png',
+  './src/chromium/icons/action-active-48.png',
+  './src/chromium/icons/action-active-128.png',
 ]);
 
-const cleanChromiumMv3 = function(cb) {
+const cleanChromium = function(cb) {
 
-  buildCleanup.cleanChromiumMv3();
+  buildCleanup.cleanChromium();
   return cb();
 
 };
 
-const copyChromiumMv3 = function(cb) {
+const copyChromium = function(cb) {
 
   gulp.src(
-      chromiumMv3RuntimeSrc,
+      chromiumRuntimeSrc,
       {encoding: false},
   )
-    .pipe(templatePlugin(contexts.chromiumMv3))
-    .pipe(gulp.dest(chromiumMv3Dst))
+    .pipe(templatePlugin(contexts.chromium))
+    .pipe(gulp.dest(chromiumDst))
     .on('end', cb);
 
 };
 
-const copyChromiumMv3Common = function(cb) {
+const copyChromiumCommon = function(cb) {
 
   gulp.src(
-      chromiumMv3CommonSrc,
-      {base: './src/extension-common', encoding: false},
+      chromiumCommonSrc,
+      {base: './src/chromium-compat', encoding: false},
   )
-    .pipe(gulp.dest(chromiumMv3Dst))
+    .pipe(gulp.dest(chromiumDst))
     .on('end', cb);
 
 };
@@ -159,97 +160,109 @@ const copyChromiumMv3Common = function(cb) {
 const copyChromiumTransfer = function(cb) {
 
   gulp.src([
-    './src/extension-mv3-common/configuration-transfer.js',
-    './src/extension-mv3-common/configuration-transfer-ui.js',
-  ], {base: './src/extension-mv3-common', encoding: false})
-    .pipe(gulp.dest(`${chromiumMv3Dst}/background/common`))
+    './src/shared/configuration-transfer.js',
+    './src/shared/configuration-transfer-ui.js',
+  ], {base: './src/shared', encoding: false})
+    .pipe(gulp.dest(`${chromiumDst}/background/common`))
     .on('end', cb);
 
 };
 
-const copyChromiumMv3Tldts = function(cb) {
+const copyChromiumTldts = function(cb) {
 
-  gulp.src(chromiumMv3TldtsSrc, {
+  gulp.src(chromiumTldtsSrc, {
     base: './node_modules/tldts',
     encoding: false,
   })
-    .pipe(gulp.dest(`${chromiumMv3Dst}/background/vendor/tldts`))
+    .pipe(gulp.dest(`${chromiumDst}/background/vendor/tldts`))
     .on('end', cb);
 
 };
 
-const cleanFirefoxMv3 = function(cb) {
+const cleanFirefox = function(cb) {
 
-  buildCleanup.cleanFirefoxMv3();
+  buildCleanup.cleanFirefox();
   return cb();
 
 };
 
-const copyFirefoxMv3 = function(cb) {
+const copyFirefox = function(cb) {
 
-  gulp.src(firefoxMv3RuntimeSrc, {
-    base: './src/extension-firefox-mv3',
+  gulp.src(firefoxRuntimeSrc, {
+    base: './src/firefox',
     encoding: false,
   })
-    .pipe(gulp.dest(firefoxMv3Dst))
+    .pipe(new Transform({
+      objectMode: true,
+      transform(file, encoding, cb) {
+
+        if (!file.isBuffer()) return cb(new Error('Expected Firefox source bytes.'));
+        file.contents = firefoxPackageSource(
+            file.relative.replace(/\\/gu, '/'), file.contents,
+        );
+        cb(null, file);
+
+      },
+    }))
+    .pipe(gulp.dest(firefoxDst))
     .on('end', cb);
 
 };
 
-const copyFirefoxMv3Common = function(cb) {
+const copyFirefoxCommon = function(cb) {
 
-  gulp.src(firefoxMv3CommonSrc, {
-    base: './src/extension-mv3-common',
+  gulp.src(firefoxCommonSrc, {
+    base: './src/shared',
     encoding: false,
   })
-    .pipe(gulp.dest(`${firefoxMv3Dst}/background/common`))
+    .pipe(gulp.dest(`${firefoxDst}/background/common`))
     .on('end', cb);
 
 };
 
-const copyFirefoxMv3Tldts = function(cb) {
+const copyFirefoxTldts = function(cb) {
 
-  gulp.src(firefoxMv3TldtsSrc, {
+  gulp.src(firefoxTldtsSrc, {
     base: './node_modules/tldts',
     encoding: false,
   })
-    .pipe(gulp.dest(`${firefoxMv3Dst}/background/vendor/tldts`))
+    .pipe(gulp.dest(`${firefoxDst}/background/vendor/tldts`))
     .on('end', cb);
 
 };
 
-const copyFirefoxMv3Icons = function(cb) {
+const copyFirefoxIcons = function(cb) {
 
-  gulp.src(firefoxMv3IconSrc, {
-    base: './src/extension-chromium-mv3',
+  gulp.src(firefoxIconSrc, {
+    base: './src/chromium',
     encoding: false,
   })
-    .pipe(gulp.dest(firefoxMv3Dst))
+    .pipe(gulp.dest(firefoxDst))
     .on('end', cb);
 
 };
 
-const buildChromiumMv3 = gulp.series(
-    cleanChromiumMv3,
+const buildChromium = gulp.series(
+    cleanChromium,
     gulp.parallel(
-        copyChromiumMv3,
-        copyChromiumMv3Common,
+        copyChromium,
+        copyChromiumCommon,
         copyChromiumTransfer,
-        copyChromiumMv3Tldts,
+        copyChromiumTldts,
     ),
 );
-const buildFirefoxMv3 = gulp.series(
-    cleanFirefoxMv3,
+const buildFirefox = gulp.series(
+    cleanFirefox,
     gulp.parallel(
-        copyFirefoxMv3,
-        copyFirefoxMv3Common,
-        copyFirefoxMv3Icons,
-        copyFirefoxMv3Tldts,
+        copyFirefox,
+        copyFirefoxCommon,
+        copyFirefoxIcons,
+        copyFirefoxTldts,
     ),
 );
 
 module.exports = {
-  buildChromiumMv3,
-  buildFirefoxMv3,
+  buildChromium,
+  buildFirefox,
   renderTemplate,
 };

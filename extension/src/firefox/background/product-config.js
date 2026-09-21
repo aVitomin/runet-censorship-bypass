@@ -4,7 +4,7 @@
 (function publishFirefoxProductConfig(root, factory) {
 
   const routing = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/routing-contract') :
+    require('../../shared/routing-contract') :
     root.mv3RoutingContract;
   const offState = typeof module === 'object' && module.exports ?
     require('./off-state') : root.rucbFirefoxOffState;

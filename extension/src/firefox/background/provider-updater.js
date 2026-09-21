@@ -4,7 +4,7 @@
 (function publishFirefoxProviderUpdater(root, factory) {
 
   const dataset = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/provider-dataset') :
+    require('../../shared/provider-dataset') :
     root.mv3ProviderDataset;
   const api = factory(dataset, root);
   if (typeof module === 'object' && module.exports) {

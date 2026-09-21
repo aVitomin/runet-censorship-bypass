@@ -28,7 +28,7 @@ const expectedCoreDocs = [
   'docs/development/RELEASE_PROCESS.md',
   'docs/legacy/UPSTREAM_README.md',
   'docs/maintainers/DOCUMENTATION_MAP.md',
-  '.github/workflows/mv3.yml',
+  '.github/workflows/extension.yml',
   releaseMetadataPath,
   'scripts/verify-docs.mjs',
   'scripts/verify-docs-parser.mjs',

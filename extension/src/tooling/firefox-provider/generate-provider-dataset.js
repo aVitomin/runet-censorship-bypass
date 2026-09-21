@@ -3,9 +3,9 @@
 const Crypto = require('node:crypto');
 const Fs = require('node:fs/promises');
 const Path = require('node:path');
-const Dataset = require('../../extension-mv3-common/provider-dataset');
+const Dataset = require('../../shared/provider-dataset');
 const ProviderUpdater = require(
-    '../../extension-firefox-mv3/background/provider-updater');
+    '../../firefox/background/provider-updater');
 
 const MAX_SOURCE_BYTES = Dataset.LIMITS.MAX_ARTIFACT_BYTES;
 const MAX_REDIRECTS = 3;

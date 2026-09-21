@@ -16,7 +16,7 @@ function expectAction(harness, badgeText, titlePart) {
 
 }
 
-Mocha.describe('MV3 authoritative operation action status', function() {
+Mocha.describe('Chromium authoritative operation action status', function() {
 
   Mocha.it('shows normal Apply only while its real workflow is pending',
       async function() {

@@ -1,7 +1,7 @@
 'use strict';
 
 const Assert = require('node:assert');
-const Routing = require('../../extension-mv3-common/routing-contract');
+const Routing = require('../../shared/routing-contract');
 const Adapter = require('../background/routing-adapter');
 const ProxyAuth = require('../background/proxy-auth');
 

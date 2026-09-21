@@ -7,10 +7,10 @@ const Mocha = require('mocha');
 const Path = require('path');
 const {loadBackgroundModules} = require('./background-modules');
 
-const MV3_DIRECTORY = Path.resolve(__dirname, '..');
+const CHROMIUM_DIRECTORY = Path.resolve(__dirname, '..');
 const CATALOGS = Object.freeze(['en', 'ru'].reduce((catalogs, language) => {
   catalogs[language] = JSON.parse(Fs.readFileSync(
-      Path.join(MV3_DIRECTORY, '_locales', language, 'messages.json'),
+      Path.join(CHROMIUM_DIRECTORY, '_locales', language, 'messages.json'),
       'utf8',
   ));
   return catalogs;
@@ -147,7 +147,7 @@ function contrastRatio(first, second) {
 
 }
 
-Mocha.describe('MV3 action presentation model', function() {
+Mocha.describe('Chromium action presentation model', function() {
 
   let previousChrome;
 

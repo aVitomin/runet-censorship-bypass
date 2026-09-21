@@ -97,7 +97,7 @@ async function measurePageInitialization(page) {
 
 }
 
-Mocha.describe('MV3 runtime performance operation counts', function() {
+Mocha.describe('Chromium runtime performance operation counts', function() {
 
   Mocha.it('keeps cold startup bounded and reconstructs live action status',
       async function() {

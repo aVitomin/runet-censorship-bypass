@@ -18,7 +18,7 @@ import {
 
 const integrity = `sha512-${Buffer.from('fixture-integrity').toString('base64')}`;
 const retiredOptionsPackage =
-  'extensions/chromium/runet-censorship-bypass/src/extension-common/pages/options';
+  'extension/src/chromium-compat/pages/options';
 
 function packageDocuments({
   directSpecifier = '1.2.3',
@@ -241,7 +241,7 @@ test('reports a partial manifest/lock pair without confusing JSON read errors', 
 test('uses explicit paired rename evidence for a relocated PR base package', () => {
   const names = ['package.json', 'package-lock.json'];
   const baseFiles = names.map((name) => `old-tooling/${name}`);
-  const changes = names.map((name) => `R100\0old-tooling/${name}\0${AUTHORITATIVE_PACKAGE}/${name}\0`).join('');
+  const changes = names.map((name) => `${name === 'package.json' ? 'R049' : 'R100'}\0old-tooling/${name}\0${AUTHORITATIVE_PACKAGE}/${name}\0`).join('');
   assert.equal(resolveBasePackageRoot(AUTHORITATIVE_PACKAGE, baseFiles, changes), 'old-tooling');
   assert.equal(resolveBasePackageRoot(AUTHORITATIVE_PACKAGE,
     names.map((name) => `${AUTHORITATIVE_PACKAGE}/${name}`), ''), AUTHORITATIVE_PACKAGE);
@@ -283,5 +283,33 @@ test('compares actual Git-renamed base documents and still detects newly selecte
       root, 'future-tooling'), /package identity does not match/u);
     assertSupplyChainFailure(() => readBasePackage('f'.repeat(40), current.manifest,
       root, 'future-tooling'), /fetch the base commit/u);
+  });
+});
+
+test('rejects duplicate destinations in package rename evidence', () => {
+  const names = ['package.json', 'package-lock.json'];
+  const baseFiles = names.flatMap((name) => [`old/${name}`, `other/${name}`]);
+  const changes = names.flatMap((name) => [
+    `R100\0old/${name}\0${AUTHORITATIVE_PACKAGE}/${name}\0`,
+    `R100\0other/${name}\0${AUTHORITATIVE_PACKAGE}/${name}\0`,
+  ]).join('');
+  assertSupplyChainFailure(() => resolveBasePackageRoot(AUTHORITATIVE_PACKAGE,
+    baseFiles, changes), /ambiguous duplicate Git rename/u);
+});
+
+test('rejects a rename when another base root has the same package identity', () => {
+  const documents = packageDocuments();
+  withFixture(documents, (root) => {
+    writeJson(root, 'other/package.json', documents.manifest);
+    const git = (...args) => execFileSync('git', [
+      '-c', 'core.autocrlf=false', '-c', `core.hooksPath=${path.join(root, '.no-hooks')}`, ...args,
+    ], {cwd: root, encoding: 'utf8'}).trim();
+    git('init', '--quiet'); git('add', '--', '.');
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+      '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'fixture');
+    const baseSha = git('rev-parse', 'HEAD');
+    git('mv', '--', AUTHORITATIVE_PACKAGE, 'future-tooling');
+    assertSupplyChainFailure(() => readBasePackage(baseSha, documents.manifest,
+      root, 'future-tooling'), /Ambiguous PR base package identity/u);
   });
 });

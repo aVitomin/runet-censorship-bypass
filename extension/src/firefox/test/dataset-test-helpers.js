@@ -1,7 +1,7 @@
 'use strict';
 
 const Crypto = require('node:crypto');
-const Dataset = require('../../extension-mv3-common/provider-dataset');
+const Dataset = require('../../shared/provider-dataset');
 
 const PROVIDER_KEY = 'synthetic-provider';
 

@@ -10,7 +10,7 @@ const {
   renderActionIcon,
 } = require('./generate-action-icons');
 const {
-  MV3_SOURCE_ROOT,
+  CHROMIUM_SOURCE_ROOT,
   getRuntimeIconData,
   verifyRuntimeIcons,
 } = require('./verify-runtime-icons');
@@ -30,12 +30,12 @@ function getPngChunkTypes(data) {
 
 }
 
-Mocha.describe('MV3 runtime action icons', function() {
+Mocha.describe('Chromium runtime action icons', function() {
 
   Mocha.it('enumerates extension-relative runtime icons present in source',
       function() {
 
-        Chai.expect(verifyRuntimeIcons(MV3_SOURCE_ROOT)).to.deep.equal(
+        Chai.expect(verifyRuntimeIcons(CHROMIUM_SOURCE_ROOT)).to.deep.equal(
             getExpectedActionIcons().map(({fileName}) => `icons/${fileName}`),
         );
         Chai.expect(getExpectedActionIcons()).to.have.length(32);
@@ -74,7 +74,7 @@ Mocha.describe('MV3 runtime action icons', function() {
 
         for (const icon of getExpectedActionIcons()) {
           const stored = Fs.readFileSync(
-              Path.join(MV3_SOURCE_ROOT, 'icons', icon.fileName),
+              Path.join(CHROMIUM_SOURCE_ROOT, 'icons', icon.fileName),
           );
           Chai.expect(stored.equals(renderActionIcon(
               icon.variant,
@@ -89,7 +89,7 @@ Mocha.describe('MV3 runtime action icons', function() {
 
         for (const icon of getExpectedActionIcons()) {
           const stored = Fs.readFileSync(
-              Path.join(MV3_SOURCE_ROOT, 'icons', icon.fileName),
+              Path.join(CHROMIUM_SOURCE_ROOT, 'icons', icon.fileName),
           );
           Chai.expect(stored[24], `${icon.fileName} bit depth`).to.equal(8);
           Chai.expect(stored[25], `${icon.fileName} color type`).to.equal(6);

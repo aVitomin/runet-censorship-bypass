@@ -9,7 +9,7 @@ const DatasetStore = require('../background/dataset-store');
 const OffState = require('../background/off-state');
 const ProductConfig = require('../background/product-config');
 const ProductionProvider = require('../background/production-provider');
-const Routing = require('../../extension-mv3-common/routing-contract');
+const Routing = require('../../shared/routing-contract');
 const Helpers = require('./dataset-test-helpers');
 
 const sourceRoot = Path.resolve(__dirname, '..');
@@ -26,18 +26,18 @@ const proxyControlSource = Fs.readFileSync(
     'utf8',
 );
 const routingContractSource = Fs.readFileSync(
-    Path.resolve(sourceRoot, '..', 'extension-mv3-common', 'routing-contract.js'),
+    Path.resolve(sourceRoot, '..', 'shared', 'routing-contract.js'),
     'utf8',
 );
 const providerDatasetSource = Fs.readFileSync(
-    Path.resolve(sourceRoot, '..', 'extension-mv3-common', 'provider-dataset.js'),
+    Path.resolve(sourceRoot, '..', 'shared', 'provider-dataset.js'),
     'utf8',
 );
 const providerDatasetStateSource = Fs.readFileSync(
     Path.resolve(
         sourceRoot,
         '..',
-        'extension-mv3-common',
+        'shared',
         'provider-dataset-state.js',
     ),
     'utf8',
@@ -613,7 +613,7 @@ function startEventPage(options = {}) {
   Vm.runInContext(operationalStatusSource, context, {
     filename: 'operational-status.js',
   });
-  for (const file of ['../extension-mv3-common/configuration-transfer.js',
+  for (const file of ['../shared/configuration-transfer.js',
     'background/configuration-transfer.js']) {
     Vm.runInContext(Fs.readFileSync(Path.join(sourceRoot, file), 'utf8'), context, {filename: file});
   }
@@ -650,7 +650,7 @@ function startEventPage(options = {}) {
 
 }
 
-describe('Firefox MV3 production control package', function() {
+describe('Firefox production control package', function() {
   async function unifiedFixture(privateWindowAccess = true) {
 
     const sha256 = async (bytes) => Helpers.sha256(Buffer.from(bytes));
@@ -1966,6 +1966,7 @@ describe('Firefox MV3 production control package', function() {
         for (const forbidden of [
           'XMLHttpRequest',
           'extension-chromium-mv3',
+          'src/chromium/',
           'eval(',
           'Function(',
         ]) {

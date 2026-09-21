@@ -6,9 +6,9 @@ const Crypto = require('crypto');
 const Fs = require('fs');
 const Mocha = require('mocha');
 const Path = require('path');
-const Dataset = require('../../extension-mv3-common/provider-dataset');
+const Dataset = require('../../shared/provider-dataset');
 const DatasetState = require(
-    '../../extension-mv3-common/provider-dataset-state',
+    '../../shared/provider-dataset-state',
 );
 const PROVIDER_KEY = 'synthetic-provider';
 const PROVEN_BUCKET_WIDTHS = Object.freeze([
@@ -601,7 +601,7 @@ Mocha.describe('declarative provider dataset', function() {
             __dirname,
             '..',
             '..',
-            'extension-mv3-common',
+            'shared',
         );
         const sources = [
           'provider-dataset.js',

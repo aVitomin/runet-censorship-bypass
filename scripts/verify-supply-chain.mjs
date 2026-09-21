@@ -419,7 +419,14 @@ export function resolveBasePackageRoot(packageRoot, baseFiles, nameStatus) {
     const status = tokens[index++];
     const before = tokens[index++];
     const after = /^[RC]\d+$/u.test(status) ? tokens[index++] : null;
-    if (/^R\d+$/u.test(status) && after) sources.set(after, before);
+    if (/^R\d+$/u.test(status) && after) {
+      if (sources.has(after)) {
+        throw new SupplyChainVerificationError([
+          `${packageRoot}: ambiguous duplicate Git rename destination; dependency age review cannot continue`,
+        ]);
+      }
+      sources.set(after, before);
+    }
   }
   const roots = filenames.map((name) => {
     const source = sources.get(`${packageRoot}/${name}`);
@@ -443,7 +450,10 @@ export function readBasePackage(baseSha, currentManifest, rootDirectory = repoRo
   let changes;
   try {
     baseFiles = execFileSync('git', ['ls-tree', '-r', '--name-only', '-z', baseSha], options).split('\0');
-    changes = execFileSync('git', ['diff', '--name-status', '-z', '--find-renames', baseSha, '--'], options);
+    // Script-path rewrites can change most manifest lines while the lockfile is
+    // identical. Similarity is evidence only: require a paired origin below,
+    // unique package identity, and the unchanged dependency/age policy.
+    changes = execFileSync('git', ['diff', '--name-status', '-z', '--find-renames=40%', baseSha, '--'], options);
   } catch {
     throw new SupplyChainVerificationError(['Unable to inspect PR base/path history; fetch the base commit before dependency review']);
   }
@@ -452,6 +462,15 @@ export function readBasePackage(baseSha, currentManifest, rootDirectory = repoRo
   const lockfile = gitJson(baseSha, `${directory}/package-lock.json`, rootDirectory);
   if (manifest.name !== currentManifest.name || lockfile.packages?.['']?.name !== manifest.name) {
     throw new SupplyChainVerificationError(['PR base package identity does not match the current tooling package; explicit dependency review is required']);
+  }
+  if (directory !== packageRoot) {
+    const matchingRoots = baseFiles.filter((file) => /(?:^|\/)package\.json$/u.test(file))
+      .filter((file) => gitJson(baseSha, file, rootDirectory).name === currentManifest.name);
+    if (matchingRoots.length !== 1 || matchingRoots[0] !== `${directory}/package.json`) {
+      throw new SupplyChainVerificationError([
+        'Ambiguous PR base package identity; a unique paired source is required',
+      ]);
+    }
   }
   return {directory, manifest, lockfile};
 }

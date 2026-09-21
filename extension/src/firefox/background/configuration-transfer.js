@@ -4,7 +4,7 @@
 (function(root, factory) {
 
   const api = typeof module === 'object' && module.exports ?
-    factory(require('../../extension-mv3-common/configuration-transfer'), require('./settings-control')) :
+    factory(require('../../shared/configuration-transfer'), require('./settings-control')) :
     factory(root.rucbConfigurationTransfer, root.rucbFirefoxSettingsControl);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.rucbFirefoxConfigurationTransfer = api;

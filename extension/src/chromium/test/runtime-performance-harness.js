@@ -23,7 +23,7 @@ const MODULE_FILES = Object.freeze([
   'proxy-auth.js',
   'proxy-settings.js',
   'effective-config.js',
-  '../../extension-mv3-common/configuration-transfer.js',
+  '../../shared/configuration-transfer.js',
   'configuration-transfer.js',
 ]);
 

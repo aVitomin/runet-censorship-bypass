@@ -85,7 +85,7 @@ function createStorage({blockReads = false, failedWriteNumbers = []} = {}) {
 
 }
 
-Mocha.describe('MV3 state write serialization', function() {
+Mocha.describe('Chromium state write serialization', function() {
 
   Mocha.afterEach(function() {
 

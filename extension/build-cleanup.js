@@ -66,15 +66,15 @@ function createBuildCleanup(projectRoot) {
   }
 
   const buildRoot = Path.resolve(resolvedProjectRoot, 'build');
-  const chromiumMv3Root = Path.resolve(
+  const chromiumRoot = Path.resolve(
       buildRoot,
-      'extension-chromium-mv3',
+      'chromium',
   );
-  const firefoxMv3Root = Path.resolve(
+  const firefoxRoot = Path.resolve(
       buildRoot,
-      'extension-firefox-mv3',
+      'firefox',
   );
-  const allowedTargets = [chromiumMv3Root, firefoxMv3Root];
+  const allowedTargets = [chromiumRoot, firefoxRoot];
 
   function removeOutput(target) {
 
@@ -99,16 +99,16 @@ function createBuildCleanup(projectRoot) {
   }
 
   return Object.freeze({
-    paths: Object.freeze({chromiumMv3Root, firefoxMv3Root}),
+    paths: Object.freeze({chromiumRoot, firefoxRoot}),
     removeOutput,
-    cleanChromiumMv3() {
+    cleanChromium() {
 
-      removeOutput(chromiumMv3Root);
+      removeOutput(chromiumRoot);
 
     },
-    cleanFirefoxMv3() {
+    cleanFirefox() {
 
-      removeOutput(firefoxMv3Root);
+      removeOutput(firefoxRoot);
 
     },
   });
@@ -120,7 +120,7 @@ const cleanup = createBuildCleanup(__dirname);
 module.exports = Object.freeze({
   paths: cleanup.paths,
   removeOutput: cleanup.removeOutput,
-  cleanChromiumMv3: cleanup.cleanChromiumMv3,
-  cleanFirefoxMv3: cleanup.cleanFirefoxMv3,
+  cleanChromium: cleanup.cleanChromium,
+  cleanFirefox: cleanup.cleanFirefox,
   createBuildCleanup,
 });

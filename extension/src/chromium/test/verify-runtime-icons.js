@@ -6,14 +6,14 @@ const Fs = require('fs');
 const Path = require('path');
 const {loadBackgroundModules} = require('./background-modules');
 
-const MV3_SOURCE_ROOT = Path.resolve(__dirname, '..');
-const PACKAGED_MV3_ROOT = Path.resolve(
+const CHROMIUM_SOURCE_ROOT = Path.resolve(__dirname, '..');
+const PACKAGED_CHROMIUM_ROOT = Path.resolve(
     __dirname,
     '..',
     '..',
     '..',
     'build',
-    'extension-chromium-mv3',
+    'chromium',
 );
 
 function getRuntimeIconData() {
@@ -141,8 +141,8 @@ function verifyRuntimeIcons(root) {
 }
 
 if (require.main === module) {
-  const sourcePaths = verifyRuntimeIcons(MV3_SOURCE_ROOT);
-  const packagedPaths = verifyRuntimeIcons(PACKAGED_MV3_ROOT);
+  const sourcePaths = verifyRuntimeIcons(CHROMIUM_SOURCE_ROOT);
+  const packagedPaths = verifyRuntimeIcons(PACKAGED_CHROMIUM_ROOT);
   Assert.deepStrictEqual(packagedPaths, sourcePaths);
   for (const resourcePath of packagedPaths) {
     console.log(`Verified packaged runtime icon: ${resourcePath}`);
@@ -150,8 +150,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  PACKAGED_MV3_ROOT,
-  MV3_SOURCE_ROOT,
+  PACKAGED_CHROMIUM_ROOT,
+  CHROMIUM_SOURCE_ROOT,
   getRuntimeIconData,
   verifyRuntimeIcons,
 };

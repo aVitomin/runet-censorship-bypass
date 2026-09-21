@@ -12,13 +12,13 @@ const Os = require('os');
 const Path = require('path');
 const Puppeteer = require('puppeteer-core');
 
-const PACKAGED_MV3_ROOT = Path.resolve(
+const PACKAGED_CHROMIUM_ROOT = Path.resolve(
     __dirname,
     '..',
     '..',
     '..',
     'build',
-    'extension-chromium-mv3',
+    'chromium',
 );
 const SERVICE_WORKER_PATH = '/background/service-worker.js';
 const TEST_HOSTS = Object.freeze({
@@ -94,11 +94,11 @@ function resolveChromeExecutable() {
 
 function assertBuiltExtension() {
 
-  const manifestPath = Path.join(PACKAGED_MV3_ROOT, 'manifest.json');
+  const manifestPath = Path.join(PACKAGED_CHROMIUM_ROOT, 'manifest.json');
   Assert.ok(
       Fs.existsSync(manifestPath),
-      'Missing built MV3 extension. Run npm run build:mv3 first: ' +
-      PACKAGED_MV3_ROOT,
+      'Missing built Chromium extension. Run npm run build:chromium first: ' +
+      PACKAGED_CHROMIUM_ROOT,
   );
   const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
   Assert.strictEqual(manifest.manifest_version, 3);
@@ -237,7 +237,7 @@ function runOpenSsl(executable, args) {
 function createTlsMaterial() {
 
   const temporaryPath = Fs.mkdtempSync(
-      Path.join(Os.tmpdir(), 'rucb-mv3-smoke-tls-'),
+      Path.join(Os.tmpdir(), 'rucb-chromium-smoke-tls-'),
   );
   const certificatePath = Path.join(temporaryPath, 'certificate.pem');
   const privateKeyPath = Path.join(temporaryPath, 'private-key.pem');
@@ -293,7 +293,7 @@ function removeTlsMaterial(material) {
   const temporaryRoot = Path.resolve(Os.tmpdir());
   const resolved = Path.resolve(material.temporaryPath);
   Assert.strictEqual(Path.dirname(resolved), temporaryRoot);
-  Assert.ok(Path.basename(resolved).startsWith('rucb-mv3-smoke-tls-'));
+  Assert.ok(Path.basename(resolved).startsWith('rucb-chromium-smoke-tls-'));
   Fs.rmSync(resolved, {
     force: true,
     maxRetries: 3,
@@ -1135,7 +1135,7 @@ async function launchExtension(
   }
 
   console.log('Chrome smoke: installing unpacked RUCB.');
-  const extensionId = await browser.installExtension(PACKAGED_MV3_ROOT);
+  const extensionId = await browser.installExtension(PACKAGED_CHROMIUM_ROOT);
   console.log(`Chrome smoke: installed RUCB ${extensionId}.`);
   const workerTarget = await browser.waitForTarget(
       (target) => target.type() === 'service_worker' &&
@@ -1547,7 +1547,7 @@ async function waitForExternalProxyControl(page) {
 function createProxyOwnerHelper() {
 
   const helperPath = Fs.mkdtempSync(
-      Path.join(Os.tmpdir(), 'rucb-mv3-owner-helper-'),
+      Path.join(Os.tmpdir(), 'rucb-chromium-owner-helper-'),
   );
   Fs.writeFileSync(
       Path.join(helperPath, 'manifest.json'),
@@ -1650,7 +1650,7 @@ function removeProxyOwnerHelper(helperPath) {
   const temporaryRoot = Path.resolve(Os.tmpdir());
   const resolved = Path.resolve(helperPath);
   Assert.strictEqual(Path.dirname(resolved), temporaryRoot);
-  Assert.ok(Path.basename(resolved).startsWith('rucb-mv3-owner-helper-'));
+  Assert.ok(Path.basename(resolved).startsWith('rucb-chromium-owner-helper-'));
   Fs.rmSync(resolved, {
     force: true,
     maxRetries: 3,
@@ -1686,7 +1686,7 @@ async function configureExtension(page, infrastructure) {
   const reset = await callRpc(page, 'resetMv3State');
   Assert.strictEqual(reset.ok, true);
   const added = await callRpc(page, 'addCustomPacProvider', {
-    description: 'Chrome Stable MV3 browser smoke provider',
+    description: 'Chrome Stable browser smoke provider',
     enabled: true,
     label: 'Chrome Stable smoke',
     urls: [`http://127.0.0.1:${infrastructure.pac.port}/provider.pac`],
@@ -1715,7 +1715,7 @@ async function configureExtension(page, infrastructure) {
   pacMods.ownProxies = [
     createOwnProxy(
         infrastructure.explicitProxy,
-        'Chrome Stable MV3 browser smoke proxy',
+        'Chrome Stable browser smoke proxy',
     ),
     createOwnProxy(
         infrastructure.authProxyA,
@@ -1766,13 +1766,13 @@ async function configureExtension(page, infrastructure) {
     {
       action: 'PROXY',
       enabled: true,
-      note: 'Chrome Stable MV3 browser smoke',
+      note: 'Chrome Stable browser smoke',
       pattern: TEST_HOSTS.proxy,
     },
     {
       action: 'DIRECT',
       enabled: true,
-      note: 'Chrome Stable MV3 browser smoke',
+      note: 'Chrome Stable browser smoke',
       pattern: TEST_HOSTS.direct,
     },
   ];
@@ -2626,7 +2626,7 @@ function removeProfile(profilePath) {
   const temporaryRoot = Path.resolve(Os.tmpdir());
   const resolvedProfile = Path.resolve(profilePath);
   Assert.strictEqual(Path.dirname(resolvedProfile), temporaryRoot);
-  Assert.ok(Path.basename(resolvedProfile).startsWith('rucb-mv3-smoke-'));
+  Assert.ok(Path.basename(resolvedProfile).startsWith('rucb-chromium-smoke-'));
   Fs.rmSync(resolvedProfile, {
     force: true,
     maxRetries: 40,
@@ -2641,7 +2641,7 @@ async function runSmoke() {
   assertBuiltExtension();
   const chromeExecutable = resolveChromeExecutable();
   const profilePath = Fs.mkdtempSync(
-      Path.join(Os.tmpdir(), 'rucb-mv3-smoke-'),
+      Path.join(Os.tmpdir(), 'rucb-chromium-smoke-'),
   );
   const helperPath = createProxyOwnerHelper();
   let browser = null;
@@ -2905,7 +2905,7 @@ async function runSmoke() {
     });
     assertNoSeriousDiagnostics(session.diagnostics);
     await clearedRestartPage.close();
-    console.log(`Chrome Stable MV3 smoke passed with ${chromeVersion}.`);
+    console.log(`Chrome Stable smoke passed with ${chromeVersion}.`);
     console.log(
         'Verified Auto -> provider proxy, Proxy -> explicit proxy, ' +
         'Direct -> origin, restart recovery -> explicit proxy, and ' +
@@ -2946,7 +2946,7 @@ if (require.main === module) {
 }
 
 module.exports = {
-  PACKAGED_MV3_ROOT,
+  PACKAGED_CHROMIUM_ROOT,
   resolveChromeExecutable,
   runSmoke,
 };

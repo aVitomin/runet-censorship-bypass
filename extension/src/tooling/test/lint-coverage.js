@@ -10,16 +10,16 @@ describe('Lint source coverage', function() {
 
   const project = Path.resolve(__dirname, '../../..');
   const eslint = new ESLint({cwd: project});
-  const shared = 'src/extension-mv3-common';
+  const shared = 'src/shared';
 
   it('includes shared files in aggregate and both target commands exactly once', function() {
 
-    for (const command of ['lint', 'lint:mv3', 'lint:firefox']) {
+    for (const command of ['lint', 'lint:chromium', 'lint:firefox']) {
       const args = packageJson.scripts[command].split(/\s+/);
       Assert.equal(args.filter((arg) => arg === './' + shared + '/**/*.js').length, 1);
     }
-    Assert.ok(packageJson.scripts['lint:mv3'].includes('./src/extension-chromium-mv3/**/*.js'));
-    Assert.ok(packageJson.scripts['lint:firefox'].includes('./src/extension-firefox-mv3/**/*.js'));
+    Assert.ok(packageJson.scripts['lint:chromium'].includes('./src/chromium/**/*.js'));
+    Assert.ok(packageJson.scripts['lint:firefox'].includes('./src/firefox/**/*.js'));
 
   });
 
@@ -44,10 +44,10 @@ describe('Lint source coverage', function() {
   it('preserves browser runtime and test rule coverage', async function() {
 
     for (const relative of [
-      'src/extension-chromium-mv3/background/service-worker.js',
-      'src/extension-firefox-mv3/background/event-page.js',
-      'src/extension-chromium-mv3/test/saved-effective.js',
-      'src/extension-firefox-mv3/test/saved-effective.test.js',
+      'src/chromium/background/service-worker.js',
+      'src/firefox/background/event-page.js',
+      'src/chromium/test/saved-effective.js',
+      'src/firefox/test/saved-effective.test.js',
     ]) {
       const config = await eslint.calculateConfigForFile(Path.join(project, relative));
       Assert.equal(config.rules['no-undef'][0], 2, relative);

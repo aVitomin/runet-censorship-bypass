@@ -84,7 +84,7 @@ function ownProxy(host, port) {
 
 }
 
-Mocha.describe('MV3 PAC routing regressions', function() {
+Mocha.describe('Chromium PAC routing regressions', function() {
 
   Mocha.before(function() {
 

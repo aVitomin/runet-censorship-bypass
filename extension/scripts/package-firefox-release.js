@@ -6,13 +6,14 @@ const Crypto = require('node:crypto');
 const Fs = require('node:fs');
 const Path = require('node:path');
 const Templates = require('../src/templates-data');
+const {resolveRepositoryRoot} = require('../src/tooling/repository-root');
 
 const PROJECT_ROOT = Path.resolve(__dirname, '..');
-const REPOSITORY_ROOT = Path.resolve(PROJECT_ROOT, '..', '..', '..');
+const REPOSITORY_ROOT = resolveRepositoryRoot(PROJECT_ROOT);
 const FIREFOX_BUILD_ROOT = Path.join(
     PROJECT_ROOT,
     'build',
-    'extension-firefox-mv3',
+    'firefox',
 );
 const RELEASE_ROOT = Path.join(PROJECT_ROOT, 'dist', 'firefox-release');
 const UTF8_FLAG = 0x0800;
@@ -246,7 +247,7 @@ function releaseVersion() {
 
   const manifestPath = Path.join(FIREFOX_BUILD_ROOT, 'manifest.json');
   const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
-  const expected = `0.0.${Templates.contexts.chromiumMv3.storeVersion}`;
+  const expected = `0.0.${Templates.contexts.chromium.storeVersion}`;
   Assert.strictEqual(manifest.version, expected,
       'Firefox version must follow the repository release version.');
   return manifest.version;
@@ -285,8 +286,8 @@ function createReleaseBuffers() {
 function runFirefoxBuild() {
 
   for (const args of [
-    ['./node_modules/gulp/bin/gulp.js', 'buildFirefoxMv3'],
-    ['./src/extension-firefox-mv3/test/verify-package.js'],
+    ['./node_modules/gulp/bin/gulp.js', 'buildFirefox'],
+    ['./src/firefox/test/verify-package.js'],
   ]) {
     const result = ChildProcess.spawnSync(process.execPath, args, {
       cwd: PROJECT_ROOT,
@@ -369,5 +370,6 @@ module.exports = Object.freeze({
   crc32,
   createDeterministicZip,
   listDirectoryEntries,
+  listTrackedSourceEntries,
   normalizeArchiveName,
 });

@@ -6,10 +6,11 @@ const Fs = require('node:fs');
 const Path = require('node:path');
 const ProductionProvider = require('../background/production-provider');
 const Templates = require('../../templates-data');
+const {firefoxPackageSource} = require('../../tooling/package-source');
 
 const FIREFOX_GECKO_ID = '{adf5f697-1149-42a2-92eb-c163cb9a4146}';
 const EXPECTED_FIREFOX_VERSION =
-  `0.0.${Templates.contexts.chromiumMv3.storeVersion}`;
+  `0.0.${Templates.contexts.chromium.storeVersion}`;
 const EXPECTED_ICON_FILES = Object.freeze([
   'active',
   'busy',
@@ -68,6 +69,7 @@ const FORBIDDEN_RUNTIME_TEXT = Object.freeze([
   'XMLHttpRequest',
   'BEGIN PRIVATE KEY',
   'extension-chromium-mv3',
+  'src/chromium/',
   'BEGIN PAC',
   'FindProxyForURL',
   'eval(',
@@ -110,7 +112,7 @@ function verifyPackage(packageRoot, sourceRoot) {
       sourcePath = Path.resolve(
           sourceRoot,
           '..',
-          'extension-mv3-common',
+          'shared',
           Path.basename(relativePath),
       );
     } else if (relativePath.startsWith('background/vendor/tldts/')) {
@@ -126,12 +128,13 @@ function verifyPackage(packageRoot, sourceRoot) {
       sourcePath = Path.resolve(
           sourceRoot,
           '..',
-          'extension-chromium-mv3',
+          'chromium',
           relativePath,
       );
     }
     const source = Fs.readFileSync(sourcePath);
-    Assert.deepStrictEqual(packaged, source, `Changed package bytes: ${relativePath}`);
+    Assert.deepStrictEqual(packaged, firefoxPackageSource(relativePath, source),
+        `Changed package bytes: ${relativePath}`);
   }
 
   const manifest = JSON.parse(Fs.readFileSync(
@@ -289,11 +292,11 @@ function verifyPackage(packageRoot, sourceRoot) {
 if (require.main === module) {
   const projectRoot = Path.resolve(__dirname, '..', '..', '..');
   const result = verifyPackage(
-      Path.join(projectRoot, 'build', 'extension-firefox-mv3'),
-      Path.join(projectRoot, 'src', 'extension-firefox-mv3'),
+      Path.join(projectRoot, 'build', 'firefox'),
+      Path.join(projectRoot, 'src', 'firefox'),
   );
   console.log(
-      `Verified OFF-default Firefox MV3 control package: ${result.files.length} files.`,
+      `Verified OFF-default Firefox control package: ${result.files.length} files.`,
   );
 }
 

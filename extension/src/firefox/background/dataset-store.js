@@ -4,10 +4,10 @@
 (function publishFirefoxDatasetStore(root, factory) {
 
   const dataset = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/provider-dataset') :
+    require('../../shared/provider-dataset') :
     root.mv3ProviderDataset;
   const datasetState = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/provider-dataset-state') :
+    require('../../shared/provider-dataset-state') :
     root.mv3ProviderDatasetState;
   const api = factory(dataset, datasetState);
   if (typeof module === 'object' && module.exports) {

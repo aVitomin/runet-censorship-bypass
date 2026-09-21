@@ -7,10 +7,11 @@ const Fs = require('node:fs');
 const Path = require('node:path');
 const Templates = require('../src/templates-data');
 const FirefoxRelease = require('./package-firefox-release');
+const {resolveRepositoryRoot} = require('../src/tooling/repository-root');
 
 const PROJECT_ROOT = Path.resolve(__dirname, '..');
-const REPOSITORY_ROOT = Path.resolve(PROJECT_ROOT, '..', '..', '..');
-const BUILD_ROOT = Path.join(PROJECT_ROOT, 'build', 'extension-chromium-mv3');
+const REPOSITORY_ROOT = resolveRepositoryRoot(PROJECT_ROOT);
+const BUILD_ROOT = Path.join(PROJECT_ROOT, 'build', 'chromium');
 const RELEASE_ROOT = Path.join(PROJECT_ROOT, 'dist', 'chromium-release');
 
 function runGit(args) {
@@ -39,9 +40,9 @@ function assertCleanTrackedTree() {
 function runChromiumBuild() {
 
   for (const args of [
-    ['./node_modules/gulp/bin/gulp.js', 'buildChromiumMv3'],
-    ['./src/extension-chromium-mv3/test/verify-runtime-icons.js'],
-    ['./src/extension-chromium-mv3/test/verify-package-integrity.js'],
+    ['./node_modules/gulp/bin/gulp.js', 'buildChromium'],
+    ['./src/chromium/test/verify-runtime-icons.js'],
+    ['./src/chromium/test/verify-package-integrity.js'],
   ]) {
     const result = ChildProcess.spawnSync(process.execPath, args, {
       cwd: PROJECT_ROOT,
@@ -61,8 +62,8 @@ function releaseIdentity() {
       Path.join(BUILD_ROOT, 'manifest.json'),
       'utf8',
   ));
-  const expectedVersion = `0.0.${Templates.contexts.chromiumMv3.storeVersion}`;
-  const expectedVersionName = `0.0.${Templates.contexts.chromiumMv3.version}`;
+  const expectedVersion = `0.0.${Templates.contexts.chromium.storeVersion}`;
+  const expectedVersionName = `0.0.${Templates.contexts.chromium.version}`;
   Assert.strictEqual(manifest.version, expectedVersion);
   Assert.strictEqual(manifest.version_name, expectedVersionName);
   const shortSha = runGit(['rev-parse', '--short=7', 'HEAD']);

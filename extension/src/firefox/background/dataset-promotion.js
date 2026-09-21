@@ -4,7 +4,7 @@
 (function publishFirefoxDatasetPromotion(root, factory) {
 
   const dataset = typeof module === 'object' && module.exports ?
-    require('../../extension-mv3-common/provider-dataset') :
+    require('../../shared/provider-dataset') :
     root.mv3ProviderDataset;
   const productConfig = typeof module === 'object' && module.exports ?
     require('./product-config') : root.rucbFirefoxProductConfig;

@@ -5,6 +5,7 @@ const Fs = require('node:fs');
 const Os = require('node:os');
 const Path = require('node:path');
 const {EXPECTED_FILES, verifyPackage} = require('./verify-package');
+const {firefoxPackageSource} = require('../../tooling/package-source');
 
 const sourceRoot = Path.resolve(__dirname, '..');
 
@@ -18,7 +19,7 @@ function makePackage() {
       source = Path.resolve(
           sourceRoot,
           '..',
-          'extension-mv3-common',
+          'shared',
           Path.basename(relativePath),
       );
     } else if (relativePath.startsWith('background/vendor/tldts/')) {
@@ -34,18 +35,18 @@ function makePackage() {
       source = Path.resolve(
           sourceRoot,
           '..',
-          'extension-chromium-mv3',
+          'chromium',
           relativePath,
       );
     }
     Fs.mkdirSync(Path.dirname(target), {recursive: true});
-    Fs.copyFileSync(source, target);
+    Fs.writeFileSync(target, firefoxPackageSource(relativePath, Fs.readFileSync(source)));
   }
   return root;
 
 }
 
-describe('Firefox MV3 package verifier', function() {
+describe('Firefox package verifier', function() {
 
   let packageRoot;
 

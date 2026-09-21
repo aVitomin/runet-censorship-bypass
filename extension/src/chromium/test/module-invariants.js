@@ -37,7 +37,7 @@ const SELF_TEST_EXPORTS = Object.freeze([
   'mv3State',
 ]);
 
-Mocha.describe('MV3 background module invariants', function() {
+Mocha.describe('Chromium background module invariants', function() {
 
   Mocha.before(function() {
 
