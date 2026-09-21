@@ -334,6 +334,42 @@ function fakeParent() {
 }
 
 describe('Firefox production UI controllers', function() {
+  it('groups every Options metadata label with its value for wide and narrow grids', function() {
+
+    const pairs = [
+      ['providerUpdateCurrentVersion', '2025.11.11-0448d748'],
+      ['providerUpdateAvailableVersion', null],
+      ['providerUpdateLastCheck', 'Очень длинное значение для проверки переноса текста'],
+    ];
+    for (const language of ['en', 'ru']) {
+      const catalog = JSON.parse(Fs.readFileSync(
+          Path.join(sourceRoot, '_locales', language, 'messages.json'), 'utf8',
+      ));
+      const parent = fakeParent();
+      for (const [key, value] of pairs) {
+        Options.appendDefinition(parent, key, value, (message) => catalog[message].message);
+      }
+      Assert.strictEqual(parent.children.length, pairs.length);
+      for (const [index, [key, value]] of pairs.entries()) {
+        const fact = parent.children[index];
+        Assert.strictEqual(fact.tagName, 'div');
+        Assert.match(fact.className, /overview-fact/);
+        Assert.deepStrictEqual(fact.children.map((node) => node.tagName), ['dt', 'dd']);
+        Assert.strictEqual(fact.children[0].textContent, catalog[key].message);
+        Assert.strictEqual(
+            fact.children[1].textContent,
+            value || catalog.optionsNone.message,
+        );
+      }
+    }
+    const css = Fs.readFileSync(
+        Path.join(sourceRoot, 'pages', 'options', 'options.css'), 'utf8',
+    );
+    Assert.match(css, /\.overview-facts\s*\{[^}]*grid-template-columns:\s*repeat\(3,/);
+    Assert.match(css, /@media\s*\(max-width:\s*760px\)[\s\S]*?\.overview-facts\s*\{[^}]*grid-template-columns:\s*1fr/);
+
+  });
+
   it('renders confirmed provider phases in RU/EN without internal data or connectivity claims', function() {
 
     const cases = [
