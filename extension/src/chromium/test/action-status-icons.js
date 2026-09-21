@@ -5,7 +5,9 @@ const Chai = require('chai');
 const Mocha = require('mocha');
 const Fs = require('fs');
 const Path = require('path');
+const Zlib = require('zlib');
 const {
+  BRAND_ICON_PATH,
   getExpectedActionIcons,
   renderActionIcon,
 } = require('./generate-action-icons');
@@ -35,10 +37,10 @@ Mocha.describe('Chromium runtime action icons', function() {
   Mocha.it('enumerates extension-relative runtime icons present in source',
       function() {
 
-        Chai.expect(verifyRuntimeIcons(SHARED_ASSET_ROOT)).to.deep.equal(
-            getExpectedActionIcons().map(({fileName}) => `icons/${fileName}`),
+        Chai.expect(verifyRuntimeIcons(SHARED_ASSET_ROOT).sort()).to.deep.equal(
+            getExpectedActionIcons().map(({fileName}) => `icons/${fileName}`).sort(),
         );
-        Chai.expect(getExpectedActionIcons()).to.have.length(32);
+        Chai.expect(getExpectedActionIcons()).to.have.length(33);
 
       });
 
@@ -84,10 +86,12 @@ Mocha.describe('Chromium runtime action icons', function() {
 
       });
 
-  Mocha.it('uses metadata-free RGBA PNGs with only required chunks',
+  Mocha.it('decodes metadata-free RGBA icons with exact sizes and transparency',
       function() {
 
-        for (const icon of getExpectedActionIcons()) {
+        for (const icon of getExpectedActionIcons().concat([
+          {fileName: '../brand/icon-512.png', size: 512},
+        ])) {
           const stored = Fs.readFileSync(
               Path.join(SHARED_ASSET_ROOT, 'icons', icon.fileName),
           );
@@ -97,8 +101,49 @@ Mocha.describe('Chromium runtime action icons', function() {
               getPngChunkTypes(stored),
               `${icon.fileName} chunks`,
           ).to.deep.equal(['IHDR', 'IDAT', 'IEND']);
+          Chai.expect(stored.subarray(0, 8).toString('hex'))
+              .to.equal('89504e470d0a1a0a');
+          Chai.expect(stored.readUInt32BE(16), icon.fileName).to.equal(icon.size);
+          Chai.expect(stored.readUInt32BE(20), icon.fileName).to.equal(icon.size);
+          Chai.expect([...stored.subarray(26, 29)]).to.deep.equal([0, 0, 0]);
+          // The authoritative encoder emits one unfiltered RGBA IDAT stream.
+          const bytes = Zlib.inflateSync(stored.subarray(
+              41, 41 + stored.readUInt32BE(33),
+          ));
+          const stride = icon.size * 4 + 1;
+          Chai.expect(bytes.length).to.equal(stride * icon.size);
+          const alphas = new Set();
+          for (let y = 0; y < icon.size; y += 1) {
+            Chai.expect(bytes[y * stride]).to.equal(0);
+            for (let x = 0; x < icon.size; x += 1) {
+              alphas.add(bytes[y * stride + 1 + x * 4 + 3]);
+            }
+          }
+          Chai.expect(alphas.has(0), `${icon.fileName} transparent`).to.equal(true);
+          Chai.expect([...alphas].some((alpha) => alpha > 0),
+              `${icon.fileName} visible artwork`).to.equal(true);
         }
 
       });
+
+  Mocha.it('derives the unbundled 512px branding export from the same generator',
+      function() {
+
+        Chai.expect(Fs.readFileSync(BRAND_ICON_PATH).equals(
+            renderActionIcon('active', 512),
+        )).to.equal(true);
+        Chai.expect(Fs.readdirSync(Path.dirname(BRAND_ICON_PATH)))
+            .to.deep.equal(['icon-512.png']);
+        const firefox = JSON.parse(Fs.readFileSync(Path.resolve(
+            SHARED_ASSET_ROOT, '..', 'firefox', 'manifest.json',
+        ), 'utf8'));
+        Chai.expect(firefox.icons).to.deep.equal({
+          32: 'icons/action-active-32.png',
+          48: 'icons/action-active-48.png',
+          64: 'icons/action-active-64.png',
+          128: 'icons/action-active-128.png',
+        });
+
+      }).timeout(10000);
 
 });

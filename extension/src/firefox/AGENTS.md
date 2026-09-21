@@ -20,8 +20,8 @@ declarative provider data, not Chromium's service worker or PAC execution.
   may be saved while active; popup save+apply remains one revision-safe backend
   operation with explicit confirmation for other pending Saved changes. Use
   text-only DOM construction and preserve private-access onboarding and RU/EN.
-- Gulp explicitly lists Firefox package inputs and copies icons from the
-  Chromium source directory. A file's location alone does not define its target.
+- Gulp explicitly lists Firefox package inputs and copies shared product icons
+  from `src/assets/icons`. Branding exports in `src/assets/brand` are not packaged.
 
 For lifecycle/recovery changes, consult
 `docs/development/FIREFOX_ARCHITECTURE.md`; for dataset changes, consult

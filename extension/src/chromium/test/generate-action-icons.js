@@ -10,8 +10,9 @@ const Path = require('path');
 const Zlib = require('zlib');
 
 const ICON_DIRECTORY = Path.resolve(__dirname, '..', '..', 'assets', 'icons');
+const BRAND_ICON_PATH = Path.resolve(ICON_DIRECTORY, '..', 'brand', 'icon-512.png');
 const VARIANT_SIZES = Object.freeze({
-  active: Object.freeze([16, 19, 20, 32, 38, 48, 128]),
+  active: Object.freeze([16, 19, 20, 32, 38, 48, 64, 128]),
   off: Object.freeze([16, 19, 20, 32, 38]),
   external: Object.freeze([16, 19, 20, 32, 38]),
   busy: Object.freeze([16, 19, 20, 32, 38]),
@@ -352,12 +353,15 @@ function writeActionIcons() {
 
 if (require.main === module) {
   writeActionIcons();
+  Fs.mkdirSync(Path.dirname(BRAND_ICON_PATH), {recursive: true});
+  Fs.writeFileSync(BRAND_ICON_PATH, renderActionIcon('active', 512));
   console.log(
-      `Generated ${getExpectedActionIcons().length} deterministic action icons.`,
+      `Generated ${getExpectedActionIcons().length} icons and a 512px brand export.`,
   );
 }
 
 module.exports = {
+  BRAND_ICON_PATH,
   ICON_DIRECTORY,
   VARIANT_SIZES,
   getActionIconFileName,

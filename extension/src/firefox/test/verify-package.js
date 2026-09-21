@@ -22,6 +22,7 @@ const EXPECTED_ICON_FILES = Object.freeze([
   `icons/action-${state}-${size}.png`,
 )).concat([
   'icons/action-active-48.png',
+  'icons/action-active-64.png',
   'icons/action-active-128.png',
 ]).sort());
 
@@ -191,7 +192,9 @@ function verifyPackage(packageRoot, sourceRoot) {
     default_popup: 'pages/popup/index.html',
   });
   Assert.deepStrictEqual(manifest.icons, {
+    32: 'icons/action-active-32.png',
     48: 'icons/action-active-48.png',
+    64: 'icons/action-active-64.png',
     128: 'icons/action-active-128.png',
   });
   Assert.deepStrictEqual(manifest.options_ui, {
