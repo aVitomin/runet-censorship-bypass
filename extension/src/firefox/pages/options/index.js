@@ -657,6 +657,17 @@
 
   }
 
+  function appendDefinition(parent, labelKey, value, translate) {
+
+    // A div is valid grouping content in a definition list. Keeping each dt/dd
+    // pair together avoids grid placement separating a label from its value.
+    const fact = Ui.append(parent, 'div', 'overview-fact');
+    Ui.appendText(fact, 'dt', translate(labelKey), 'muted');
+    Ui.appendText(fact, 'dd', value || translate('optionsNone'));
+    return fact;
+
+  }
+
   function renderProviderUpdateStatus(parent, state, t) {
 
     const view = providerUpdateView(state);
@@ -872,8 +883,7 @@
 
     function definition(parent, labelKey, value) {
 
-      Ui.appendText(parent, 'dt', t(labelKey), 'muted');
-      Ui.appendText(parent, 'dd', value || t('optionsNone'));
+      return appendDefinition(parent, labelKey, value, t);
 
     }
 
@@ -1833,6 +1843,7 @@
   return Object.freeze({
     CANDIDATE_TYPES,
     NAV_ITEMS,
+    appendDefinition,
     createController,
     credentialPayload,
     diagnosticsExport,
