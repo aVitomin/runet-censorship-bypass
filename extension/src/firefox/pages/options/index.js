@@ -302,6 +302,25 @@
       applying: false,
     };
 
+    let invalidation = 0;
+    let refreshRequested = false;
+
+    function finish() {
+
+      state.pending = false;
+      emit();
+      if (refreshRequested) void load(true);
+
+    }
+
+    function refresh() {
+
+      invalidation += 1;
+      refreshRequested = true;
+      return load(true);
+
+    }
+
     function snapshot() {
 
       return Object.freeze(Object.assign({}, state));
@@ -316,6 +335,7 @@
 
     async function loadNow() {
 
+      const started = invalidation;
       const results = await Promise.all([
         rpc.call({type: 'firefox.capabilities.get'}),
         rpc.call({type: 'firefox.settings.get'}),
@@ -323,6 +343,9 @@
         rpc.call({type: 'firefox.provider.update.get'}),
         rpc.call({type: 'firefox.configuration.get'}),
       ]);
+      // An event invalidated this bundle while one of its RPCs was in flight.
+      // Do not render that older snapshot; the coalesced trailing read wins.
+      if (started !== invalidation) return;
       const capabilities = Ui.validateCapabilities(results[0]);
       const settings = validateSettingsResult(results[1]);
       const operational = Ui.validateOperationalStatus(results[2]);
@@ -341,25 +364,29 @@
 
     }
 
-    async function load() {
+    async function load(statusOnly = false) {
 
       if (state.pending) {
         return false;
       }
       state.pending = true;
-      state.providerOperationFailed = false;
-      state.errorCode = null;
-      state.notice = null;
+      if (!statusOnly) {
+        state.providerOperationFailed = false;
+        state.errorCode = null;
+        state.notice = null;
+      }
       emit();
       try {
-        await loadNow();
+        do {
+          refreshRequested = false;
+          await loadNow();
+        } while (refreshRequested);
         return true;
       } catch (error) {
         state.errorCode = Ui.safeErrorCode(error);
         return false;
       } finally {
-        state.pending = false;
-        emit();
+        finish();
       }
 
     }
@@ -385,8 +412,7 @@
         state.errorCode = Ui.safeErrorCode(error);
         return false;
       } finally {
-        state.pending = false;
-        emit();
+        finish();
       }
 
     }
@@ -440,8 +466,7 @@
         }
         return false;
       } finally {
-        state.pending = false;
-        emit();
+        finish();
       }
 
     }
@@ -479,8 +504,7 @@
         return false;
       } finally {
         state.applying = false;
-        state.pending = false;
-        emit();
+        finish();
       }
 
     }
@@ -506,8 +530,7 @@
         state.errorCode = Ui.safeErrorCode(error);
         return false;
       } finally {
-        state.pending = false;
-        emit();
+        finish();
       }
 
     }
@@ -541,8 +564,7 @@
         return false;
       } finally {
         state.providerOperation = null;
-        state.pending = false;
-        emit();
+        finish();
       }
 
     }
@@ -572,6 +594,7 @@
     }
 
     return Object.freeze({
+      refresh,
       edit(dirty = true) {
 
         state.dirty = dirty;
@@ -686,6 +709,7 @@
     let draftFields = null;
     let baselineFields = null;
     let ruleRows = [];
+    let refreshView = null;
     const controller = createController({
       rpc: Ui.createRpc(browserApi),
       changed: render,
@@ -1154,6 +1178,11 @@
 
     function render(state, preserveFields = true) {
 
+      if (preserveFields && refreshView && state.settings && renderedRevision === state.revision) {
+        refreshView(state);
+        return;
+      }
+
       const oldForm = document.getElementById('settings-form');
       const focused = oldForm && document.activeElement;
       const focusedIndex = focused && Array.from(oldForm.elements).indexOf(focused);
@@ -1185,7 +1214,7 @@
         retry.addEventListener('click', () => controller.load());
         return;
       }
-      const disabled = !state.editable || state.pending;
+      let disabled = !state.editable || state.pending;
       const layout = Ui.append(root, 'div', 'options-layout');
       const nav = Ui.append(layout, 'nav', 'options-nav card');
       nav.setAttribute('aria-label', t('optionsNavigationLabel'));
@@ -1202,53 +1231,66 @@
           renderTransfer = render;
         }});
       }
-      if (!state.editable) {
-        Ui.appendText(
-            content,
-            'p',
-            t('optionsReadOnlyHelp'),
-            'status warning read-only',
-        );
+      const messages = Ui.append(content, 'div');
+      function renderMessages() {
+
+        Ui.clear(messages);
+        if (!state.editable) {
+          Ui.appendText(
+              messages,
+              'p',
+              t('optionsReadOnlyHelp'),
+              'status warning read-only',
+          );
+        }
+        if (state.configuration && state.configuration.blocked) {
+          Ui.appendText(messages, 'p', t(state.configuration.reason === 'PRIVATE_ACCESS_REQUIRED' ?
+            'popupErrorPrivateAccess' : /CONTROL/.test(state.configuration.reason || '') ?
+              'unifiedControlLost' : 'unifiedUnproven'), 'status warning');
+        }
+
       }
-      if (state.configuration && state.configuration.blocked) {
-        Ui.appendText(content, 'p', t(state.configuration.reason === 'PRIVATE_ACCESS_REQUIRED' ?
-          'popupErrorPrivateAccess' : /CONTROL/.test(state.configuration.reason || '') ?
-            'unifiedControlLost' : 'unifiedUnproven'), 'status warning');
-      }
+      renderMessages();
       const form = Ui.append(content, 'form');
       form.id = 'settings-form';
 
       const overview = Ui.append(form, 'section', 'card section');
       overview.id = 'overview';
-      Ui.appendText(overview, 'p', t('optionsSectionEyebrow'), 'eyebrow');
-      Ui.appendText(overview, 'h2', t('optionsNavOverview'));
-      const overviewFacts = Ui.append(overview, 'dl', 'overview-facts');
-      const overviewRows = [
-        ['optionsProtectionState', state.capabilities.runtimeState === 'READY' ?
-          'popupStateActive' : state.capabilities.runtimeState ===
-            'INITIALIZING' ? 'popupStateInitializing' :
-              state.capabilities.runtimeState === 'FAILED' ?
-                'popupStateBlocked' : 'popupStateOff'],
-        ['popupDataset', state.capabilities.providerDatasetAvailable ?
-          'valueAvailable' : 'valueUnavailable'],
-        ['popupPrivateAccess', state.capabilities.privateWindowAccess ===
-          'GRANTED' ? 'valueGranted' : state.capabilities.privateWindowAccess ===
-            'DENIED' ? 'valueDenied' : 'valueUnknown'],
-      ];
-      for (const [labelKey, valueKey] of overviewRows) {
-        const row = Ui.append(overviewFacts, 'div', 'overview-fact');
-        Ui.appendText(row, 'dt', t(labelKey), 'muted');
-        Ui.appendText(row, 'dd', t(valueKey));
+      function renderOverview() {
+
+        Ui.clear(overview);
+        Ui.appendText(overview, 'p', t('optionsSectionEyebrow'), 'eyebrow');
+        Ui.appendText(overview, 'h2', t('optionsNavOverview'));
+        const overviewFacts = Ui.append(overview, 'dl', 'overview-facts');
+        const overviewRows = [
+          ['optionsProtectionState', state.capabilities.runtimeState === 'READY' ?
+            'popupStateActive' : state.capabilities.runtimeState ===
+              'INITIALIZING' ? 'popupStateInitializing' :
+                state.capabilities.runtimeState === 'FAILED' ?
+                  'popupStateBlocked' : 'popupStateOff'],
+          ['popupDataset', state.capabilities.providerDatasetAvailable ?
+            'valueAvailable' : 'valueUnavailable'],
+          ['popupPrivateAccess', state.capabilities.privateWindowAccess ===
+            'GRANTED' ? 'valueGranted' : state.capabilities.privateWindowAccess ===
+              'DENIED' ? 'valueDenied' : 'valueUnknown'],
+        ];
+        for (const [labelKey, valueKey] of overviewRows) {
+          const row = Ui.append(overviewFacts, 'div', 'overview-fact');
+          Ui.appendText(row, 'dt', t(labelKey), 'muted');
+          Ui.appendText(row, 'dd', t(valueKey));
+        }
+        Ui.renderPrivateAccessOnboarding(overview, state.capabilities, {
+          checkAgain: () => controller.checkPrivateAccess(),
+          pending: state.pending,
+          translate: t,
+        });
+        Ui.appendText(
+            overview, 'p', t('permissionRestrictedSitesInfo'),
+            'permission-separate-note',
+        );
+
       }
-      Ui.renderPrivateAccessOnboarding(overview, state.capabilities, {
-        checkAgain: () => controller.checkPrivateAccess(),
-        pending: state.pending,
-        translate: t,
-      });
-      Ui.appendText(
-          overview, 'p', t('permissionRestrictedSitesInfo'),
-          'permission-separate-note',
-      );
+      renderOverview();
 
       const automatic = Ui.append(form, 'section', 'card section');
       automatic.id = 'automatic-routing';
@@ -1259,7 +1301,7 @@
       );
       const sourceCard = Ui.append(automatic, 'div', 'source-card');
       Ui.appendText(sourceCard, 'strong', t('optionsAnticensoritySource'));
-      Ui.appendText(
+      const sourceAvailability = Ui.appendText(
           sourceCard, 'span',
           state.capabilities.providerDatasetAvailable ?
             t('valueAvailable') : t('valueUnavailable'),
@@ -1299,207 +1341,218 @@
       addOwn.dataset.action = 'own-add';
 
       const maintenance = Ui.append(form, 'section', 'card section');
-      maintenance.id = 'maintenance';
-      Ui.appendText(maintenance, 'p', t('optionsSectionEyebrow'), 'eyebrow');
-      Ui.appendText(maintenance, 'h2', t('optionsNavMaintenance'));
-      Ui.appendText(maintenance, 'p', t('optionsMaintenanceHelp'), 'muted');
-      const maintenanceFacts = Ui.append(maintenance, 'div', 'source-card');
-      Ui.appendText(
-          maintenanceFacts, 'strong', t('optionsLocalDatasetTitle'),
-      );
-      Ui.appendText(
-          maintenanceFacts, 'span',
-          state.capabilities.providerDatasetAvailable ?
-            t('valueAvailable') : t('valueUnavailable'),
-          `pill ${state.capabilities.providerDatasetAvailable ?
-            'success' : 'warning'}`,
-      );
-      const update = state.providerUpdate;
-      const updateCard = Ui.append(maintenance, 'article', 'subsection');
-      const updateHeader = Ui.append(updateCard, 'div', 'section-row');
-      Ui.appendText(updateHeader, 'h3', t('providerUpdateTitle'));
-      renderProviderUpdateStatus(updateCard, state, t);
-      Ui.appendText(updateCard, 'p', t('providerLifecycleHelp'), 'muted');
-      Ui.appendText(
-          updateCard, 'p', t('providerUpdateHelp'), 'muted',
-      );
-      const updateFacts = Ui.append(updateCard, 'dl', 'overview-facts');
-      definition(updateFacts, 'providerLifecycleName', 'Anticensority');
-      definition(
-          updateFacts,
-          'providerUpdateCurrentVersion',
-          update.currentDatasetVersion || t('providerLifecycleUnknown'),
-      );
-      definition(
-          updateFacts,
-          'providerUpdateAvailableVersion',
-          update.stagedDatasetVersion || t('providerLifecycleUnknown'),
-      );
-      definition(
-          updateFacts,
-          'providerUpdateLastCheck',
-          update.lastCheckAt ? formatTime(update.lastCheckAt) : t('providerLifecycleUnknown'),
-      );
-      const lastCheckKeys = {
-        NEVER: 'providerLifecycleUnknown', CHECKING: 'providerLifecycleChecking',
-        STAGED: 'providerLifecyclePrepared', UNCHANGED: 'providerLifecycleVerified',
-        INSTALLED: 'providerLifecycleAppliedOff', FAILED: 'providerLifecycleFailed',
-      };
-      definition(updateFacts, 'providerLifecycleLastResult',
-          t(lastCheckKeys[update.lastCheckStatus] || 'providerLifecycleUnknown'));
-      if (update.errorCategory) {
+      let healthButton; let checkUpdate; let installUpdate; let download; let update;
+      function renderMaintenance() {
+
+        const previousDetails = maintenance.querySelector('details');
+        const expanded = previousDetails && previousDetails.open;
+        Ui.clear(maintenance);
+
+        maintenance.id = 'maintenance';
+        Ui.appendText(maintenance, 'p', t('optionsSectionEyebrow'), 'eyebrow');
+        Ui.appendText(maintenance, 'h2', t('optionsNavMaintenance'));
+        Ui.appendText(maintenance, 'p', t('optionsMaintenanceHelp'), 'muted');
+        const maintenanceFacts = Ui.append(maintenance, 'div', 'source-card');
+        Ui.appendText(
+            maintenanceFacts, 'strong', t('optionsLocalDatasetTitle'),
+        );
+        Ui.appendText(
+            maintenanceFacts, 'span',
+            state.capabilities.providerDatasetAvailable ?
+              t('valueAvailable') : t('valueUnavailable'),
+            `pill ${state.capabilities.providerDatasetAvailable ?
+              'success' : 'warning'}`,
+        );
+        update = state.providerUpdate;
+        const updateCard = Ui.append(maintenance, 'article', 'subsection');
+        const updateHeader = Ui.append(updateCard, 'div', 'section-row');
+        Ui.appendText(updateHeader, 'h3', t('providerUpdateTitle'));
+        renderProviderUpdateStatus(updateCard, state, t);
+        Ui.appendText(updateCard, 'p', t('providerLifecycleHelp'), 'muted');
+        Ui.appendText(
+            updateCard, 'p', t('providerUpdateHelp'), 'muted',
+        );
+        const updateFacts = Ui.append(updateCard, 'dl', 'overview-facts');
+        definition(updateFacts, 'providerLifecycleName', 'Anticensority');
         definition(
             updateFacts,
-            'providerUpdateErrorCategory',
-            t(`providerUpdateError_${update.errorCategory}`),
+            'providerUpdateCurrentVersion',
+            update.currentDatasetVersion || t('providerLifecycleUnknown'),
         );
-      }
-      const updateActions = Ui.append(updateCard, 'div', 'inline-actions');
-      const checkUpdate = Ui.append(updateActions, 'button', 'primary');
-      checkUpdate.type = 'button';
-      checkUpdate.dataset.operational = 'true';
-      checkUpdate.textContent = t('providerUpdateCheck');
-      checkUpdate.disabled = state.pending || !update.trustConfigured;
-      checkUpdate.addEventListener('click', () =>
-        controller.checkProviderUpdate());
-      const installUpdate = Ui.append(updateActions, 'button');
-      installUpdate.type = 'button';
-      installUpdate.dataset.operational = 'true';
-      installUpdate.textContent = t('providerUpdateInstall');
-      installUpdate.disabled = state.pending || !state.editable || !update.trustConfigured ||
-        !update.updateAvailable;
-      installUpdate.addEventListener('click', () =>
-        controller.installProviderUpdate());
-      if (update.updateAvailable && !state.editable) {
-        Ui.appendText(
-            updateCard,
-            'p',
-            t('providerUpdateActionRequired'),
-            'status warning',
+        definition(
+            updateFacts,
+            'providerUpdateAvailableVersion',
+            update.stagedDatasetVersion || t('providerLifecycleUnknown'),
         );
-      }
-      Ui.appendText(updateCard, 'p', t('providerUpdateActiveHelp'), 'muted');
-      const health = state.operational.health;
-      const healthCard = Ui.append(maintenance, 'article', 'subsection');
-      const healthHeader = Ui.append(healthCard, 'div', 'section-row');
-      Ui.appendText(healthHeader, 'h3', t('healthConnectionTitle'));
-      Ui.appendText(
-          healthHeader,
-          'span',
-          healthLabel(health),
-          `pill ${health.status === 'OK' ? 'success' :
-            health.status === 'ERROR' ? 'error' : 'warning'}`,
-      );
-      Ui.appendText(
-          healthCard, 'p', t('healthConnectionHelp'), 'muted',
-      );
-      const healthFacts = Ui.append(healthCard, 'dl', 'overview-facts');
-      definition(
-          healthFacts, 'healthLastChecked', formatTime(health.checkedAt),
-      );
-      definition(
-          healthFacts, 'healthCheckedCandidate',
-          candidateLabel(health.candidateType),
-      );
-      if (health.status === 'ERROR' ||
-          health.status === 'INCONCLUSIVE') {
-        Ui.appendText(
-            healthCard,
-            'p',
-            t(health.code ? `healthCode_${health.code}` :
-              'healthStatusInconclusive'),
-            `status ${health.status === 'ERROR' ? 'error' : 'warning'}`,
+        definition(
+            updateFacts,
+            'providerUpdateLastCheck',
+            update.lastCheckAt ? formatTime(update.lastCheckAt) : t('providerLifecycleUnknown'),
         );
-      }
-      const healthButton = Ui.append(healthCard, 'button', 'primary');
-      healthButton.type = 'button';
-      healthButton.dataset.operational = 'true';
-      healthButton.textContent = t(health.status === 'ERROR' ?
-        'healthCheckAgain' : 'healthCheckAction');
-      healthButton.disabled = state.pending ||
-        state.capabilities.runtimeState !== 'READY';
-      healthButton.addEventListener('click', () => controller.checkHealth());
-
-      const diagnostic = state.operational.diagnostics;
-      const diagnostics = Ui.append(maintenance, 'details', 'subsection');
-      const diagnosticsSummary = Ui.append(diagnostics, 'summary');
-      diagnosticsSummary.textContent = t('diagnosticsTitle');
-      Ui.appendText(
-          diagnostics, 'p', t('diagnosticsRedactionHelp'), 'muted',
-      );
-      const diagnosticFacts = Ui.append(
-          diagnostics, 'dl', 'overview-facts diagnostics-facts',
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsExtensionVersion',
-          diagnostic.extensionVersion,
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsBrowserVersion',
-          [diagnostic.browserName, diagnostic.browserVersion]
-              .filter(Boolean).join(' '),
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsRuntimeState',
-          diagnostic.runtimeState,
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsRecoveryState',
-          diagnostic.recoveryStatus,
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsControlState',
-          controlLabel(diagnostic.controlLevel),
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsDatasetVersion',
-          diagnostic.datasetVersion,
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsProxyCounts',
-          `${diagnostic.enabledProxyCount}/${diagnostic.configuredProxyCount}`,
-      );
-      definition(
-          diagnosticFacts, 'diagnosticsProxyTypes',
-          diagnostic.proxyTypes.join(', ') || t('optionsNone'),
-      );
-      definition(
-          diagnosticFacts, 'popupPrivateAccess',
-          t(diagnostic.privateWindowAccess === 'GRANTED' ? 'valueGranted' :
-            diagnostic.privateWindowAccess === 'DENIED' ? 'valueDenied' :
-              'valueUnknown'),
-      );
-      const exported = Ui.append(
-          diagnostics, 'pre', 'diagnostics-export technical-note',
-      );
-      exported.textContent = diagnosticsExport(state.operational);
-      const download = Ui.append(diagnostics, 'button');
-      download.type = 'button';
-      download.dataset.operational = 'true';
-      download.textContent = t('diagnosticsDownload');
-      download.addEventListener('click', () => {
-        try {
-          downloadDiagnostics(state.operational);
-        } catch (_error) {
-          localError = 'UI_RPC_FAILED';
-          render(controller.snapshot());
+        const lastCheckKeys = {
+          NEVER: 'providerLifecycleUnknown', CHECKING: 'providerLifecycleChecking',
+          STAGED: 'providerLifecyclePrepared', UNCHANGED: 'providerLifecycleVerified',
+          INSTALLED: 'providerLifecycleAppliedOff', FAILED: 'providerLifecycleFailed',
+        };
+        definition(updateFacts, 'providerLifecycleLastResult',
+            t(lastCheckKeys[update.lastCheckStatus] || 'providerLifecycleUnknown'));
+        if (update.errorCategory) {
+          definition(
+              updateFacts,
+              'providerUpdateErrorCategory',
+              t(`providerUpdateError_${update.errorCategory}`),
+          );
         }
-      });
+        const updateActions = Ui.append(updateCard, 'div', 'inline-actions');
+        checkUpdate = Ui.append(updateActions, 'button', 'primary');
+        checkUpdate.type = 'button';
+        checkUpdate.dataset.operational = 'true';
+        checkUpdate.textContent = t('providerUpdateCheck');
+        checkUpdate.disabled = state.pending || !update.trustConfigured;
+        checkUpdate.addEventListener('click', () =>
+          controller.checkProviderUpdate());
+        installUpdate = Ui.append(updateActions, 'button');
+        installUpdate.type = 'button';
+        installUpdate.dataset.operational = 'true';
+        installUpdate.textContent = t('providerUpdateInstall');
+        installUpdate.disabled = state.pending || !state.editable || !update.trustConfigured ||
+          !update.updateAvailable;
+        installUpdate.addEventListener('click', () =>
+          controller.installProviderUpdate());
+        if (update.updateAvailable && !state.editable) {
+          Ui.appendText(
+              updateCard,
+              'p',
+              t('providerUpdateActionRequired'),
+              'status warning',
+          );
+        }
+        Ui.appendText(updateCard, 'p', t('providerUpdateActiveHelp'), 'muted');
+        const health = state.operational.health;
+        const healthCard = Ui.append(maintenance, 'article', 'subsection');
+        const healthHeader = Ui.append(healthCard, 'div', 'section-row');
+        Ui.appendText(healthHeader, 'h3', t('healthConnectionTitle'));
+        Ui.appendText(
+            healthHeader,
+            'span',
+            healthLabel(health),
+            `pill ${health.status === 'OK' ? 'success' :
+              health.status === 'ERROR' ? 'error' : 'warning'}`,
+        );
+        Ui.appendText(
+            healthCard, 'p', t('healthConnectionHelp'), 'muted',
+        );
+        const healthFacts = Ui.append(healthCard, 'dl', 'overview-facts');
+        definition(
+            healthFacts, 'healthLastChecked', formatTime(health.checkedAt),
+        );
+        definition(
+            healthFacts, 'healthCheckedCandidate',
+            candidateLabel(health.candidateType),
+        );
+        if (health.status === 'ERROR' ||
+            health.status === 'INCONCLUSIVE') {
+          Ui.appendText(
+              healthCard,
+              'p',
+              t(health.code ? `healthCode_${health.code}` :
+                'healthStatusInconclusive'),
+              `status ${health.status === 'ERROR' ? 'error' : 'warning'}`,
+          );
+        }
+        healthButton = Ui.append(healthCard, 'button', 'primary');
+        healthButton.type = 'button';
+        healthButton.dataset.operational = 'true';
+        healthButton.textContent = t(health.status === 'ERROR' ?
+          'healthCheckAgain' : 'healthCheckAction');
+        healthButton.disabled = state.pending ||
+          state.capabilities.runtimeState !== 'READY';
+        healthButton.addEventListener('click', () => controller.checkHealth());
 
-      const notificationCard = Ui.append(
-          maintenance, 'article', 'subsection',
-      );
-      Ui.appendText(
-          notificationCard, 'h3', t('notificationsAttentionTitle'),
-      );
-      Ui.appendText(
-          notificationCard,
-          'p',
-          t(diagnostic.notificationsAvailable ?
-            'notificationsAttentionEnabled' :
-            'notificationsAttentionUnavailable'),
-          'muted',
-      );
+        const diagnostic = state.operational.diagnostics;
+        const diagnostics = Ui.append(maintenance, 'details', 'subsection');
+        diagnostics.open = Boolean(expanded);
+        const diagnosticsSummary = Ui.append(diagnostics, 'summary');
+        diagnosticsSummary.textContent = t('diagnosticsTitle');
+        Ui.appendText(
+            diagnostics, 'p', t('diagnosticsRedactionHelp'), 'muted',
+        );
+        const diagnosticFacts = Ui.append(
+            diagnostics, 'dl', 'overview-facts diagnostics-facts',
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsExtensionVersion',
+            diagnostic.extensionVersion,
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsBrowserVersion',
+            [diagnostic.browserName, diagnostic.browserVersion]
+                .filter(Boolean).join(' '),
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsRuntimeState',
+            diagnostic.runtimeState,
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsRecoveryState',
+            diagnostic.recoveryStatus,
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsControlState',
+            controlLabel(diagnostic.controlLevel),
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsDatasetVersion',
+            diagnostic.datasetVersion,
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsProxyCounts',
+            `${diagnostic.enabledProxyCount}/${diagnostic.configuredProxyCount}`,
+        );
+        definition(
+            diagnosticFacts, 'diagnosticsProxyTypes',
+            diagnostic.proxyTypes.join(', ') || t('optionsNone'),
+        );
+        definition(
+            diagnosticFacts, 'popupPrivateAccess',
+            t(diagnostic.privateWindowAccess === 'GRANTED' ? 'valueGranted' :
+              diagnostic.privateWindowAccess === 'DENIED' ? 'valueDenied' :
+                'valueUnknown'),
+        );
+        const exported = Ui.append(
+            diagnostics, 'pre', 'diagnostics-export technical-note',
+        );
+        exported.textContent = diagnosticsExport(state.operational);
+        download = Ui.append(diagnostics, 'button');
+        download.type = 'button';
+        download.dataset.operational = 'true';
+        download.textContent = t('diagnosticsDownload');
+        download.addEventListener('click', () => {
+          try {
+            downloadDiagnostics(state.operational);
+          } catch (_error) {
+            localError = 'UI_RPC_FAILED';
+            render(controller.snapshot());
+          }
+        });
+
+        const notificationCard = Ui.append(
+            maintenance, 'article', 'subsection',
+        );
+        Ui.appendText(
+            notificationCard, 'h3', t('notificationsAttentionTitle'),
+        );
+        Ui.appendText(
+            notificationCard,
+            'p',
+            t(diagnostic.notificationsAvailable ?
+              'notificationsAttentionEnabled' :
+              'notificationsAttentionUnavailable'),
+            'muted',
+        );
+
+      }
+      renderMaintenance();
 
       const advanced = Ui.append(form, 'section', 'card section');
       advanced.id = 'advanced';
@@ -1551,90 +1604,113 @@
       );
 
       const actions = Ui.append(form, 'div', 'form-actions');
-      actions.setAttribute('aria-label', t('unifiedActions'));
-      const save = Ui.append(actions, 'button', 'primary');
-      save.type = 'submit';
-      save.textContent = t('actionSave');
-      const apply = Ui.append(actions, 'button');
-      apply.type = 'button';
-      apply.textContent = t('unifiedApply');
-      apply.addEventListener('click', () => {
-        controller.applySaved();
-      });
-      const reload = Ui.append(actions, 'button');
-      reload.type = 'button';
-      reload.textContent = t('unifiedDiscard');
-      reload.addEventListener('click', () => {
-        draftFields = null;
-        renderedRevision = null;
-        localError = null;
-        controller.discard();
-      });
-      let statusKey = 'optionsReady';
-      let statusClass = 'status';
-      if (state.notice === 'APPLY_FAILED_SAFE') {
-        statusKey = 'unifiedApplyFailed';
-        statusClass = 'status warning';
-      } else if (localError || state.errorCode) {
-        statusKey = !localError && state.providerOperationFailed ?
-          providerUpdateView(state).help : userErrorKey(localError || state.errorCode);
-        statusClass = 'status error';
-      } else if (state.notice === 'REVISION_CONFLICT') {
-        statusKey = 'unifiedConflict';
-        statusClass = 'status warning';
-      } else if (state.notice === 'SAVED') {
-        statusKey = state.configuration && state.configuration.active ? 'unifiedSavedActive' : 'optionsSaved';
-        statusClass = 'status success';
-      } else if (state.notice === 'APPLIED') {
-        statusKey = 'optionsApplied';
-        statusClass = 'status success';
-      } else if (state.notice === 'UPDATE_CHECKED') {
-        statusKey = providerUpdateView(state).help;
-        statusClass = 'status success';
-      } else if (state.notice === 'UPDATE_INSTALLED') {
-        statusKey = providerUpdateView(state).help;
-        statusClass = 'status success';
-      } else if (!state.editable) {
-        statusKey = 'optionsReadOnlyShort';
-        statusClass = 'status warning';
-      }
-      const status = Ui.appendText(actions, 'p', t(statusKey), statusClass);
-      if (state.notice === 'APPLY_FAILED_SAFE' && state.errorCode === 'REQUIRED_CREDENTIAL_MISSING') {
-        status.textContent += ` ${t('transferCredentialsRequired')}`;
-      }
-      status.setAttribute('aria-live', 'polite');
-      const configurationStatus = Ui.appendText(actions, 'p', '', 'status');
-      configurationStatus.setAttribute('role', 'status');
-      const categories = state.configuration && state.configuration.pendingCategories || [];
-      for (const category of categories) Ui.appendText(actions, 'span', t(`unifiedCategory_${category}`), 'pill warning');
+      let status;
+      let updateConfigurationActions;
+      function renderActions() {
 
-      for (const control of form.elements) {
-        control.disabled = disabled && control.dataset.operational !== 'true';
-      }
-      healthButton.disabled = state.pending ||
-        state.capabilities.runtimeState !== 'READY';
-      checkUpdate.disabled = state.pending || !update.trustConfigured;
-      installUpdate.disabled = state.pending || !state.editable ||
-        !update.trustConfigured || !update.updateAvailable;
-      apply.disabled = disabled || state.capabilities.privateWindowAccess !== 'GRANTED' ||
-        !state.capabilities.activationSupported || !state.capabilities.providerDatasetAvailable;
-      download.disabled = state.pending;
-      reload.disabled = state.pending;
-      function updateConfigurationActions() {
+        Ui.clear(actions);
+        actions.setAttribute('aria-label', t('unifiedActions'));
+        const save = Ui.append(actions, 'button', 'primary');
+        save.type = 'submit';
+        save.textContent = t('actionSave');
+        const apply = Ui.append(actions, 'button');
+        apply.type = 'button';
+        apply.textContent = t('unifiedApply');
+        apply.addEventListener('click', () => {
+          controller.applySaved();
+        });
+        const reload = Ui.append(actions, 'button');
+        reload.type = 'button';
+        reload.textContent = t('unifiedDiscard');
+        reload.addEventListener('click', () => {
+          draftFields = null;
+          renderedRevision = null;
+          localError = null;
+          controller.discard();
+        });
+        let statusKey = 'optionsReady';
+        let statusClass = 'status';
+        if (state.notice === 'APPLY_FAILED_SAFE') {
+          statusKey = 'unifiedApplyFailed';
+          statusClass = 'status warning';
+        } else if (localError || state.errorCode) {
+          statusKey = !localError && state.providerOperationFailed ?
+            providerUpdateView(state).help : userErrorKey(localError || state.errorCode);
+          statusClass = 'status error';
+        } else if (state.notice === 'REVISION_CONFLICT') {
+          statusKey = 'unifiedConflict';
+          statusClass = 'status warning';
+        } else if (state.notice === 'SAVED') {
+          statusKey = state.configuration && state.configuration.active ? 'unifiedSavedActive' : 'optionsSaved';
+          statusClass = 'status success';
+        } else if (state.notice === 'APPLIED') {
+          statusKey = 'optionsApplied';
+          statusClass = 'status success';
+        } else if (state.notice === 'UPDATE_CHECKED') {
+          statusKey = providerUpdateView(state).help;
+          statusClass = 'status success';
+        } else if (state.notice === 'UPDATE_INSTALLED') {
+          statusKey = providerUpdateView(state).help;
+          statusClass = 'status success';
+        } else if (!state.editable) {
+          statusKey = 'optionsReadOnlyShort';
+          statusClass = 'status warning';
+        }
+        status = Ui.appendText(actions, 'p', t(statusKey), statusClass);
+        if (state.notice === 'APPLY_FAILED_SAFE' && state.errorCode === 'REQUIRED_CREDENTIAL_MISSING') {
+          status.textContent += ` ${t('transferCredentialsRequired')}`;
+        }
+        status.setAttribute('aria-live', 'polite');
+        const configurationStatus = Ui.appendText(actions, 'p', '', 'status');
+        configurationStatus.setAttribute('role', 'status');
+        const categories = state.configuration && state.configuration.pendingCategories || [];
+        for (const category of categories) Ui.appendText(actions, 'span', t(`unifiedCategory_${category}`), 'pill warning');
 
-        const current = controller.snapshot();
-        const configuration = current.configuration || {};
-        configurationStatus.textContent = t(current.applying || configuration.applying ? 'unifiedApplying' :
-          current.stale ? 'unifiedConflict' : current.dirty ? 'unifiedUnsaved' :
-            configuration.blocked ? 'unifiedBlocked' : configuration.active ?
-              configuration.pending ? 'unifiedPending' : 'unifiedActive' : 'unifiedInactive');
-        if (current.applying && configuration.active) configurationStatus.textContent += ` ${t('unifiedPreparing')}`;
-        apply.disabled = disabled || current.dirty || current.stale || configuration.applying ||
-          state.capabilities.privateWindowAccess !== 'GRANTED';
-        apply.title = current.dirty ? t('unifiedSaveFirst') : '';
-        save.disabled = disabled || current.stale || configuration.applying;
+        for (const control of form.elements) {
+          control.disabled = disabled && control.dataset.operational !== 'true';
+        }
+        healthButton.disabled = state.pending ||
+          state.capabilities.runtimeState !== 'READY';
+        checkUpdate.disabled = state.pending || !update.trustConfigured;
+        installUpdate.disabled = state.pending || !state.editable ||
+          !update.trustConfigured || !update.updateAvailable;
+        apply.disabled = disabled || state.capabilities.privateWindowAccess !== 'GRANTED' ||
+          !state.capabilities.activationSupported || !state.capabilities.providerDatasetAvailable;
+        download.disabled = state.pending;
+        reload.disabled = state.pending;
+        updateConfigurationActions = () => {
+
+          const current = controller.snapshot();
+          const configuration = current.configuration || {};
+          configurationStatus.textContent = t(current.applying || configuration.applying ? 'unifiedApplying' :
+            current.stale ? 'unifiedConflict' : current.dirty ? 'unifiedUnsaved' :
+              configuration.blocked ? 'unifiedBlocked' : configuration.active ?
+                configuration.pending ? 'unifiedPending' : 'unifiedActive' : 'unifiedInactive');
+          if (current.applying && configuration.active) configurationStatus.textContent += ` ${t('unifiedPreparing')}`;
+          apply.disabled = disabled || current.dirty || current.stale || configuration.applying ||
+            state.capabilities.privateWindowAccess !== 'GRANTED';
+          apply.title = current.dirty ? t('unifiedSaveFirst') : '';
+          save.disabled = disabled || current.stale || configuration.applying;
+
+        };
 
       }
+      renderActions();
+
+      refreshView = (next) => {
+        state = next;
+        disabled = !state.editable || state.pending;
+        root.setAttribute('aria-busy', state.pending ? 'true' : 'false');
+        sourceAvailability.textContent = t(state.capabilities.providerDatasetAvailable ?
+          'valueAvailable' : 'valueUnavailable');
+        sourceAvailability.className = `pill ${state.capabilities.providerDatasetAvailable ?
+          'success' : 'warning'}`;
+        renderMessages();
+        renderOverview();
+        renderMaintenance();
+        renderActions();
+        updateConfigurationActions();
+      };
       if (!state.dirty) baselineFields = formValues(form);
       if (state.dirty && draftFields) restoreValues(form, draftFields);
       validateRuleFields(form);
@@ -1738,7 +1814,15 @@
 
     if (browserApi.storage && browserApi.storage.onChanged) {
       browserApi.storage.onChanged.addListener((_changes, area) => {
-        if (area === 'local') controller.load();
+        if (area === 'local') controller.refresh();
+      });
+    }
+    if (browserApi.runtime.onMessage) {
+      browserApi.runtime.onMessage.addListener((message, sender) => {
+        if (sender && sender.id === browserApi.runtime.id && message &&
+            message.type === 'firefox.status.changed' && Object.keys(message).length === 1) {
+          void controller.refresh();
+        }
       });
     }
     controller.load();

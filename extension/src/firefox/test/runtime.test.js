@@ -251,6 +251,10 @@ function startEventPage(options = {}) {
       },
     },
     runtime: {
+      async sendMessage(message) {
+        events.push({statusNotification: JSON.parse(JSON.stringify(message))});
+        if (options.statusNotification) await options.statusNotification(message);
+      },
       async getPlatformInfo() {
         return {os: 'win'};
       },
@@ -670,6 +674,31 @@ describe('Firefox production control package', function() {
     return page;
 
   }
+
+  it('notifies Options at external Apply start and after success or permission failure, without state payloads', async function() {
+    for (const allowed of [true, false]) {
+      const page = await unifiedFixture(allowed);
+      const notifications = [];
+      page.context.browser.runtime.sendMessage = async (message) => {
+        notifications.push({message: JSON.parse(JSON.stringify(message)),
+          applying: (await page.send({type: 'firefox.configuration.get'})).result.applying});
+      };
+      const result = await page.send({type: 'firefox.activation.apply', expectedRevision: 0});
+      Assert.strictEqual(result.ok, allowed);
+      // Delivery is intentionally not awaited by routing; drain it deterministically.
+      await page.send({type: 'firefox.configuration.get'});
+      Assert.deepStrictEqual(notifications.map((entry) => entry.message), [
+        {type: 'firefox.status.changed'}, {type: 'firefox.status.changed'},
+      ]);
+      Assert.strictEqual(notifications.at(-1).applying, false);
+    }
+  });
+
+  it('does not fail activation when no Options notification receiver exists', async function() {
+    const page = await unifiedFixture();
+    page.context.browser.runtime.sendMessage = () => Promise.reject(new Error('No receiver'));
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 0})).ok, true);
+  });
 
   it('imports inactive settings without activation, provider fetches or accepting stale revisions', async function() {
     const page = await unifiedFixture();
