@@ -6,7 +6,7 @@ const Fs = require('fs');
 const Path = require('path');
 const {loadBackgroundModules} = require('./background-modules');
 
-const CHROMIUM_SOURCE_ROOT = Path.resolve(__dirname, '..');
+const SHARED_ASSET_ROOT = Path.resolve(__dirname, '..', '..', 'assets');
 const PACKAGED_CHROMIUM_ROOT = Path.resolve(
     __dirname,
     '..',
@@ -141,7 +141,7 @@ function verifyRuntimeIcons(root) {
 }
 
 if (require.main === module) {
-  const sourcePaths = verifyRuntimeIcons(CHROMIUM_SOURCE_ROOT);
+  const sourcePaths = verifyRuntimeIcons(SHARED_ASSET_ROOT);
   const packagedPaths = verifyRuntimeIcons(PACKAGED_CHROMIUM_ROOT);
   Assert.deepStrictEqual(packagedPaths, sourcePaths);
   for (const resourcePath of packagedPaths) {
@@ -151,7 +151,7 @@ if (require.main === module) {
 
 module.exports = {
   PACKAGED_CHROMIUM_ROOT,
-  CHROMIUM_SOURCE_ROOT,
+  SHARED_ASSET_ROOT,
   getRuntimeIconData,
   verifyRuntimeIcons,
 };

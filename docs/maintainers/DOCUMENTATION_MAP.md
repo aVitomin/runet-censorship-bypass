@@ -31,7 +31,7 @@
 | Firefox | `extension/src/firefox/` | Фоновая часть начинается в `background/event-page.js`; target-scoped `AGENTS.md` задаёт локальные границы, архитектура — в документации Firefox. |
 | Browser-neutral модули | `extension/src/shared/` | Состав копируемых модулей различается по target; shared routing проверяется также тестами под Chromium. |
 | Статические ресурсы Chromium | `extension/src/chromium-compat/pages/lib/` | Рекурсивный Gulp glob включает всё содержимое только в Chromium. Новый файл меняет packaged bytes. |
-| Общие product icons | `extension/src/chromium/icons/` | Несмотря на путь, выбранные значки используются обоими браузерами. |
+| Общие product assets | `extension/src/assets/` | Содержит только ресурсы с реальными потребителями в нескольких browser targets; текущие icons используются обоими браузерами. |
 | Сборка и версии | tooling package, `gulpfile.js`, `src/templates-data.js`, manifest templates | Корневого npm-пакета нет; команды npm запускаются только с `--prefix` для tooling package. |
 | Проверки документации | `scripts/verify-docs.mjs`, `docs/release-current.json` | Проверяются навигация, локальные цели и метаданные опубликованного выпуска. |
 | Локальные инструкции | корневой и scoped `AGENTS.md`, `.agents/skills/` | Читайте только применимые инструкции; внешние helper skills вызываются явно. |

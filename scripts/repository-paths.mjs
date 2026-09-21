@@ -5,8 +5,8 @@ export const SOURCES = Object.freeze({
   chromium: `${TOOLING_ROOT}/src/chromium`,
   firefox: `${TOOLING_ROOT}/src/firefox`,
   shared: `${TOOLING_ROOT}/src/shared`,
+  sharedAssets: `${TOOLING_ROOT}/src/assets`,
   chromiumCompat: `${TOOLING_ROOT}/src/chromium-compat`,
-  sharedIcons: `${TOOLING_ROOT}/src/chromium/icons`,
 });
 
 export const SCOPED_GUIDANCE = Object.freeze([

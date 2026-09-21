@@ -18,7 +18,9 @@ no root npm package; scope dependency and script commands to this tooling
 directory.
 
 `src/shared` contains browser-neutral modules with explicit per-target copy
-rules. `src/tooling` is never packaged. `src/chromium-compat` preserves five
+rules. `src/assets` contains shared product assets consumed by one or more
+browser targets; it is not a home for browser-specific assets. `src/tooling` is
+never packaged. `src/chromium-compat` preserves five
 Chromium-only compatibility files at their existing packaged `pages/lib` paths;
-it is not shared Firefox code. Icons under `src/chromium/icons` are used by both
+it is not shared Firefox code. Icons under `src/assets/icons` are used by both
 targets. Historical MV2 sources are not a maintained build target.

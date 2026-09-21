@@ -22,7 +22,7 @@ Gulp определяет потребителей каждого входа, а
 | --- | --- | --- |
 | `src/shared` | `configuration-transfer.js` и `configuration-transfer-ui.js` | Эти модули, `routing-contract.js`, `provider-dataset.js` и `provider-dataset-state.js` |
 | `src/chromium-compat/pages/lib` | Рекурсивное копирование всего содержимого | Не включается |
-| `src/chromium/icons` | Runtime icons | Явно выбранные те же product icons |
+| `src/assets/icons` | Product icons | Явно выбранные те же product icons |
 
 Общие модули копируются в `background/common`. Chromium runtime копируется без
 тестов и scoped AGENTS; Firefox runtime имеет отдельный явный allowlist. Оба
@@ -34,8 +34,9 @@ package trees, без неявного расширения glob/allowlist.
 
 `src/chromium-compat` сохраняет прежние пять Chromium-only файлов, включая
 исторические font/checkbox assets; перенос не удаляет их и не меняет packaged
-`pages/lib`. Общие icons пока находятся под Chromium, но принадлежат обоим
-пакетам. `src/tooling` в пакеты не входит.
+`pages/lib`. `src/assets` содержит только общие product assets: текущие icons
+принадлежат обоим пакетам. Browser-specific assets остаются в своих
+target-каталогах. `src/tooling` в пакеты не входит.
 
 Для byte-equivalent переноса Firefox `src/tooling/package-source.js` сохраняет
 старое написание Node-only CommonJS imports в выходных файлах. Исходники и Node
