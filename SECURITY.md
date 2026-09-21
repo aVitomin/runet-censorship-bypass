@@ -10,7 +10,7 @@ MV3 исходники в текущем `main`. Исторические MV2 и
 ## Как сообщить
 
 Для уязвимости используйте
-**[GitHub private vulnerability reporting](https://github.com/aVitomin/runet-censorship-bypass-mv3/security/advisories/new)**.
+**[GitHub private vulnerability reporting](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new)**.
 Не создавайте публичный issue с описанием уязвимости.
 
 В приватном отчёте укажите затронутую версию, краткое описание влияния,
@@ -20,7 +20,7 @@ MV3 исходники в текущем `main`. Исторические MV2 и
 посещений.
 
 Если приватная форма GitHub временно недоступна, используйте обычную
-[форму bug report](https://github.com/aVitomin/runet-censorship-bypass-mv3/issues/new?template=bug_report.yml)
+[форму bug report](https://github.com/aVitomin/runet-censorship-bypass/issues/new?template=bug_report.yml)
 только для публичного запроса на безопасный канал связи. Пометьте заголовок как
 `[Security contact]`, а в обязательных публичных полях укажите `contact-only`,
 «Неизвестно» или «Другой способ или неизвестно». Такой запрос не должен
@@ -28,7 +28,7 @@ MV3 исходники в текущем `main`. Исторические MV2 и
 установят приватный канал и лишь затем запросят подробности.
 
 Обычные ошибки без security-sensitive деталей следует отправлять через
-[форму bug report](https://github.com/aVitomin/runet-censorship-bypass-mv3/issues/new?template=bug_report.yml).
+[форму bug report](https://github.com/aVitomin/runet-censorship-bypass/issues/new?template=bug_report.yml).
 
 ## Область особого внимания
 

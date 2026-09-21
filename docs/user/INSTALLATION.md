@@ -1,7 +1,7 @@
 # Установка, обновление и удаление
 
 Текущий стабильный выпуск —
-[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0).
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0).
 Выберите отдельную инструкцию для Chromium или Firefox: файлы и способ
 установки у них различаются.
 
@@ -26,9 +26,9 @@
 ### 1. Скачать и проверить
 
 Откройте
-[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0)
+[`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0)
 и скачайте именно
-[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip),
+[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip`](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip),
 а не автоматически созданный **Source code**.
 
 Ожидаемый SHA-256:
@@ -38,7 +38,7 @@ e702dff6ba3fe9bb3291de413c4e106f95dcd9b83f9cf8fc98f9635f5990f236
 ```
 
 Файл проверки:
-[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt).
+[`runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.sha256.txt).
 
 В PowerShell:
 
@@ -78,7 +78,7 @@ Get-FileHash .\runet-censorship-bypass-mv3-0.0.4.0-7c0c64c.zip -Algorithm SHA256
 ## Firefox: только подписанная пользовательская установка
 
 1. Скачайте Mozilla-подписанный
-[`runet-censorship-bypass-firefox-0.0.4.0-signed.xpi`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi)
+[`runet-censorship-bypass-firefox-0.0.4.0-signed.xpi`](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi)
 из опубликованного GitHub Release.
 2. Откройте XPI в Firefox и подтвердите установку и запрошенные разрешения.
 3. Через меню **Дополнения и темы → Расширения** откройте карточку расширения
@@ -94,7 +94,7 @@ c7e3042e48819644673db92b9150a9d54a551281046212d896a7f7202bc9c34c
 ```
 
 Файл проверки:
-[`runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt).
+[`runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt`](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt).
 
 Публичной страницы расширения в каталоге Mozilla Add-ons (AMO) пока нет. Не
 обходите проверку подписи и не используйте неподписанный тестовый XPI как
@@ -142,7 +142,7 @@ Firefox уже содержит набор правил Anticensority. Его а
 1. В расширении нажмите **Выключить прокси расширения**, чтобы вернуть исходную
    настройку прокси браузера.
 2. Скачайте новый ZIP только со страницы
-   [Releases](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases).
+   [Releases](https://github.com/aVitomin/runet-censorship-bypass/releases).
 3. Проверьте SHA-256 и распакуйте архив во временное место.
 4. Полностью замените файлы внутри **той же постоянной папки**, которая уже
    загружена в браузер. Не смешивайте файлы разных версий и не меняйте путь к

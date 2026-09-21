@@ -303,7 +303,7 @@ function checkCurrentDocPolicies(file, text) {
       addError(file, index + 1, upstreamRelease[0], 'current installation/release links must not point to upstream MV2 releases');
     }
 
-    const developmentDefault = line.match(/(?:github\.com\/aVitomin\/runet-censorship-bypass-mv3\/(?:blob|tree)\/development|default\s+branch[^\n]*development|ветк\p{L}*\s+по\s+умолчанию[^\n]*development)/iu);
+    const developmentDefault = line.match(/(?:github\.com\/aVitomin\/runet-censorship-bypass\/(?:blob|tree)\/development|default\s+branch[^\n]*development|ветк\p{L}*\s+по\s+умолчанию[^\n]*development)/iu);
     if (developmentDefault) {
       addError(file, index + 1, developmentDefault[0], 'the current default branch is main, not development');
     }
@@ -473,11 +473,11 @@ if (fs.existsSync(readmePath)) {
       if (Number.isNaN(Date.parse(release.publishedAt ?? ''))) {
         addError(releaseMetadataPath, 1, release.publishedAt, 'publishedAt must be a valid timestamp');
       }
-      const expectedReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/${release.tag}`;
+      const expectedReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass/releases/tag/${release.tag}`;
       if (release.releaseUrl !== expectedReleaseUrl) {
         addError(releaseMetadataPath, 1, release.releaseUrl, `releaseUrl must be ${expectedReleaseUrl}`);
       }
-      const expectedAssetBase = `https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/download/${release.tag}`;
+      const expectedAssetBase = `https://github.com/aVitomin/runet-censorship-bypass/releases/download/${release.tag}`;
       for (const assetUrl of [
         `${expectedAssetBase}/${release.zipFilename}`,
         `${expectedAssetBase}/${release.checksumFilename}`,

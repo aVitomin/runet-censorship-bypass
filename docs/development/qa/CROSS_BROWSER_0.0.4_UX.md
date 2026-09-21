@@ -5,7 +5,7 @@ Chromium/Firefox milestone. It is evidence, not a publication record: no tag,
 GitHub Release, store submission, or AMO submission was created.
 
 > This is a pre-publication QA snapshot. Version `0.0.4.0` was subsequently
-> published on the [GitHub Release](https://github.com/aVitomin/runet-censorship-bypass-mv3/releases/tag/v0.0.4.0);
+> published on the [GitHub Release](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0);
 > the statements below describe the state when this gate ran.
 
 ## Browser matrix

@@ -7,9 +7,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        Спасибо за отчёт. Сначала проверьте [решение частых проблем](https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/docs/user/TROUBLESHOOTING.md).
+        Спасибо за отчёт. Сначала проверьте [решение частых проблем](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/TROUBLESHOOTING.md).
 
-        Не публикуйте профили браузера, HAR/NetLog, пароли, токены, cookies, приватные адреса прокси или источников PAC, URL без очистки, содержимое приватного PAC и историю посещений. Об уязвимости сообщайте только через [приватную форму GitHub](https://github.com/aVitomin/runet-censorship-bypass-mv3/security/advisories/new); безопасный запасной способ описан в [SECURITY.md](https://github.com/aVitomin/runet-censorship-bypass-mv3/blob/main/SECURITY.md).
+        Не публикуйте профили браузера, HAR/NetLog, пароли, токены, cookies, приватные адреса прокси или источников PAC, URL без очистки, содержимое приватного PAC и историю посещений. Об уязвимости сообщайте только через [приватную форму GitHub](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new); безопасный запасной способ описан в [SECURITY.md](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SECURITY.md).
   - type: input
     id: version
     attributes:
