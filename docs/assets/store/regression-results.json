@@ -1,0 +1,218 @@
+{
+  "sourceCommit": "624e06908b6da2bde8a36f4ef3760c5cc9835c3f",
+  "browser": "Mozilla Firefox 156.0.1",
+  "date": "2026-09-26",
+  "result": "PASS",
+  "method": "Installed unchanged production build in fresh isolated Firefox profiles; Marionette-driven UI and production RPC; condition-based waits, no arbitrary sleeps.",
+  "screenshotsCreatedBeforeGatePassed": 0,
+  "scenarios": [
+    {
+      "scenario": "A",
+      "applyOk": true,
+      "active": true,
+      "applying": false,
+      "savedUnchanged": true,
+      "sameForm": true,
+      "sameInputs": true,
+      "fieldsUnchanged": true,
+      "dirty": false,
+      "unsaved": false,
+      "saveEnabled": true,
+      "applyEnabled": true
+    },
+    {
+      "scenario": "A",
+      "applyOk": true,
+      "active": true,
+      "applying": false,
+      "savedUnchanged": true,
+      "sameForm": true,
+      "sameInputs": true,
+      "fieldsUnchanged": true,
+      "dirty": true,
+      "unsaved": true,
+      "saveEnabled": true,
+      "applyEnabled": false
+    },
+    {
+      "scenario": "B",
+      "locale": "en-US",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollWidth": 1280,
+      "groups": [
+        {
+          "name": "Routing data update",
+          "pairsChecked": 5,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Connection health",
+          "pairsChecked": 2,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Diagnostics",
+          "pairsChecked": 9,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        }
+      ]
+    },
+    {
+      "scenario": "B",
+      "locale": "en-US",
+      "width": 700,
+      "height": 800,
+      "dpr": 1,
+      "scrollWidth": 700,
+      "groups": [
+        {
+          "name": "Routing data update",
+          "pairsChecked": 5,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Connection health",
+          "pairsChecked": 2,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Diagnostics",
+          "pairsChecked": 9,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        }
+      ]
+    },
+    {
+      "scenario": "B",
+      "locale": "ru",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1,
+      "scrollWidth": 1280,
+      "groups": [
+        {
+          "name": "Routing data update",
+          "pairsChecked": 5,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Connection health",
+          "pairsChecked": 2,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Diagnostics",
+          "pairsChecked": 9,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        }
+      ]
+    },
+    {
+      "scenario": "B",
+      "locale": "ru",
+      "width": 700,
+      "height": 800,
+      "dpr": 1,
+      "scrollWidth": 700,
+      "groups": [
+        {
+          "name": "Routing data update",
+          "pairsChecked": 5,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Connection health",
+          "pairsChecked": 2,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        },
+        {
+          "name": "Diagnostics",
+          "pairsChecked": 9,
+          "allGroupedAndOrdered": true,
+          "overflow": false,
+          "clipping": false
+        }
+      ]
+    },
+    {
+      "scenario": "C1",
+      "categories": [
+        "siteRules"
+      ],
+      "ui": [
+        "Site rules changed"
+      ],
+      "exactHost": true,
+      "active": true,
+      "pending": true,
+      "effectiveUnchanged": true
+    },
+    {
+      "scenario": "C2",
+      "categories": [
+        "siteRules",
+        "proxyConnections"
+      ],
+      "ui": [
+        "Site rules changed",
+        "Proxy connections changed"
+      ],
+      "syntheticEndpoint": "127.0.0.1:19050"
+    }
+  ],
+  "nativePopup": {
+    "attempt": "browser.action.openPopup on installed production extension",
+    "resolved": true,
+    "panels": [
+      {
+        "id": "widget-overflow",
+        "state": "closed",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "id": "unified-extensions-panel",
+        "state": "closed",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "id": "customizationui-widget-panel",
+        "state": "closed",
+        "width": 0,
+        "height": 0
+      },
+      {
+        "id": "webextension-remote-preload-panel",
+        "state": "closed",
+        "width": 0,
+        "height": 0
+      }
+    ],
+    "status": "manual pre-release capture required"
+  }
+}

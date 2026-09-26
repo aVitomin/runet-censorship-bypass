@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <title>Runet Censorship Bypass promotional artwork</title>
+  <desc>The existing blue routing shield on a dark blue background with branching routes. Brand artwork, not a product screenshot.</desc>
+  <defs>
+    <radialGradient id="background" cx="50%" cy="42%" r="76%">
+      <stop offset="0" stop-color="#244fab"/>
+      <stop offset="1" stop-color="#0b1735"/>
+    </radialGradient>
+    <linearGradient id="routes" x1="0" x2="1">
+      <stop offset="0" stop-color="#628eff" stop-opacity=".3"/>
+      <stop offset=".5" stop-color="#a9c0ff" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#628eff" stop-opacity=".3"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#background)" d="M0 0h440v280H0z"/>
+  <g fill="none" stroke="url(#routes)" stroke-width="2" stroke-linecap="round">
+    <path d="M-12 72h73q18 0 31 13l57 55M-12 140h161M-12 208h73q18 0 31-13l57-55"/>
+    <path d="M452 72h-73q-18 0-31 13l-57 55M452 140H291M452 208h-73q-18 0-31-13l-57-55"/>
+  </g>
+  <g fill="#a9c0ff">
+    <circle cx="49" cy="72" r="4"/><circle cx="27" cy="140" r="4"/><circle cx="49" cy="208" r="4"/>
+    <circle cx="391" cy="72" r="4"/><circle cx="413" cy="140" r="4"/><circle cx="391" cy="208" r="4"/>
+  </g>
+  <image href="../../../../extension/src/assets/brand/icon-512.png" x="108" y="28" width="224" height="224"/>
+</svg>

@@ -49,6 +49,7 @@ These guides cover published `0.0.4.0`; unreleased workflows are kept in the
 
 - [Подготовка среды](development/DEVELOPMENT.md)
 - [Пользовательские сценарии к 1.0 — ещё не опубликованы](development/UPCOMING_1_0_USER_GUIDE.md)
+- [Скриншоты и материалы для каталогов к 1.0 — ещё не опубликованы](assets/store/README.md)
 - [Архитектура Chromium/общих компонентов](development/ARCHITECTURE.md)
 - [Архитектура Firefox](development/FIREFOX_ARCHITECTURE.md)
 - [Тестирование и браузерная QA](development/TESTING.md)
