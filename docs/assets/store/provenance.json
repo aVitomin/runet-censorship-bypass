@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "milestone": "1.0 preparation; not a release or store submission",
+  "sourceCommit": "624e06908b6da2bde8a36f4ef3760c5cc9835c3f",
+  "includedFixes": [
+    88,
+    89,
+    90
+  ],
+  "manifestVersion": "0.0.4.0",
+  "platform": "Windows",
+  "installation": {
+    "chromium": "Unmodified production directory loaded into isolated installed Chrome profile",
+    "firefox": "Unmodified production directory temporarily installed into isolated installed Firefox profiles"
+  },
+  "captureMethod": "Browser screenshot APIs on genuine installed-extension documents. Viewport captures, no UI mocks, no standalone popup pages, no post-capture retouching or compositing. Browser chrome is excluded.",
+  "nativePopupMethod": "Chrome action.openPopup; browser action target; tabs.getCurrent returned no tab and standalone-popup-page class absent. Actual popup viewport preserved; content below its viewport is not included.",
+  "firefoxNativePopupStatus": "manual pre-release capture required",
+  "localeNote": "Extension UI is English. Firefox native file-input controls retain the installed browser Russian localization. EN and RU metadata regression cases both passed.",
+  "privacyReview": {
+    "everyImageInspected": true,
+    "sensitiveMaterialFound": false,
+    "syntheticDataOnly": true,
+    "excluded": [
+      "usernames",
+      "emails",
+      "machine paths",
+      "credentials",
+      "tokens",
+      "personal domains",
+      "real proxy data",
+      "history",
+      "bookmarks",
+      "unrelated extensions",
+      "notifications"
+    ]
+  },
+  "sourceArtwork": {
+    "path": "extension/src/assets/brand/icon-512.png",
+    "sha256": "4ac13d6c74c46c1c3320b2b381776ed5cc291cd6ce6a03e818f1d4a4e96044f6",
+    "vector": "docs/assets/store/chromium/promo-tile.svg"
+  },
+  "requirementsCheckedOn": "2026-09-26",
+  "requirementsSources": [
+    "https://developer.chrome.com/docs/webstore/images",
+    "https://extensionworkshop.com/documentation/develop/create-an-appealing-listing/"
+  ],
+  "assets": [
+    {
+      "path": "docs/assets/store/chromium/01-overview-active.png",
+      "sha256": "b122ea964c29de6c4add01037dc7993134f797eedad2d50ada5eca14409c6197",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:48:49.193Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Manual rules only; routing applied and active; no pending settings; no proxy service availability claim.",
+      "syntheticInputs": [],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/chromium/02-saved-pending.png",
+      "sha256": "986ae85f4aa2f927537c07ae308c9d99575d88424166b77545f4b4c3986d879b",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:48:50.387Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "news.example exact-host Direct rule Saved without Apply; previous settings remain active.",
+      "syntheticInputs": [
+        "news.example: exact-host Direct rule saved without Apply"
+      ],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/chromium/03-routing-source.png",
+      "sha256": "3a7f3a80e6b29c423b3d3aed2e9f83517bdada83815ae1cd3c31897488c20227",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:48:49.310Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Manual rules only selected and applied; production routing-source controls.",
+      "syntheticInputs": [],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/chromium/04-import-preview.png",
+      "sha256": "71627a0075246c27a3ad309491c2988dec6f8131bd1235df943c8b9c10c1d8d5",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:48:51.087Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Unconfirmed import preview; synthetic routes and proxy.example; one credential requires re-entry.",
+      "syntheticInputs": [
+        "news.example: exact-host Direct",
+        "example.com: domain Proxy",
+        "proxy.example:8080: synthetic HTTP proxy requiring credentials; no credentials supplied",
+        "disabled default loopback profiles: 127.0.0.1 ports 9050, 9150, 40000"
+      ],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/chromium/05-proxy-connections.png",
+      "sha256": "d20015d17ede99514c243fc4ec16d361045572511032a19374e95061b3a30416",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:48:49.398Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Active routing; optional connection controls at defaults; no personal proxy data.",
+      "syntheticInputs": [
+        "disabled default loopback profiles: 127.0.0.1 ports 9050, 9150, 40000"
+      ],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/firefox/01-overview-active.png",
+      "sha256": "244228045bea0aa4c02e124453e35a4aa5c02b0865a19230a6086f7c190048f1",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:36:47.658Z",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en-US",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Initial settings applied; protection active; built-in dataset available; no pending settings.",
+      "syntheticInputs": [],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/firefox/02-saved-pending.png",
+      "sha256": "9b7e243f01f54e7e456576df9e52395af1b2f6e6030eb64ac58e31a461539ad8",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:36:51.790Z",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en-US",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Protection active on previous settings; exact-host news.example Direct rule Saved without Apply; only Site rules changed.",
+      "syntheticInputs": [
+        "news.example: exact-host Direct rule saved without Apply"
+      ],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/firefox/03-private-window-onboarding.png",
+      "sha256": "d47797a86b880c6631b4601a7da9409dc9c0bb9e4fb1e0758c53f2ca97764aab",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:36:39.240Z",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en-US",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Fresh profile; protection off; private-window access not granted; genuine onboarding.",
+      "syntheticInputs": [],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/firefox/04-import-preview.png",
+      "sha256": "8485e940c06b2883dd081fe975af92715cda3b458b9145571853f1cdeeec43d4",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:36:52.203Z",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en-US",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Unconfirmed import preview of synthetic rules and proxy.example; one credential requires re-entry; active settings unchanged.",
+      "syntheticInputs": [
+        "news.example: exact-host Direct",
+        "example.com: domain Proxy",
+        "proxy.example:8080: synthetic HTTP proxy requiring credentials; no credentials supplied",
+        "disabled default loopback profiles: 127.0.0.1 ports 9050, 9150, 40000"
+      ],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/store/firefox/05-routing-data.png",
+      "sha256": "ac24170cfde03eebd6d9b926c578bdbbbac562ee142bcb45cc8ecf891f2ead18",
+      "dimensions": {
+        "width": 1280,
+        "height": 800
+      },
+      "capturedAt": "2026-09-26T01:36:47.849Z",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en-US",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "classification": "installed-extension-options",
+      "nativePopup": false,
+      "usage": "store-screenshot",
+      "state": "Protection active; bundled routing data available; remote update trust not configured; no connectivity claim.",
+      "syntheticInputs": [],
+      "privacyReviewed": true
+    },
+    {
+      "path": "docs/assets/workflows-1.0/chromium/native-popup-active.png",
+      "sha256": "c467ede1ff892335015fbf28055afe8d9a13509d5f76be4866f31277b9ba89c2",
+      "dimensions": {
+        "width": 392,
+        "height": 480
+      },
+      "capturedAt": "2026-09-26T01:48:49.832Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 392,
+        "height": 480
+      },
+      "dpr": 1,
+      "classification": "native-browser-action-popup",
+      "nativePopup": true,
+      "usage": "documentation-workflow",
+      "state": "Genuine action popup above synthetic news.example; active routing; Auto site mode.",
+      "syntheticInputs": [
+        "news.example: intercepted local test page"
+      ],
+      "privacyReviewed": true,
+      "nativeEvidence": {
+        "tab": null,
+        "standalone": false
+      }
+    },
+    {
+      "path": "docs/assets/workflows-1.0/chromium/native-popup-pending.png",
+      "sha256": "ef9c73865f443abf8c1a6454bc391e9cc7972117040769c213f9e69a758136d4",
+      "dimensions": {
+        "width": 392,
+        "height": 515
+      },
+      "capturedAt": "2026-09-26T01:48:49.888Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 392,
+        "height": 515
+      },
+      "dpr": 1,
+      "classification": "native-browser-action-popup",
+      "nativePopup": true,
+      "usage": "documentation-workflow",
+      "state": "Genuine action popup; local site draft changes Auto to Direct; Apply not clicked.",
+      "syntheticInputs": [
+        "news.example: domain-and-subdomains Direct draft"
+      ],
+      "privacyReviewed": true,
+      "nativeEvidence": {
+        "tab": null,
+        "standalone": false
+      }
+    },
+    {
+      "path": "docs/assets/workflows-1.0/chromium/native-popup-apply-all.png",
+      "sha256": "5b50b83a1df9ef0527fbc8dddf9fc17f137703d009480d796ec864707549b6e8",
+      "dimensions": {
+        "width": 392,
+        "height": 519
+      },
+      "capturedAt": "2026-09-26T01:48:50.748Z",
+      "browser": "Chrome/153.0.8010.53",
+      "locale": "en",
+      "viewport": {
+        "width": 392,
+        "height": 519
+      },
+      "dpr": 1,
+      "classification": "native-browser-action-popup",
+      "nativePopup": true,
+      "usage": "documentation-workflow",
+      "state": "Genuine action popup; saved changes pending; review warning and explicit Apply all saved changes choice, before confirmation.",
+      "syntheticInputs": [
+        "news.example: exact-host Direct rule saved without Apply"
+      ],
+      "privacyReviewed": true,
+      "nativeEvidence": {
+        "tab": null,
+        "standalone": false
+      }
+    },
+    {
+      "path": "docs/assets/store/chromium/promo-440x280.png",
+      "sha256": "bedc0219dabd692518542f7c5cfcc7a6c409597067a234f6ec335be9147ffae3",
+      "dimensions": {
+        "width": 440,
+        "height": 280
+      },
+      "capturedAt": "2026-09-26T01:44:24.360Z",
+      "browser": "Chrome/153.0.8010.53 (artwork renderer)",
+      "locale": null,
+      "viewport": {
+        "width": 440,
+        "height": 280
+      },
+      "dpr": 1,
+      "classification": "promotional-artwork",
+      "nativePopup": false,
+      "usage": "promotion",
+      "state": "Existing repository shield on original vector routing-line background; not a screenshot.",
+      "syntheticInputs": [],
+      "privacyReviewed": true
+    }
+  ]
+}
