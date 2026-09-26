@@ -7,6 +7,9 @@ const Path = require('node:path');
 const ProductionProvider = require('../background/production-provider');
 const Templates = require('../../templates-data');
 const {firefoxPackageSource} = require('../../tooling/package-source');
+const {distributionNoticeSources, verifyDistributionNotices} =
+  require('../../tooling/distribution-notices');
+const NOTICE_SOURCES = distributionNoticeSources('firefox');
 
 const FIREFOX_GECKO_ID = '{adf5f697-1149-42a2-92eb-c163cb9a4146}';
 const EXPECTED_FIREFOX_VERSION =
@@ -65,7 +68,7 @@ const EXPECTED_FILES = Object.freeze([
   'pages/shared/ui-tokens.css',
   'provider/anticensority-hosts-v1.data',
   'provider/anticensority-hosts-v1.envelope.json',
-].concat(EXPECTED_ICON_FILES).sort());
+].concat(EXPECTED_ICON_FILES, Object.keys(NOTICE_SOURCES)).sort());
 const FORBIDDEN_RUNTIME_TEXT = Object.freeze([
   'XMLHttpRequest',
   'BEGIN PRIVATE KEY',
@@ -105,11 +108,14 @@ function verifyPackage(packageRoot, sourceRoot) {
   Assert.strictEqual(Fs.statSync(packageRoot).isDirectory(), true);
   const files = listFiles(packageRoot);
   Assert.deepStrictEqual(files, EXPECTED_FILES);
+  verifyDistributionNotices(packageRoot, 'firefox');
 
   for (const relativePath of files) {
     const packaged = Fs.readFileSync(Path.join(packageRoot, relativePath));
     let sourcePath = Path.join(sourceRoot, relativePath);
-    if (relativePath.startsWith('background/common/')) {
+    if (NOTICE_SOURCES[relativePath]) {
+      sourcePath = NOTICE_SOURCES[relativePath];
+    } else if (relativePath.startsWith('background/common/')) {
       sourcePath = Path.resolve(
           sourceRoot,
           '..',
