@@ -5,6 +5,8 @@ const Assert = require('assert');
 const Fs = require('fs');
 const Os = require('os');
 const Path = require('path');
+const {distributionNoticeSources, verifyDistributionNotices} =
+  require('../../tooling/distribution-notices');
 
 const PACKAGED_CHROMIUM_ROOT = Path.resolve(
     __dirname,
@@ -185,6 +187,7 @@ function verifyPackageIntegrity(root) {
         .join('\n');
     throw new Error(`Forbidden Chromium package entries:\n${details}`);
   }
+  verifyDistributionNotices(root, 'chromium');
   return entries.length;
 
 }
@@ -280,6 +283,28 @@ if (typeof describe === 'function') {
       Assert.strictEqual(getForbiddenReason('vendor/LICENSE'), null);
       Assert.strictEqual(getForbiddenReason('vendor/LICENSE.md'), null);
       Assert.strictEqual(getForbiddenReason('NOTICE.txt'), null);
+
+    });
+
+    it('requires complete distribution notices in the package gate', function() {
+
+      const packageRoot = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'chromium-notices-'));
+      try {
+        const sources = Object.assign({}, distributionNoticeSources('chromium'), {
+          'background/vendor/tldts/LICENSE':
+            Path.resolve(__dirname, '../../../node_modules/tldts/LICENSE'),
+        });
+        for (const [name, source] of Object.entries(sources)) {
+          const destination = Path.join(packageRoot, name);
+          Fs.mkdirSync(Path.dirname(destination), {recursive: true});
+          Fs.copyFileSync(source, destination);
+        }
+        Assert.strictEqual(verifyPackageIntegrity(packageRoot), 6);
+        Fs.unlinkSync(Path.join(packageRoot, 'THIRD_PARTY_NOTICES/EMOJI-MIT.txt'));
+        Assert.throws(() => verifyPackageIntegrity(packageRoot));
+      } finally {
+        Fs.rmSync(packageRoot, {recursive: true, force: true});
+      }
 
     });
 

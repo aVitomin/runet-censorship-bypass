@@ -6,6 +6,8 @@ const Os = require('node:os');
 const Path = require('node:path');
 const {EXPECTED_FILES, verifyPackage} = require('./verify-package');
 const {firefoxPackageSource} = require('../../tooling/package-source');
+const {distributionNoticeSources} = require('../../tooling/distribution-notices');
+const noticeSources = distributionNoticeSources('firefox');
 
 const sourceRoot = Path.resolve(__dirname, '..');
 
@@ -15,7 +17,9 @@ function makePackage() {
   for (const relativePath of EXPECTED_FILES) {
     const target = Path.join(root, relativePath);
     let source = Path.join(sourceRoot, relativePath);
-    if (relativePath.startsWith('background/common/')) {
+    if (noticeSources[relativePath]) {
+      source = noticeSources[relativePath];
+    } else if (relativePath.startsWith('background/common/')) {
       source = Path.resolve(
           sourceRoot,
           '..',
@@ -75,6 +79,23 @@ describe('Firefox package verifier', function() {
     Fs.writeFileSync(Path.join(packageRoot, 'debug.log'), 'not runtime');
 
     Assert.throws(() => verifyPackage(packageRoot, sourceRoot));
+
+  });
+
+  it('rejects a missing distribution notice', function() {
+
+    packageRoot = makePackage();
+    Fs.unlinkSync(Path.join(packageRoot, 'THIRD_PARTY_NOTICES/NOTICE.txt'));
+    Assert.throws(() => verifyPackage(packageRoot, sourceRoot));
+
+  });
+
+  it('rejects altered license text', function() {
+
+    packageRoot = makePackage();
+    Fs.appendFileSync(Path.join(packageRoot, 'LICENSE'), '\nChanged license');
+    Assert.throws(() => verifyPackage(packageRoot, sourceRoot),
+        /Changed distribution license bytes/);
 
   });
 
