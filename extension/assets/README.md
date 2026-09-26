@@ -69,6 +69,9 @@ lockfile-pinned package, with one copy per browser distribution.
 
 ## Dataset licensing decision remains open
 
+The concise [dataset attribution statement](../../docs/legal/DATA_SOURCES.md)
+records the bundled source, purpose and limits of the licensing evidence.
+
 The [pinned generated-data repository](https://github.com/anticensority/generated-pac-scripts/tree/0448d748585ce0ed31434097d83b2b18236acbfb)
 contains the PAC input and README but no explicit data license.
 The [generator's Unlicense](https://github.com/anticensority/pac-script-generator/blob/869aad85dce20ace9d44d3a9d694b6ac84baea6a/LICENSE)

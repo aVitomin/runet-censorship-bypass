@@ -68,6 +68,11 @@ provider PAC/JavaScript. The production remote update endpoint and keys are
 unconfigured, so **Not configured** in Maintenance is expected. Do not insert
 an arbitrary key/URL for review. Bundled rules arrive with extension updates.
 
+Source attribution and the pinned dataset provenance are available in
+[Data sources and attribution](../legal/DATA_SOURCES.md) and the packaged
+`THIRD_PARTY_NOTICES/NOTICE.txt`. These are attribution statements, not a claim
+that the generator's license covers the dataset or grants redistribution rights.
+
 Automatic proxy routes require separately running compatible local services;
 their availability is not established by the data's presence or version.
 A user-requested connection check uses an eligible explicit-Proxy origin,

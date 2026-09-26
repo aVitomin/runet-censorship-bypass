@@ -38,6 +38,8 @@ Firefox includes verified Anticensority routing data. Its automatic proxy
 routes need a compatible local service, such as Anticensority, Tor Browser or
 Tor, running separately. You can also configure your own connection for
 explicit Proxy rules. The extension does not install or start these services.
+See [routing-data attribution and provenance](../legal/DATA_SOURCES.md) for
+the bundled source and the distinction between attribution and licensing.
 
 ### Main features
 
