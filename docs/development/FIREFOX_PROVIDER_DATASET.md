@@ -5,6 +5,10 @@ It contains no PAC program and no executable provider content. A clean install
 verifies and stores the baseline plus its default routing configuration, then
 remains `OFF` until the explicit Apply RPC is invoked.
 
+For upstream attribution and the unresolved dataset-licensing distinction,
+see [Data sources and attribution](../legal/DATA_SOURCES.md). Generator
+licensing is not inferred to cover its output or every input registry.
+
 ## Pinned source and deterministic generation
 
 The packaged snapshot was generated from:
