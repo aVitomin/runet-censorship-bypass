@@ -3,7 +3,10 @@
 const gulp = require('gulp');
 const buildCleanup = require('./build-cleanup');
 const {Transform} = require('node:stream');
+const Fs = require('node:fs/promises');
+const Path = require('node:path');
 const {firefoxPackageSource} = require('./src/tooling/package-source');
+const {distributionNoticeSources} = require('./src/tooling/distribution-notices');
 
 function renderTemplate(source, context) {
 
@@ -252,6 +255,18 @@ const copyFirefoxIcons = function(cb) {
 
 };
 
+function copyDistributionNotices(target, destination) {
+
+  return async function copyNotices() {
+    for (const [relativePath, source] of Object.entries(distributionNoticeSources(target))) {
+      const output = Path.join(destination, relativePath);
+      await Fs.mkdir(Path.dirname(output), {recursive: true});
+      await Fs.copyFile(source, output);
+    }
+  };
+
+}
+
 const buildChromium = gulp.series(
     cleanChromium,
     gulp.parallel(
@@ -260,6 +275,7 @@ const buildChromium = gulp.series(
         copyChromiumIcons,
         copyChromiumTransfer,
         copyChromiumTldts,
+        copyDistributionNotices('chromium', chromiumDst),
     ),
 );
 const buildFirefox = gulp.series(
@@ -269,6 +285,7 @@ const buildFirefox = gulp.series(
         copyFirefoxCommon,
         copyFirefoxIcons,
         copyFirefoxTldts,
+        copyDistributionNotices('firefox', firefoxDst),
     ),
 );
 
