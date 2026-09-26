@@ -362,6 +362,15 @@
 
   }
 
+  function pendingCredentialEntries(records) {
+
+    const credentialConfig = records[productConfigApi.CREDENTIALS_STORAGE_KEY];
+    // The credential record is optional when its descriptor requires no auth
+    // refs. Saved writes use the equivalent canonical record with no entries.
+    return credentialConfig === undefined ? [] : credentialConfig.entries;
+
+  }
+
   async function configurationStatus() {
 
     const saved = await settingsController.get();
@@ -389,8 +398,8 @@
       // records internally and return only the category, never a credential hash.
       const stored = await browser.storage.local.get(productConfigApi.CREDENTIALS_STORAGE_KEY);
       if (!categories.includes('proxyConnections') &&
-          JSON.stringify((stored[productConfigApi.CREDENTIALS_STORAGE_KEY] || {}).entries) !==
-          JSON.stringify((records[productConfigApi.CREDENTIALS_STORAGE_KEY] || {}).entries)) {
+          JSON.stringify(pendingCredentialEntries(stored)) !==
+          JSON.stringify(pendingCredentialEntries(records))) {
         categories.push('proxyConnections');
       }
       if (!categories.length ||
