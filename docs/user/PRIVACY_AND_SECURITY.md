@@ -20,6 +20,9 @@
 Эта страница описывает его границы. Изменения для ещё не выпущенной версии,
 включая перенос настроек и файлы для поддержки, описаны отдельно в
 [подготовке 1.0](../development/UPCOMING_1_0_USER_GUIDE.md#перенос-настроек-и-файл-для-поддержки).
+Для публикации следующего выпуска подготовлен отдельный
+[проект уведомления о приватности 1.0](../release/PRIVACY_1_0.md);
+он не объявляет новый выпуск доступным.
 
 ## Кому могут быть видны сетевые данные
 
@@ -93,9 +96,12 @@ Firefox использует `proxy`, `webRequest`, `webRequestBlocking`, `stora
 - Firefox поставляет проверенный локальный набор данных. Адрес и публичный ключ
   удалённого обновления пока не настроены, поэтому ручная и фоновая загрузка
   отключены. Встроенный набор продолжает работать.
-- **Проверка подключения** запускается пользователем, не отправляет cookies или
-  учётные данные сайта и не меняет правила, данные или владение настройкой
-  прокси. Если поддерживаемый HTTP/HTTPS-прокси запросит аутентификацию,
+- **Проверка подключения** в Firefox запускается пользователем. Chromium также
+  может запустить её после применения режима Прокси в панели и повторять для
+  ранее выбранного адреса, пока он соответствует действующим настройкам.
+  Проверка не отправляет cookies или учётные данные сайта и не меняет правила,
+  данные или владение настройкой прокси. Firefox не следует перенаправлениям;
+  Chromium может следовать им. Если HTTP/HTTPS-прокси запросит аутентификацию,
   расширение может передать ему сохранённые учётные данные прокси; в
   диагностическом результате они не показываются.
 
@@ -146,3 +152,10 @@ stored in browser-local storage; saved passwords are not returned to the UI or
 diagnostics. A selected proxy or local service can observe destination and
 protocol-visible traffic. Never publish credentials, private proxy/source URLs,
 browser profiles, routing data, or browsing history.
+
+Firefox connection checks are user-triggered. Chromium can also check after
+popup Proxy Apply and repeat checks for a still-relevant established target.
+Checks omit website credentials/referrer; matching proxy authentication can
+still occur. Chromium can follow redirects, while Firefox does not.
+The [1.0 publication privacy draft](../release/PRIVACY_1_0.md) separately covers
+the unreleased transfer workflow and current development data handling.

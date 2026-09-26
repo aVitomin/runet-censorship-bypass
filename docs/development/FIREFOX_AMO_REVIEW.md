@@ -1,147 +1,140 @@
 # Firefox AMO reviewer notes
 
-## Purpose and permissions
+## Scope and purpose
 
-Runet Censorship Bypass routes user-selected and locally classified requests
-through configured censorship-bypass proxies. A clean installation stays OFF;
-proxy control changes only after the user presses **Enable**, and **Disable**
-releases the extension-owned setting and restores Firefox's underlying proxy
-configuration.
+Submission-note draft for the planned 1.0 release, audited against
+`8361608fa4ac52cc118cf5e6d32b3feb8772d167`. No new version has been uploaded.
+Attach these notes to the exact validated package and source archive; record
+that package's version, source commit and checksums separately. The current
+manifest still says `0.0.4.0`, with minimum Firefox `154.0`.
 
-- `proxy` is required to install and exact-match release the global fail-closed
-  proxy floor and to return per-request Firefox `ProxyInfo` routes.
-- `webRequest` and `webRequestBlocking` implement the synchronous request-ID
-  authorization guard and the bounded proxy-authentication challenge handler.
-- `<all_urls>` is required because the guard and proxy decision must cover every
-  normal and private-window network request while protection is active. A
-  narrower host set would create an unguarded routing gap.
-- `storage` keeps strict product configuration, durable OFF/ON recovery
-  metadata, credential records and exact local dataset pointers.
-- `alarms` schedules one 12-hour authenticated provider-dataset check. A check
-  can only stage verified data and never enables routing, promotes while active,
-  changes proxy ownership or sends credentials.
-- `notifications` is used only for fixed localized attention alerts after
-  proxy control loss, blocked recovery or a failed user-requested connection
-  check. Notifications never contain a hostname, URL, proxy endpoint or
-  credential.
-- `incognito: "spanning"` and explicit private-window access are required by
-  the fail-closed architecture. Activation is refused when private access is
-  denied; revocation leaves the global floor blocking private traffic until
-  the user clears protection.
+Runet Censorship Bypass controls Firefox routing with Auto, Proxy and Direct
+site rules. It is not a VPN or a proxy service. A clean installation starts off.
+Save records settings; Apply activates them. Turn off releases the
+extension-owned proxy setting without discarding saved settings.
 
-The extension contains no content scripts and injects no code into web pages.
-Its CSP permits only extension-local scripts, forbids objects and permits
-HTTP(S) connections for the user-requested connection check below and for the
-fixed-origin authenticated provider-data check described later.
-The popup reads the active tab only to derive a normalized HTTP(S) hostname;
-the background site RPC never returns the full URL, path or query.
-The user-triggered connection check reuses the origin of an explicit Proxy
-site, sends no credentials or referrer, follows no redirect, does not read the
-response body and has a bounded deadline. It does not use a telemetry endpoint
-or run automatically.
+## Permissions and data handling
 
-## Data collection declaration
+The complete manifest inventory and per-permission data explanations are in
+the [permission audit](../release/PERMISSIONS_AND_PRIVACY_1_0.md).
 
-Firefox's built-in data collection declaration is:
+- `proxy`: apply/release browser proxy control and choose request routes.
+- `webRequest` and `webRequestBlocking`: authorize requests, answer matching
+  proxy-authentication challenges and clear request-bound retry state.
+- `<all_urls>`: cover eligible web destinations for routing/authentication,
+  including private windows once access is granted; not page-content scraping.
+- `storage`: local settings, credentials, routing data/references, recovery and
+  operational state.
+- `alarms`: provider-check scheduling, gated by the release trust configuration.
+  The current unconfigured remote channel does not perform update requests.
+- `notifications`: localized attention notices, without credentials or
+  private destination/proxy details.
 
-```json
-{
-  "required": ["authenticationInfo", "browsingActivity"]
-}
-```
+There are no content scripts, developer telemetry or analytics uploads.
+The required Mozilla data types are `authenticationInfo` and
+`browsingActivity`: proxy authentication and destination information can be
+transmitted as part of the routing function. They are not `none`.
+See the [1.0 privacy notice](../release/PRIVACY_1_0.md).
 
-`none` would not accurately describe a proxy product. When protection is
-enabled, the selected proxy necessarily receives the destination host (and an
-HTTP proxy may receive the request target), which is browsing activity. When a
-user configures an authenticated proxy, the username/password are sent only to
-that exact request-authorized proxy challenger. These transmissions are the
-primary routing function and are enabled only by the user's Apply action.
+Stored passwords are not returned in UI reads, diagnostics or exports.
+Authentication is restricted to the matching request-authorized proxy and its
+applied configuration; Save alone cannot replace active credentials.
+HTTP/HTTPS proxy authentication is supported; universal SOCKS authentication
+is not claimed. Existing connections and browser authentication caches may
+outlive Apply.
 
-The extension sends no analytics, telemetry, crash reports, advertising IDs,
-search feed or remote configuration. Once release trust is configured, a
-manual or 12-hour background check requests the fixed signed provider manifest,
-signature and declarative artifact from one pinned HTTPS origin. Routing
-configuration, dataset lookups and durable metadata stay local. Passwords stay
-in `browser.storage.local`, are loaded only into an in-memory synchronous
-resolver for a verified active session, and never appear in UI reads, logs,
-RPC results, errors, diagnostics, dataset metadata or routing descriptors.
+## Private windows and browser boundaries
 
-This declaration follows Mozilla's current built-in consent taxonomy and the
-policy definition of data transmitted outside the add-on or local browser:
+Firefox's proxy setting affects private windows too, so the extension requires
+explicit private-window access before activation, even from a regular window.
+Use Firefox's add-on settings to allow access, return to Options, choose
+**Check again**, then **Apply**. The extension cannot grant this permission.
+Checking permission does not activate routing.
 
-- <https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/>
-- <https://extensionworkshop.com/documentation/publish/add-on-policies/>
+Restricted-site access is a different browser permission and is not an Apply
+prerequisite. The extension does not claim to detect that permission.
+Privileged `about:` pages are not ordinary routable sites.
 
-## Code and data trust boundary
+Revoking private access while active can leave requests blocked until the user
+turns routing off or restores permission. Loss of proxy ownership withdraws the
+active session without overwriting another owner's setting. Do not test in a
+personal profile. Firefox's blocking fallback has a possible local-service
+collision; there is no universal fail-closed or security-protection guarantee.
 
-There is no remote executable code. The packaged provider input is a local
-declarative `HOST_BUCKETS_V1` JSON-compatible `.data` artifact. The data suffix
-keeps Mozilla's source-code scanner from treating the 11.6 MiB immutable table
-as JavaScript/JSON source; it does not change or obscure the content. Its exact
-bytes, size, SHA-256, rule count and strict schema are verified before index
-construction. Provider PAC/JavaScript is not packaged or evaluated.
+## Routing data and connection checks
 
-The only vendored parser used by the Firefox background is the same pinned
-`tldts` dependency already present in the maintained lockfile. Its minified UMD
-build and upstream license are both packaged solely to derive the exact
-public-suffix-aware domain scope shown by the current-site popup; it performs no
-network access and does not participate in provider data execution.
+Firefox packages verified declarative Anticensority routing data, not executable
+provider PAC/JavaScript. The production remote update endpoint and keys are
+unconfigured, so **Not configured** in Maintenance is expected. Do not insert
+an arbitrary key/URL for review. Bundled rules arrive with extension updates.
 
-The authenticated-update control plane uses strict no-input RPCs and an alarm;
-callers cannot provide a URL, key, provider or artifact. This source revision
-still has an intentionally disabled empty release trust configuration because
-the actual fixed HTTPS manifest endpoint and raw Ed25519 public key/stable keyId
-have not been supplied. It therefore performs no production update request
-until those fixed values are added and reviewed.
+Automatic proxy routes require separately running compatible local services;
+their availability is not established by the data's presence or version.
+A user-requested connection check uses an eligible explicit-Proxy origin,
+omits website credentials/referrer, does not follow redirects and discards the
+body. A matching proxy can still request configured proxy credentials. Limited
+health status is not proof of all traffic routes.
 
-## Fail-closed model
-
-Activation first verifies the exact local dataset and immutable routing
-snapshot, then installs a canonical random-loopback SOCKS5 floor, confirms
-exact `controlled_by_this_extension` ownership, commits durable ON and only
-then publishes the READY session. During initialization, failures, control
-loss and private-access loss, protected requests do not become Direct.
-
-The floor uses a cryptographically random port in `49152-65535` on `127.0.0.1`
-with `proxyDNS: true`. Assurance identifier
-`RANDOM_LOOPBACK_UNVERIFIED_V1` explicitly records the residual: WebExtension
-APIs cannot reserve or prove the port unoccupied, and a local SOCKS service on
-that exact endpoint can defeat the floor. Malicious local software is outside
-the product threat model; no native helper is used.
-
-Firefox top-level `null` is used only for an intentionally authorized Direct
-decision. Proxy chains end with a Firefox fallback terminator and a callback
-budget equal only to validated proxy candidates. Chromium's terminal Direct
-fallback is intentionally stripped on Firefox: successful proxy/failover
-behavior is preserved, while exhaustion fails closed.
+Chromium differs: it supports additional PAC/custom sources and automatic
+source/health checks. Those capabilities are not Firefox features.
 
 ## Reproduce and test
 
-Build instructions and archive layout are in
-[`FIREFOX_RELEASE_BUILD.md`](FIREFOX_RELEASE_BUILD.md). The short path is:
+Use a fresh disposable desktop profile, the exact candidate XPI, and only
+reviewer-controlled test origins/proxies and synthetic credentials. No personal
+account or paid service is required. `news.example` below is a rule identifier,
+not a public connectivity-test service. Source reproduction and package layout:
+[Firefox build instructions](FIREFOX_RELEASE_BUILD.md).
 
-```powershell
-$Project = '.\extension'
-npm ci --prefix $Project
-npm --prefix $Project run verify:firefox
-npm --prefix $Project run release:firefox
-```
+1. Install the candidate. For unsigned pre-submission functional review, use
+   temporary installation; ordinary user installation requires Mozilla signing.
+   Confirm routing starts off and existing proxy settings are not activated
+   by merely opening Options.
+2. With private access denied, confirm Apply is unavailable with an explanation.
+   Grant access through Firefox's add-on settings, return, choose Check again.
+   Confirm this alone has not activated routing; explicitly Apply initial settings.
+3. Add `news.example` → Direct → This exact host. Save without Apply.
+   Confirm active settings remain unchanged and the pending summary contains
+   **Site rules changed**, not **Proxy connections changed**. Then Apply.
+4. Change a controlled proxy endpoint or synthetic credential and Save.
+   Confirm **Proxy connections changed** appears and the previous applied
+   connection remains in use until Apply. Exercise supported HTTP/HTTPS proxy
+   authentication without recording the synthetic password in review logs.
+5. Test Direct and Proxy with a reviewer-controlled web origin and enabled
+   test proxy. Exercise Auto with the bundled rules and an appropriate local
+   service, or record the missing service as an environmental prerequisite.
+   Do not interpret a provider match as a working proxy.
+6. With Options already open, Apply from the popup/another extension surface.
+   Confirm status updates without reload. Repeat with an unsaved Options draft:
+   preserve its values, keep Save available and Apply disabled until resolved.
+   Popup Apply warns before including other saved changes; Review in Options
+   applies nothing. Closing a popup before Apply discards its local choice.
+7. Export settings and preview reimport. Confirm rules/proxy endpoints are
+   present but usernames/passwords/custom-source URLs are absent. Confirm import
+   replaces Saved only, makes no provider request and leaves active routing alone.
+   Re-enter missing credentials (or explicitly mark unnecessary), Save, then Apply.
+   A support export contains only environment/status and cannot be imported.
+8. Confirm Maintenance shows bundled routing data and the unconfigured remote
+   channel. Review EN/RU labels, pending summaries and local connection-check results.
+9. Recreate the background context or restart Firefox and confirm recovery uses
+   previously applied settings, not pending Saved settings. Test private-access
+   revocation and external proxy-control loss in the disposable profile.
+10. Turn off the extension's proxy control. Confirm the underlying browser proxy
+    configuration is restored when the extension still owns the setting.
+    Turning off does not erase saved settings.
 
-Basic functional review in Firefox 154.0.1:
+These are reviewer instructions, not evidence that this documentation task ran
+a new release QA cycle. Existing [visual regression evidence](../assets/store/regression-results.json)
+covers Firefox 156.0.1 at the preceding runtime revision. Repeat release QA on
+the exact submitted package. Firefox native popup remains
+**manual pre-release capture required**.
 
-1. Temporarily install the generated unsigned XPI and grant private-window
-   access. Confirm popup state is OFF and existing manual proxy behavior is
-   unchanged.
-2. Open Settings, save an explicit Direct rule and an explicit Proxy rule, and
-   optionally add clearly disposable proxy credentials.
-3. Press Enable. Confirm the popup reports ACTIVE only after READY; exercise an
-   explicit Direct request, an explicit Proxy request and a provider match.
-4. Close the event page long enough for genuine recreation and confirm the
-   popup reports RECOVERED and routing/authentication still use the exact
-   durable dataset/configuration.
-5. Press Disable and confirm the prior Firefox proxy configuration is restored.
-6. Revoke private access or transfer proxy control while active. Confirm the
-   runtime withdraws the session, stays fail-closed and can be safely cleared.
+## Maintainer submission attachments
 
-All reviewer tests should use disposable local origins/proxies and synthetic
-credentials. No real credential is required for review.
+Provide the exact unsigned candidate XPI, reviewer source archive, checksums,
+source commit and reproducible build instructions through AMO's appropriate
+fields. Do not include profiles, raw logs, secrets or personal test accounts.
+Use the [listing draft](../release/FIREFOX_AMO_LISTING_1_0.md) and
+[publication checklist](../release/STORE_PUBLICATION_CHECKLIST.md) only after
+their final package/privacy review. Do not claim this fork is an already
+published AMO listing or reuse a legacy add-on identity.
