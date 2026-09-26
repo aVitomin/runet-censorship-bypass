@@ -752,6 +752,179 @@ describe('Firefox production control package', function() {
     Assert.strictEqual((await page.send({type: 'firefox.configuration.get'})).result.pending, false);
   });
 
+  it('treats absent and canonical empty credentials as the same pending state', async function() {
+    const fresh = await unifiedFixture();
+    Assert.strictEqual(
+        Object.hasOwn(fresh.storage.values, ProductConfig.CREDENTIALS_STORAGE_KEY),
+        false,
+    );
+    Assert.strictEqual((await fresh.send({
+      type: 'firefox.activation.apply', expectedRevision: 0,
+    })).ok, true);
+    const effectiveRecords = fresh.storage.values[
+        ProductConfig.GENERATIONS_STORAGE_KEY].records;
+    Assert.strictEqual(
+        Object.hasOwn(effectiveRecords[0], ProductConfig.CREDENTIALS_STORAGE_KEY),
+        false,
+    );
+    const freshSaved = (await fresh.send({type: 'firefox.settings.get'})).result;
+    freshSaved.settings.rules.direct.push('news.example');
+    Assert.strictEqual((await fresh.send({
+      type: 'firefox.settings.replace',
+      expectedRevision: freshSaved.revision,
+      settings: freshSaved.settings,
+    })).ok, true);
+    Assert.strictEqual(
+        fresh.storage.values[ProductConfig.CREDENTIALS_STORAGE_KEY].entries.length,
+        0,
+    );
+    Assert.deepStrictEqual(
+        (await fresh.send({type: 'firefox.configuration.get'})).result.pendingCategories,
+        ['siteRules'],
+    );
+
+    const reverse = await unifiedFixture();
+    const first = (await reverse.send({type: 'firefox.settings.get'})).result;
+    first.settings.rules.direct.push('first.example');
+    Assert.strictEqual((await reverse.send({
+      type: 'firefox.settings.replace',
+      expectedRevision: first.revision,
+      settings: first.settings,
+    })).ok, true);
+    Assert.strictEqual((await reverse.send({
+      type: 'firefox.activation.apply', expectedRevision: 1,
+    })).ok, true);
+    const second = (await reverse.send({type: 'firefox.settings.get'})).result;
+    second.settings.rules.direct.push('second.example');
+    Assert.strictEqual((await reverse.send({
+      type: 'firefox.settings.replace',
+      expectedRevision: second.revision,
+      settings: second.settings,
+    })).ok, true);
+    Assert.deepStrictEqual(
+        (await reverse.send({type: 'firefox.configuration.get'})).result.pendingCategories,
+        ['siteRules'],
+    );
+    await reverse.storage.area.remove(ProductConfig.CREDENTIALS_STORAGE_KEY);
+    Assert.deepStrictEqual(
+        (await reverse.send({type: 'firefox.configuration.get'})).result.pendingCategories,
+        ['siteRules'],
+    );
+  });
+
+  it('reports real proxy and credential changes in the pending summary', async function() {
+    const ownProxy = (id, host, credentials) => ({
+      id,
+      enabled: true,
+      type: 'HTTP',
+      host,
+      port: 8080,
+      proxyDNS: false,
+      failoverTimeoutSeconds: null,
+      useAsDirectReplacement: false,
+      credentials,
+    });
+    const activate = async (proxies) => {
+      const page = await unifiedFixture();
+      const saved = (await page.send({type: 'firefox.settings.get'})).result;
+      saved.settings.ownProxies = proxies;
+      Assert.strictEqual((await page.send({
+        type: 'firefox.settings.replace',
+        expectedRevision: saved.revision,
+        settings: saved.settings,
+      })).ok, true);
+      Assert.strictEqual((await page.send({
+        type: 'firefox.activation.apply', expectedRevision: 1,
+      })).ok, true);
+      return page;
+    };
+    const saveAndReadCategories = async (page, change) => {
+      const saved = (await page.send({type: 'firefox.settings.get'})).result;
+      change(saved.settings);
+      Assert.strictEqual((await page.send({
+        type: 'firefox.settings.replace',
+        expectedRevision: saved.revision,
+        settings: saved.settings,
+      })).ok, true);
+      return (await page.send({
+        type: 'firefox.configuration.get',
+      })).result.pendingCategories;
+    };
+    const none = () => ({mode: 'NONE'});
+    const secret = (username, password) => ({mode: 'SET', username, password});
+
+    const endpoint = await activate([ownProxy('one', 'first.example', none())]);
+    Assert.deepStrictEqual(await saveAndReadCategories(endpoint, (settings) => {
+      settings.ownProxies[0].host = 'second.example';
+    }), ['proxyConnections']);
+
+    const added = await activate([ownProxy('one', 'first.example', none())]);
+    Assert.deepStrictEqual(await saveAndReadCategories(added, (settings) => {
+      settings.ownProxies[0].credentials = secret('account-a', 'token-a');
+    }), ['proxyConnections']);
+
+    const removed = await activate([
+      ownProxy('one', 'first.example', secret('account-a', 'token-a')),
+    ]);
+    Assert.deepStrictEqual(await saveAndReadCategories(removed, (settings) => {
+      settings.ownProxies[0].credentials = none();
+    }), ['proxyConnections']);
+
+    const username = await activate([
+      ownProxy('one', 'first.example', secret('account-a', 'token-a')),
+    ]);
+    Assert.deepStrictEqual(await saveAndReadCategories(username, (settings) => {
+      settings.ownProxies[0].credentials = secret('account-b', 'token-a');
+    }), ['proxyConnections']);
+
+    const password = await activate([
+      ownProxy('one', 'first.example', secret('account-a', 'token-a')),
+    ]);
+    Assert.deepStrictEqual(await saveAndReadCategories(password, (settings) => {
+      settings.ownProxies[0].credentials = secret('account-a', 'token-b');
+    }), ['proxyConnections']);
+
+    const rebound = await activate([
+      ownProxy('one', 'first.example', secret('account-a', 'token-a')),
+      ownProxy('two', 'second.example', none()),
+    ]);
+    Assert.deepStrictEqual(await saveAndReadCategories(rebound, (settings) => {
+      settings.ownProxies[0].credentials = none();
+      settings.ownProxies[1].credentials = secret('account-a', 'token-a');
+    }), ['proxyConnections']);
+  });
+
+  it('keeps independent pending summary categories when semantic areas change', async function() {
+    const page = await unifiedFixture();
+    const initial = (await page.send({type: 'firefox.settings.get'})).result;
+    initial.settings.ownProxies = [{
+      id: 'one', enabled: true, type: 'HTTP', host: 'first.example', port: 8080,
+      proxyDNS: false, failoverTimeoutSeconds: null, useAsDirectReplacement: false,
+      credentials: {mode: 'NONE'},
+    }];
+    Assert.strictEqual((await page.send({
+      type: 'firefox.settings.replace',
+      expectedRevision: initial.revision,
+      settings: initial.settings,
+    })).ok, true);
+    Assert.strictEqual((await page.send({
+      type: 'firefox.activation.apply', expectedRevision: 1,
+    })).ok, true);
+    const saved = (await page.send({type: 'firefox.settings.get'})).result;
+    saved.settings.rules.direct.push('news.example');
+    saved.settings.ownProxies[0].host = 'second.example';
+    saved.settings.flags.noDirect = true;
+    Assert.strictEqual((await page.send({
+      type: 'firefox.settings.replace',
+      expectedRevision: saved.revision,
+      settings: saved.settings,
+    })).ok, true);
+    Assert.deepStrictEqual(
+        (await page.send({type: 'firefox.configuration.get'})).result.pendingCategories,
+        ['siteRules', 'proxyConnections', 'routingSettings'],
+    );
+  });
+
   it('does not restore omitted credentials and rejects Apply until explicit re-entry', async function() {
     const page = await unifiedFixture();
     const saved = (await page.send({type: 'firefox.settings.get'})).result;
