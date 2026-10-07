@@ -1,3 +1,4 @@
+> В планах сделать релиз 1.0 с поддержкой firefox и chrome магазинов, но к сожалению свободного врмени не хватает, на данный момент есть полностью рабочая версия 0.0.4, используйте ее
 # Runet Censorship Bypass
 
 [![Stable release](https://img.shields.io/github/v/release/aVitomin/runet-censorship-bypass?label=stable)](https://github.com/aVitomin/runet-censorship-bypass/releases)
