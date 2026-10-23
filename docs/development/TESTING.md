@@ -273,6 +273,89 @@ npm --prefix $Project run verify:firefox
 Gate запускает Firefox lint, deterministic tests и проверенную сборку. Он не
 требует Chromium gate, если изменение не затрагивает shared input.
 
+### Firefox proxy-auth и внешний владелец
+
+После `verify:firefox` отдельный browser smoke проверяет собранный пакет без
+измерительных вставок на установленном Firefox (`FIREFOX_BIN` позволяет выбрать
+executable):
+
+```powershell
+node .\extension\src\firefox\test\firefox-auth-control-smoke.js
+```
+
+[Сценарий](../../extension/src/firefox/test/firefox-auth-control-smoke.js)
+создаёт одноразовый профиль, локальные HTTP receivers и временное расширение
+для захвата proxy settings. Проверяются реальные HTTP 407, изменение только
+пароля того же proxy endpoint, Save B при Effective A, настоящее event-page
+recreation с pending B, затем явный Apply B. При ошибочном пароле допускаются
+две credential attempts, следующий запрос получает собственный retry budget.
+Origin 401 остаётся ответом сайта: handler не отменяет website authentication
+и не подставляет proxy credentials. Сценарий проверяет настоящий browser retry
+с отдельными учётными данными сайта через Proxy и explicit Direct, а также
+отсутствие proxy credentials у origin. Proxy 407 без настроенных credentials
+завершается отказом без Direct fallback.
+
+Второе тестовое расширение приобретает proxy settings: product переходит в
+durable OFF и показывает `EXT`. Clear возвращает `OWNERSHIP_MISMATCH`, сохраняя
+внешний proxy. После удаления внешнего владельца старый product floor
+освобождается, остаются OFF и исходная Direct-настройка. Проверяются реальные
+receiver responses и значения Action API, не визуальная отрисовка значка.
+
+Пароли генерируются случайно; stdout содержит только этапы и категории
+`NONE`/`A`/`B`/`OTHER`, без headers, паролей и raw browser errors. Перед каждой
+сетевой проверкой privileged test driver очищает auth cache **только временного
+профиля** через Firefox
+[`nsIHttpAuthManager.clearAll`](https://searchfox.org/firefox-main/source/netwerk/protocol/http/nsIHttpAuthManager.idl).
+Это принудительно проверяет новый challenge; production Apply не очищает
+browser auth cache, а существующие соединения могут пережить Apply. Отрицательные
+сценарии используют same-origin page fetch: отменённая navigation может не
+выдать событие load, которого ждёт Marionette. Timeout fetch считается ошибкой,
+требуется настоящий network rejection.
+
+Полный запуск включает 65 секунд idle и проверяет новый boot ID. `--quick`
+пропускает только этот шаг для разработки и явно выводит
+`recreationChecked: false`; он не заменяет полный сценарий. Browser smoke не
+входит в deterministic `verify:firefox`. Профиль, helper и серверы удаляются
+после завершения. CONNECT/HTTPS proxy, native prompt/UI, гонка in-flight auth с
+Apply и полный restart подписанного постоянно установленного Firefox package
+этим smoke не проверяются.
+
+Тот же maintained smoke проверяет ручной источник отдельно:
+
+```powershell
+node .\extension\src\firefox\test\firefox-auth-control-smoke.js --manual
+```
+
+Флаг `--manual` исключает Anticensority artifact только из одноразовой тестовой
+копии пакета. Сценарий подтверждает недоступность базы, Save при OFF, manual
+Apply с own-proxy auth и noDirect, настоящий idle event-page restart с pending
+Anticensority/password changes и восстановление manual Effective. Неудачный
+provider Apply сохраняет прежнюю manual session; проверяются последующий manual
+Apply, explicit Direct, website auth и ownership/OFF. Эта проверка не доказывает
+отсутствие фоновых source requests: в manual mode они остаются включёнными,
+а stage/defer contract проверяется детерминированными тестами.
+
+### Firefox routing-data refresh
+
+Детерминированные suites `provider-source-updater`, `provider-update-control`,
+`dataset-https`, `dataset-promotion` и `saved-effective` входят в Firefox gate.
+Они проверяют фиксированные HTTPS URL, границы redirects/bytes/deadline,
+строгий разбор данных и source timestamp, distinct HTTPS/signed trust,
+rollback/conflict и immutable-artifact collision, queued input snapshot,
+OFF/ON promotion, pending Saved isolation, private-access/control loss и
+cross-store crash recovery. Manual-mode cases проверяют Apply/recovery без
+provider artifact/store/index, exact built-in identity, source Save/Apply isolation,
+legacy source default и deferred refresh при manual Saved или Effective.
+Старые signed fixtures остаются отдельными
+регрессиями; успешный HTTPS тест не доказывает проверку подписи автора.
+
+Проверка настоящего источника должна различать дату исходных данных и время
+проверки. Валидный старый источник может дать `UNCHANGED`; это не ошибка и не
+доказательство свежего dataset. Browser QA отдельно проверяет ручное обновление,
+срабатывание alarm, OFF без включения, обновление при READY с pending Saved и
+сохранение prepared candidate при blocked/control-loss. Детерминированный gate
+сам по себе не является подтверждением этих browser-сценариев.
+
 ### Aggregate maintained verification
 
 ```powershell

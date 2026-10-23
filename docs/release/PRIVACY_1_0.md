@@ -2,10 +2,9 @@
 
 For Runet Censorship Bypass in
 [aVitomin/runet-censorship-bypass](https://github.com/aVitomin/runet-censorship-bypass).
-Audited on 2026-09-26 against `8361608fa4ac52cc118cf5e6d32b3feb8772d167`.
-This describes current development behavior for the planned release, not a
-released 1.0 product. Before store submission, approve this text against the
-exact submitted package and publish a stable, publicly accessible policy.
+This describes development version `1.0.0`, not a released 1.0 product.
+Before store submission, approve this text against the exact submitted package
+and publish a stable, publicly accessible policy.
 The [published-release notice](../user/PRIVACY_AND_SECURITY.md) remains separate.
 
 ## Data used in your browser
@@ -35,7 +34,9 @@ browser profile may be able to access it.
 - **Proxy authentication:** explicitly configured usernames/passwords can be
   supplied to the matching proxy challenger for a request authorized by the
   applied configuration. They are not sent as website login credentials or
-  uploaded to the developer. Save alone does not change active credentials;
+  uploaded to the developer. Firefox leaves website authentication to the
+  browser without resolving stored proxy credentials. Save alone does not
+  change active credentials;
   Apply is separate. Existing connections and browser authentication caches
   may continue using older credentials. HTTP/HTTPS proxy authentication is
   supported; universal SOCKS authentication is not promised. The transport
@@ -48,11 +49,21 @@ browser profile may be able to access it.
   source URLs may themselves contain sensitive access information, so keep
   them private. The extension does not upload your rule list or configured
   proxy passwords as a provider-update payload.
-- **Firefox routing data:** bundled verified data is read locally. The remote
-  update endpoint and trust keys are currently unconfigured, so manual and
-  scheduled remote data checks make no production update request. Enabling
-  such a channel would require a separately reviewed release and updated
-  disclosures; it is not advertised as available here.
+- **Firefox routing data:** bundled verified data is read locally. Manual
+  refresh and scheduled checks every 12 hours fetch static routing data from
+  fixed Anticensority sources on `anticensority.github.io` and
+  `raw.githubusercontent.com`. Those servers receive ordinary request and
+  connection metadata, including a network-visible IP address. Requests omit
+  website credentials and referrer and allow at most three redirects, each to
+  one of the two exact configured source URLs. The final URL is validated too.
+  Requests do not upload your rules or proxy credentials as update data.
+  The extension validates format, size, source date and locally computed
+  hashes without executing downloaded PAC JavaScript. These checks do not
+  establish an author's cryptographic signature; the separate signed update
+  channel is unconfigured. Updates do not enable routing when off or apply
+  pending user settings when on. Choosing Only my rules and connections does
+  not disable these source requests; it defers provider installation while
+  saved or applied settings select manual.
 - **Connection checks:** Firefox makes a user-requested GET to an eligible
   explicit-Proxy target origin, omits website credentials and referrer, does
   not follow redirects and discards the body. Chromium can check after popup

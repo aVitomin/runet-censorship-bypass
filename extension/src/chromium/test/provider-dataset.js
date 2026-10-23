@@ -522,6 +522,18 @@ Mocha.describe('declarative provider dataset', function() {
 
       });
 
+  Mocha.it('keeps HTTPS-validated source trust distinct when planning activation', async function() {
+
+    const result = await verify(createArtifact({trust: Dataset.TRUST.REMOTE_HTTPS_VALIDATED}));
+    Chai.expect(result).to.include({ok: true, activationEligible: true,
+      trust: 'REMOTE_HTTPS_VALIDATED'});
+    const plan = DatasetState.planDatasetActivation({protectionIntended: true,
+      providerKey: PROVIDER_KEY, candidate: result});
+    Chai.expect(plan.kind).to.equal(DatasetState.ACTIONS.ACTIVATE_CANDIDATE);
+    Chai.expect(plan.selected.trust).to.equal('REMOTE_HTTPS_VALIDATED');
+
+  });
+
   Mocha.it('allows inert provenance text without treating it as code',
       async function() {
 

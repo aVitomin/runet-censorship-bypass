@@ -92,6 +92,29 @@ Mocha.describe('Chromium PAC routing regressions', function() {
 
   });
 
+  Mocha.it('fresh defaults route only onion through both local Tor endpoints', async function() {
+
+    for (const noDirect of [false, true]) {
+      const result = await cook({noDirect}, RAW_ALWAYS_PROXY_PAC);
+      Chai.expect(result.ok).to.equal(true);
+      for (const host of ['service.onion', 'child.service.onion']) {
+        Chai.expect(evaluatePac(result.cookedPacData, host))
+            .to.equal('SOCKS5 localhost:9050; SOCKS5 localhost:9150');
+      }
+      Chai.expect(evaluatePac(result.cookedPacData, 'provider-proxy.test'))
+          .to.equal(PROVIDER_PROXY_RESULT);
+      const explicit = await cook({noDirect,
+        rules: [{pattern: '*.service.onion', action: 'PROXY'}]}, RAW_ALWAYS_PROXY_PAC);
+      Chai.expect(explicit.ok).to.equal(false);
+      Chai.expect(explicit.error.code).to.equal('PROXY_RULE_NO_CANDIDATE');
+    }
+    const direct = await cook({rules: [{pattern: 'service.onion', action: 'DIRECT'}]});
+    Chai.expect(evaluatePac(direct.cookedPacData, 'service.onion')).to.equal('DIRECT');
+    const whitelist = await cook({whitelist: ['allowed.test']});
+    Chai.expect(evaluatePac(whitelist.cookedPacData, 'service.onion')).to.equal('DIRECT');
+
+  });
+
   Mocha.it('keeps exact-host rules exact and wildcard rules domain-wide', async function() {
 
     const exact = await cook({
@@ -111,6 +134,31 @@ Mocha.describe('Chromium PAC routing regressions', function() {
         .to.equal('HTTPS own.example:443');
     Chai.expect(evaluatePac(wildcard.cookedPacData, 'sub.example.com'))
         .to.equal('HTTPS own.example:443');
+
+  });
+
+  Mocha.it('keeps replacement-only WARP out of Proxy candidates and explicit Direct', async function() {
+
+    for (const noDirect of [false, true]) {
+      const warp = {enabled: true, useForProxyRules: false, useAsDirectReplacement: true};
+      const result = await cook({warp, noDirect, replaceDirectWithProxy: true,
+        ownProxies: [ownProxy('own.example', 443)],
+        rules: [{pattern: '*.proxy.example', action: 'PROXY'},
+          {pattern: 'direct.example', action: 'DIRECT'}]});
+      Chai.expect(result.ok).to.equal(true);
+      Chai.expect(evaluatePac(result.cookedPacData, 'example.test'))
+          .to.equal('SOCKS5 127.0.0.1:40000; HTTPS 127.0.0.1:40000');
+      for (const host of ['proxy.example', 'child.proxy.example']) {
+        Chai.expect(evaluatePac(result.cookedPacData, host)).to.equal('HTTPS own.example:443');
+      }
+      Chai.expect(evaluatePac(result.cookedPacData, 'direct.example')).to.equal('DIRECT');
+      Chai.expect(evaluatePac(result.cookedPacData, 'provider-proxy.test'))
+          .to.equal(PROVIDER_PROXY_RESULT);
+      const rejected = await cook({warp, noDirect,
+        rules: [{pattern: '*.proxy.example', action: 'PROXY'}]}, RAW_ALWAYS_PROXY_PAC);
+      Chai.expect(rejected.ok).to.equal(false);
+      Chai.expect(rejected.error.code).to.equal('PROXY_RULE_NO_CANDIDATE');
+    }
 
   });
 
@@ -480,7 +528,7 @@ Mocha.describe('Chromium PAC routing regressions', function() {
         Chai.expect(routed).to.equal([
           'HTTPS first.example:443',
           'SOCKS5 second.example:1080',
-          'SOCKS5 127.0.0.1:9050',
+          'SOCKS5 localhost:9050',
           'SOCKS5 127.0.0.1:40000',
           'HTTPS 127.0.0.1:40000',
         ].join('; '));
@@ -506,6 +554,92 @@ Mocha.describe('Chromium PAC routing regressions', function() {
           Chai.expect(evaluatePac(result.cookedPacData, 'proxy.example'))
               .to.equal('HTTPS own.example:443');
         }
+
+      });
+
+  Mocha.it('keeps both Tor connections ordered without provider or Direct fallback',
+      async function() {
+
+        const expected = [
+          'HTTPS own.example:8443',
+          'SOCKS5 localhost:9050',
+          'SOCKS5 localhost:9150',
+          'SOCKS5 127.0.0.1:40000',
+          'HTTPS 127.0.0.1:40000',
+        ].join('; ');
+        for (const noDirect of [false, true]) {
+          const result = await cook({
+            ownProxies: [ownProxy('own.example', 8443)],
+            localTor: {enabled: true},
+            torBrowser: {enabled: true},
+            warp: {enabled: true},
+            exceptions: [{pattern: 'proxy.example', action: 'PROXY'}],
+            noDirect,
+          }, RAW_ALWAYS_PROXY_PAC);
+          Chai.expect(result.ok).to.equal(true);
+          Chai.expect(evaluatePac(result.cookedPacData, 'proxy.example')).to.equal(expected);
+        }
+
+      });
+
+  Mocha.it('keeps the two Tor onion and Direct-replacement scopes independent',
+      async function() {
+
+        const result = await cook({
+          localTor: {enabled: true, useForOnion: false, useAsDirectReplacement: true},
+          torBrowser: {enabled: true, useForOnion: true, useAsDirectReplacement: false},
+          replaceDirectWithProxy: true,
+          noDirect: true,
+        });
+        Chai.expect(result.ok).to.equal(true);
+        Chai.expect(evaluatePac(result.cookedPacData, 'service.onion'))
+            .to.equal('SOCKS5 localhost:9150');
+        Chai.expect(evaluatePac(result.cookedPacData, 'provider-direct.test'))
+            .to.equal('SOCKS5 localhost:9050');
+
+      });
+
+  Mocha.it('keeps Tor Proxy, onion and Direct-replacement scopes independent', async function() {
+
+    for (const noDirect of [false, true]) {
+      const result = await cook({
+        localTor: {enabled: true, useForProxyRules: false, useForOnion: true},
+        torBrowser: {enabled: true, useForProxyRules: false, useForOnion: false,
+          useAsDirectReplacement: true},
+        replaceDirectWithProxy: true, noDirect,
+      });
+      Chai.expect(result.ok).to.equal(true);
+      Chai.expect(evaluatePac(result.cookedPacData, 'service.onion'))
+          .to.equal('SOCKS5 localhost:9050');
+      Chai.expect(evaluatePac(result.cookedPacData, 'provider-direct.test'))
+          .to.equal('SOCKS5 localhost:9150');
+      const empty = await cook({
+        localTor: {enabled: true, useForProxyRules: false, useForOnion: true},
+        torBrowser: {enabled: true, useForProxyRules: false, useAsDirectReplacement: true},
+        rules: [{pattern: 'explicit.example', action: 'PROXY', enabled: true}], noDirect,
+      });
+      Chai.expect(empty.ok).to.equal(false);
+      Chai.expect(empty.error.code).to.equal('PROXY_RULE_NO_CANDIDATE');
+    }
+
+  });
+
+  Mocha.it('omits onion-only Tor from ordered explicit candidates without provider fallback',
+      async function() {
+
+        const result = await cook({
+          ownProxies: [ownProxy('own.example', 8443)],
+          localTor: {enabled: true, useForProxyRules: false, useForOnion: true},
+          torBrowser: {enabled: true, useForProxyRules: true}, warp: {enabled: true},
+          rules: [{pattern: '*.explicit.example', action: 'PROXY', enabled: true}],
+        }, RAW_ALWAYS_PROXY_PAC);
+        Chai.expect(result.ok).to.equal(true);
+        for (const host of ['explicit.example', 'child.explicit.example']) {
+          Chai.expect(evaluatePac(result.cookedPacData, host)).to.equal(
+              'HTTPS own.example:8443; SOCKS5 localhost:9150; SOCKS5 127.0.0.1:40000; HTTPS 127.0.0.1:40000');
+        }
+        Chai.expect(evaluatePac(result.cookedPacData, 'service.onion'))
+            .to.equal('SOCKS5 localhost:9050; SOCKS5 localhost:9150');
 
       });
 

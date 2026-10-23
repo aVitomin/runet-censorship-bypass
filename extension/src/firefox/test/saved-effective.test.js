@@ -117,6 +117,12 @@ async function fixture(options = {}) {
     const settings = Settings.createController({
       storageArea, sha256,
       activationSnapshot: () => activation.snapshot(),
+      async currentProviderDatasetIdentity() {
+        const loaded = await datasetStore.loadVerifications(Production.PROVIDER_KEY);
+        const selected = [loaded.active, loaded.previousLkg, loaded.packagedBaseline]
+            .find((item) => item && item.ok);
+        return selected ? selected.dataset.identity : Production.datasetIdentity();
+      },
       async datasetIdentityAvailable(identity) {
 
         const stored = await datasetStore.loadVerifications(identity.providerKey);
@@ -171,6 +177,95 @@ function challenge(test, requestId) {
 }
 
 describe('Firefox Saved and Effective generations', function() {
+
+  it('applies and recovers manual routing and credentials with the provider database absent', async function() {
+    const test = await fixture();
+    test.datasetBackend.artifacts.clear();
+    const settings = authenticatedSettings();
+    settings.source = 'manual';
+    await test.settings.replace(0, settings);
+    let reads = 0;
+    // The store itself is frozen; make opening one fail to prove the product
+    // snapshot and recovery factories have no manual-mode dataset dependency.
+    test.factoryOptions.createDatasetStore = () => {
+      reads += 1;
+      throw new Error('unavailable database');
+    };
+    const prepare = Config.createActivationFactory(test.factoryOptions);
+    Assert.strictEqual((await test.activation.activatePrepared(await prepare(1))).ok, true);
+    Assert.strictEqual(test.auth.onAuthRequired(challenge(test, 'manual-auth')).authCredentials.password, 'fixture-old');
+    Assert.strictEqual(test.adapter.onProxyRequest({requestId: 'manual-direct', url: 'https://other.example/'}), null);
+    const reboot = await test.boot();
+    Assert.strictEqual(reboot.activation.snapshot().active, true);
+    Assert.strictEqual((await reboot.settings.getEffective()).settings.source, 'manual');
+    Assert.strictEqual(reboot.auth.onAuthRequired(challenge(reboot, 'manual-restart')).authCredentials.password, 'fixture-old');
+    Assert.strictEqual(reads, 0);
+    Assert.strictEqual(test.control.writes, 1);
+    Assert.strictEqual(test.control.clears, 0);
+  });
+
+  it('keeps source changes Saved-only and recovers manual Effective with pending provider credentials', async function() {
+    const test = await activeFixture();
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    const manual = authenticatedSettings('manual-password');
+    manual.source = 'manual';
+    await test.settings.replace(1, manual);
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY], before);
+    Assert.strictEqual(test.auth.onAuthRequired(challenge(test, 'before-manual')).authCredentials.password, 'fixture-old');
+    Assert.strictEqual((await test.activation.replacePrepared(await test.prepare(2))).ok, true);
+    const provider = authenticatedSettings('pending-provider-password');
+    await test.settings.replace(2, provider);
+    const reboot = await test.boot();
+    Assert.strictEqual((await reboot.settings.getEffective()).settings.source, 'manual');
+    Assert.strictEqual((await reboot.settings.get()).settings.source, 'anticensority');
+    Assert.strictEqual(reboot.auth.onAuthRequired(challenge(reboot, 'manual-pending')).authCredentials.password, 'manual-password');
+    Assert.strictEqual((await reboot.activation.replacePrepared(await test.prepare(3))).ok, true);
+    Assert.strictEqual((await reboot.settings.getEffective()).settings.source, 'anticensority');
+    Assert.strictEqual(test.control.writes, 1);
+    Assert.strictEqual(test.control.clears, 0);
+  });
+
+  it('keeps manual Effective after a failed explicit switch to an unavailable provider', async function() {
+    const test = await fixture();
+    const manual = authenticatedSettings();
+    manual.source = 'manual';
+    await test.settings.replace(0, manual);
+    Assert.strictEqual((await test.activation.activatePrepared(await test.prepare(1))).ok, true);
+    test.datasetBackend.artifacts.clear();
+    await test.settings.replace(1, authenticatedSettings('pending-password'));
+    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+    Assert.strictEqual((await test.activation.replacePrepared(await test.prepare(2))).ok, false);
+    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY], before);
+    Assert.strictEqual(test.activation.snapshot().active, true);
+    Assert.strictEqual(test.auth.onAuthRequired(challenge(test, 'failed-source')).authCredentials.password, 'fixture-old');
+    const reboot = await test.boot();
+    Assert.strictEqual((await reboot.settings.getEffective()).settings.source, 'manual');
+    Assert.strictEqual(test.control.clears, 0);
+  });
+
+  for (const mode of ['OFF_MANUAL', 'ACTIVE_PROVIDER_PENDING_MANUAL', 'ACTIVE_MANUAL_PENDING_PROVIDER']) {
+    it(`defers provider promotion while ${mode}, preserving source and candidate`, async function() {
+      const test = await fixture();
+      let settings = authenticatedSettings();
+      settings.source = mode === 'ACTIVE_PROVIDER_PENDING_MANUAL' ? 'anticensority' : 'manual';
+      await test.settings.replace(0, settings);
+      if (mode !== 'OFF_MANUAL') {
+        const prepared = await test.prepare(1);
+        Assert.strictEqual((await test.activation.activatePrepared(prepared)).ok, true);
+        settings = authenticatedSettings('pending-password');
+        settings.source = mode === 'ACTIVE_PROVIDER_PENDING_MANUAL' ? 'manual' : 'anticensority';
+        await test.settings.replace(1, settings);
+      }
+      const promotion = await stagedUpdate(test, {}, 'HTTPS');
+      const before = structuredClone(test.values);
+      const pointers = structuredClone([...test.datasetBackend.pointers]);
+      Assert.deepStrictEqual(await promotion.install(), {ok: true, status: 'DEFERRED'});
+      Assert.deepStrictEqual(test.values, before);
+      Assert.deepStrictEqual([...test.datasetBackend.pointers], pointers);
+      Assert.strictEqual((await test.datasetStore.loadStaged(Production.PROVIDER_KEY)).status, 'STAGED');
+      Assert.strictEqual(test.control.clears, 0);
+    });
+  }
 
   function bundled(version, routeRef) {
 
@@ -327,13 +422,16 @@ describe('Firefox Saved and Effective generations', function() {
     Assert.strictEqual(test.control.clears, 0);
   });
 
-  async function stagedUpdate(test, overrides = {}) {
+  async function stagedUpdate(test, overrides = {}, channel = 'SIGNED') {
 
-    const artifact = Helpers.artifact({providerKey: Production.PROVIDER_KEY, datasetVersion: 'next-v2',
+    const createArtifact = channel === 'HTTPS' ? Helpers.httpsArtifact : Helpers.artifact;
+    const artifact = createArtifact({providerKey: Production.PROVIDER_KEY, datasetVersion: 'next-v2',
       payload: Helpers.payload([{width: 12, routeRef: 'PROVIDER_DIRECT', hosts: 'next.example'}]),
       trust: Helpers.Dataset.TRUST.REMOTE_AUTHENTICATED});
-    Assert.strictEqual((await test.datasetStore.stageAuthenticatedCandidate({
+    const stage = channel === 'HTTPS' ? test.datasetStore.stageHttpsCandidate : test.datasetStore.stageAuthenticatedCandidate;
+    Assert.strictEqual((await stage({
       envelope: artifact.envelope, artifactBytes: artifact.artifactBytes, sequence: 2,
+      source: artifact.source,
     })).ok, true);
     return Promotion.createController(Object.assign({storageArea: test.storageArea,
       datasetStore: test.datasetStore, sha256, providerKey: Production.PROVIDER_KEY,
@@ -343,43 +441,45 @@ describe('Firefox Saved and Effective generations', function() {
 
   }
 
-  it('installs provider data while ON using Effective N, never pending Saved N+1, including after restart', async function() {
+  for (const channel of ['SIGNED', 'HTTPS']) {
+    it(`installs ${channel} data while ON using Effective N, never pending Saved N+1, including after restart`, async function() {
 
-    const test = await activeFixture();
-    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
-    const oldRequest = challenge(test, 'before-provider');
-    const next = authenticatedSettings('pending-password');
-    next.rules.direct = ['beta.example'];
-    next.rules.proxy = [];
-    await test.settings.replace(1, next);
-    const saved = structuredClone(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY]);
-    const credentials = structuredClone(test.values[Config.CREDENTIALS_STORAGE_KEY]);
-    const promotion = await stagedUpdate(test);
-    Assert.deepStrictEqual(await promotion.install(), {ok: true, status: 'INSTALLED'});
-    Assert.strictEqual(test.activation.snapshot().active, true);
-    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].routingDescriptor,
-        before.routingDescriptor);
-    Assert.notDeepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
-        before.datasetIdentity);
-    Assert.strictEqual((await test.settings.getEffective()).revision, 1);
-    Assert.strictEqual((await test.settings.get()).revision, 2);
-    Assert.deepStrictEqual(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY], saved);
-    Assert.deepStrictEqual(test.values[Config.CREDENTIALS_STORAGE_KEY], credentials);
-    Assert.strictEqual(test.auth.onAuthRequired(oldRequest).authCredentials.password, 'fixture-old');
-    const afterProvider = challenge(test, 'after-provider');
-    Assert.strictEqual(test.auth.onAuthRequired(afterProvider).authCredentials.password, 'fixture-old');
-    Assert.strictEqual(test.control.clears, 0);
-    Assert.strictEqual(test.control.writes, 1);
-    const reboot = await test.boot();
-    Assert.strictEqual(reboot.activation.snapshot().active, true);
-    Assert.strictEqual((await reboot.settings.getEffective()).revision, 1);
-    Assert.strictEqual((await reboot.settings.get()).revision, 2);
-    Assert.strictEqual(reboot.auth.onAuthRequired(challenge(reboot, 'restart-provider')).authCredentials.password, 'fixture-old');
-    // A later explicit user Apply uses the newly installed data, not its old identity.
-    Assert.strictEqual((await reboot.activation.replacePrepared(await test.prepare(2))).ok, true);
-    Assert.strictEqual((await reboot.settings.getEffective()).revision, 2);
+      const test = await activeFixture();
+      const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+      const oldRequest = challenge(test, 'before-provider');
+      const next = authenticatedSettings('pending-password');
+      next.rules.direct = ['beta.example'];
+      next.rules.proxy = [];
+      await test.settings.replace(1, next);
+      const saved = structuredClone(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY]);
+      const credentials = structuredClone(test.values[Config.CREDENTIALS_STORAGE_KEY]);
+      const promotion = await stagedUpdate(test, {}, channel);
+      Assert.deepStrictEqual(await promotion.install(), {ok: true, status: 'INSTALLED'});
+      Assert.strictEqual(test.activation.snapshot().active, true);
+      Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].routingDescriptor,
+          before.routingDescriptor);
+      Assert.notDeepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
+          before.datasetIdentity);
+      Assert.strictEqual((await test.settings.getEffective()).revision, 1);
+      Assert.strictEqual((await test.settings.get()).revision, 2);
+      Assert.deepStrictEqual(test.values[Config.SETTINGS_COMMIT_STORAGE_KEY], saved);
+      Assert.deepStrictEqual(test.values[Config.CREDENTIALS_STORAGE_KEY], credentials);
+      Assert.strictEqual(test.auth.onAuthRequired(oldRequest).authCredentials.password, 'fixture-old');
+      const afterProvider = challenge(test, 'after-provider');
+      Assert.strictEqual(test.auth.onAuthRequired(afterProvider).authCredentials.password, 'fixture-old');
+      Assert.strictEqual(test.control.clears, 0);
+      Assert.strictEqual(test.control.writes, 1);
+      const reboot = await test.boot();
+      Assert.strictEqual(reboot.activation.snapshot().active, true);
+      Assert.strictEqual((await reboot.settings.getEffective()).revision, 1);
+      Assert.strictEqual((await reboot.settings.get()).revision, 2);
+      Assert.strictEqual(reboot.auth.onAuthRequired(challenge(reboot, 'restart-provider')).authCredentials.password, 'fixture-old');
+      // A later explicit user Apply uses the newly installed data, not its old identity.
+      Assert.strictEqual((await reboot.activation.replacePrepared(await test.prepare(2))).ok, true);
+      Assert.strictEqual((await reboot.settings.getEffective()).revision, 2);
 
-  });
+    });
+  }
 
   it('keeps the old provider and auth serving while staged runtime preparation is paused', async function() {
 
@@ -471,15 +571,18 @@ describe('Firefox Saved and Effective generations', function() {
 
   });
 
-  for (const loss of ['permission', 'control']) {
-    it(`provider promotion rechecks ${loss} without claiming READY`, async function() {
+  for (const [channel, loss] of [
+    ['SIGNED', 'permission'], ['SIGNED', 'control'],
+    ['HTTPS', 'permission'], ['HTTPS', 'control'],
+  ]) {
+    it(`${channel} promotion rechecks ${loss} without claiming READY`, async function() {
 
       const test = await activeFixture();
       const promotion = await stagedUpdate(test, {replacePrepared: (prepared) => {
         if (loss === 'permission') test.control.privateAccess = false;
         else test.control.live = {levelOfControl: 'controlled_by_other_extensions', value: {proxyType: 'none'}};
         return test.activation.replacePrepared(prepared);
-      }});
+      }}, channel);
       await Assert.rejects(promotion.install());
       Assert.strictEqual(test.activation.snapshot().active, false);
       Assert.notStrictEqual(test.activation.snapshot().runtimeState, 'READY');
@@ -488,42 +591,46 @@ describe('Firefox Saved and Effective generations', function() {
     });
   }
 
-  it('finishes a committed provider promotion after interrupted pointer persistence', async function() {
+  for (const channel of ['SIGNED', 'HTTPS']) {
+    it(`finishes committed ${channel} promotion after interrupted pointer persistence`, async function() {
 
-    const test = await activeFixture();
-    const promotion = await stagedUpdate(test, {datasetStore: Object.assign({}, test.datasetStore, {
-      promoteStagedExact: async () => {
-        throw new Error('synthetic interrupted pointer write');
-      },
-    })});
-    await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.RECOVERY_REQUIRED});
-    Assert.ok(test.values[Config.DATASET_PROMOTION_STORAGE_KEY]);
-    await test.activation.requireRecovery();
-    Assert.strictEqual(test.activation.snapshot().active, false);
-    const recovery = Promotion.createController({storageArea: test.storageArea,
-      datasetStore: test.datasetStore, sha256, providerKey: Production.PROVIDER_KEY,
-      activationSnapshot: () => test.activation.snapshot()});
-    Assert.strictEqual((await recovery.initialize()).status, 'ROLLED_FORWARD');
-    Assert.strictEqual((await test.boot()).activation.snapshot().active, true);
-    Assert.strictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity.datasetVersion, 'next-v2');
+      const test = await activeFixture();
+      const promotion = await stagedUpdate(test, {
+        datasetStore: Object.assign({}, test.datasetStore, {
+          promoteStagedExact: async () => {
+            throw new Error('synthetic interrupted pointer write');
+          },
+        }),
+      }, channel);
+      await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.RECOVERY_REQUIRED});
+      Assert.ok(test.values[Config.DATASET_PROMOTION_STORAGE_KEY]);
+      await test.activation.requireRecovery();
+      Assert.strictEqual(test.activation.snapshot().active, false);
+      const recovery = Promotion.createController({storageArea: test.storageArea,
+        datasetStore: test.datasetStore, sha256, providerKey: Production.PROVIDER_KEY,
+        activationSnapshot: () => test.activation.snapshot()});
+      Assert.strictEqual((await recovery.initialize()).status, 'ROLLED_FORWARD');
+      Assert.strictEqual((await test.boot()).activation.snapshot().active, true);
+      Assert.strictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity.datasetVersion, 'next-v2');
 
-  });
+    });
 
-  it('recovers interrupted provider preparation to the old Effective generation', async function() {
+    it(`recovers interrupted ${channel} preparation to the old Effective generation`, async function() {
 
-    const test = await activeFixture();
-    const before = structuredClone(test.values[OffState.STORAGE_KEY]);
-    const promotion = await stagedUpdate(test, {replacePrepared: async () => {
-      throw new Error('interrupted');
-    }});
-    await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.RECOVERY_REQUIRED});
-    Assert.strictEqual((await promotion.initialize()).status, 'ROLLED_BACK');
-    const reboot = await test.boot();
-    Assert.strictEqual(reboot.activation.snapshot().active, true);
-    Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
-        before.datasetIdentity);
+      const test = await activeFixture();
+      const before = structuredClone(test.values[OffState.STORAGE_KEY]);
+      const promotion = await stagedUpdate(test, {replacePrepared: async () => {
+        throw new Error('interrupted');
+      }}, channel);
+      await Assert.rejects(promotion.install(), {code: Promotion.ERRORS.RECOVERY_REQUIRED});
+      Assert.strictEqual((await promotion.initialize()).status, 'ROLLED_BACK');
+      const reboot = await test.boot();
+      Assert.strictEqual(reboot.activation.snapshot().active, true);
+      Assert.deepStrictEqual(test.values[OffState.STORAGE_KEY].datasetIdentity,
+          before.datasetIdentity);
 
-  });
+    });
+  }
 
   it('saves while OFF without activating or retaining an Effective generation', async function() {
 

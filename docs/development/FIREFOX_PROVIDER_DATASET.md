@@ -50,11 +50,12 @@ the production artifact is larger only because every bucket now carries the
 strict `width` and `routeRef` schema fields. The generator can also produce the
 updater's strict manifest
 and, when given an explicitly selected external Ed25519 private key, its
-detached signature. No private key, production update URL, or production public
-key is committed. The update control plane is integrated, but external release
-configuration remains disabled until an actual fixed HTTPS manifest endpoint
-and raw Ed25519 public key/stable keyId are supplied. The updater accepts trust
-anchors only through its pinned production-key table.
+detached signature. No private key, signed-manifest production URL, or production
+public key is committed. This separate signed channel remains disabled until
+a fixed HTTPS manifest endpoint and raw Ed25519 public key/stable keyId are
+supplied. It accepts trust anchors only through its pinned production-key table.
+The enabled fixed HTTPS source channel described below uses a distinct trust
+label and does not imply a publisher signature.
 
 For a signed publication, pass explicit monotonically increasing `--sequence`,
 stable `--key-id` and an external `--private-key` PKCS#8 PEM path to the same
@@ -116,11 +117,24 @@ routing configuration schema but are disabled in this initial default config.
 ## Bootstrap and trust boundary
 
 `PACKAGED_TRUSTED` is assigned only while reading the fixed extension-package
-artifact. Exact bytes pass the common dataset verifier before the IndexedDB
-packaged-baseline pointer is committed. Only after that commit does bootstrap
-write the default product configuration and a small readiness marker. Existing
-product configuration is never overwritten. Apply and durable recovery still
-reverify the exact stored artifact before publishing `READY`.
+artifact. Bootstrap first keeps a verified default Saved configuration available
+so a missing provider database does not prevent choosing manual mode. Exact
+artifact bytes must pass the common verifier before the IndexedDB baseline
+pointer and subsequent readiness marker are committed. Existing configuration
+is never overwritten. Anticensority Apply and durable recovery still reverify
+the exact stored artifact before publishing `READY`.
+
+Within one `loadVerifications` call, active, previous-LKG and packaged-baseline
+references to the same successfully verified immutable artifact share one read,
+hash and parsed dataset. The shared verification is deeply frozen before reuse.
+The map belongs only to that call: subsequent loads and event-page recreation
+reread pointers and reverify stored bytes, metadata and trust. Failures are not
+cached, preserving role-specific diagnostics and retries after read errors.
+The `firstUsableOnly` path still stops at the first successful verification.
+Deterministic store tests count one artifact read/hash instead of three when
+all three references coincide, and two when they name two distinct artifacts;
+neither path writes storage. This is operation-count evidence, not a measured
+browser startup speedup; distinct artifacts still require separate verification.
 
 When a later extension release bundles dataset B, registration preserves the
 previous verified baseline A in the existing active pointer if A was the selected
@@ -137,28 +151,85 @@ only when its verified routing content/key is identical and it has no credential
 
 The bootstrap performs no external request: its only reads use
 `browser.runtime.getURL()` for fixed package paths. It does not set proxy
-settings or activate routing. Remote update configuration remains disabled and
-contains neither a URL nor a trust key.
+settings or activate routing. Remote checks are separate manual or scheduled
+operations; only the signed-manifest configuration remains disabled.
 
 The Firefox settings control plane can save the user-routing portion of the
 configuration while `OFF` or active `READY`. Save does not change Effective;
-explicit Apply promotes the exact Saved revision.
-Provider key, current trusted dataset identity, provider candidates, and
-provider fallback are internal and never RPC input. A settings write preserves
-the exact current dataset identity and cannot select, mutate, or promote a
-provider artifact.
+explicit Apply promotes the exact Saved revision. The strict source choice is
+`anticensority` or `manual`; omitted legacy values retain Anticensority. Arbitrary
+provider keys, artifact identities, candidates and trust are not RPC input.
+Selecting manual writes its package-owned policy identity to Saved only; it does
+not stage or promote a provider artifact. The manual runtime needs no dataset
+read or index, but bootstrap may still attempt to validate the provider cache.
 
-The package has exact no-input status/check/install RPC integration and a
-12-hour alarm, but the disabled empty trust configuration causes no external
-fetch until the missing release endpoint/key are pinned. Check can only stage a
-candidate already verified as `REMOTE_AUTHENTICATED`. A separate install RPC
-requires configured trust, reverifies exact bytes/provider/sequence, and supports
-both `OFF` and active `READY`. Active installation prepares the replacement with
-Effective user settings and credentials, rechecks ownership/private access and
-candidate identity, and promotes without Clear or an OFF interval. Pending Saved
-changes remain pending. The existing `storage.local` journal resolves cross-store
-crashes: v1 preserves the OFF path; v2 uses durable ON as the active commit decision
-before finalizing active/LKG pointers and Saved dataset metadata. Ambiguity blocks
-recovery rather than selecting latest Saved. See
+In manual mode, own rules, onion routes, candidate groups and routing flags
+remain active; under default flags, unmatched sites use Direct. Scheduled and
+manual source checks continue independently. If Saved or Effective selects
+manual, Anticensority installation is deferred and the candidate stays staged
+without switching either source or recording an installation. Returning to
+Anticensority uses explicit Save/Apply before normal provider promotion resumes.
+
+## Fixed HTTPS source updates
+
+The production source channel starts from exactly two Anticensority URLs:
+
+- [primary GitHub Pages PAC](https://anticensority.github.io/generated-pac-scripts/anticensority.pac);
+- [raw GitHub fallback PAC](https://raw.githubusercontent.com/anticensority/generated-pac-scripts/master/anticensority.pac).
+
+These URLs are compiled into the downloader; RPC callers cannot supply a URL,
+key, trust label or artifact. A fetch/HTTP failure can try the fallback. Invalid
+data, an unsafe redirect or an expired deadline does not silently switch sources.
+Requests omit credentials and referrer and accept at most three manual redirects.
+Every redirect target must be one of these exact two HTTPS URLs, without URL
+userinfo, query or fragment; crossing between the two listed sources is allowed.
+The final response URL must also be one of the two and match the validated
+request. Streaming input is
+bounded to 16 MiB under a 30-second total network/parse deadline.
+
+The parser accepts strict UTF-8 and extracts only the known static `inputs` JSON.
+It requires the expected proxy-policy constants, empty IP/CIDR tables and one
+valid `Updated: YYYY-MM-DD HH:mm:ss ±HHMM` timestamp. Invalid calendar dates and
+source dates more than 24 hours ahead of the local clock are rejected. The
+shared dataset verifier limits output to 16 MiB, 750,000 rules and 128 buckets.
+No downloaded JavaScript is evaluated or installed as executable code.
+
+SHA-256 is computed locally for both source bytes and the exact normalized
+`HOST_BUCKETS_V1` artifact. The store binds the source ID/hash/date to the immutable
+artifact as `REMOTE_HTTPS_VALIDATED`. The envelope must name exactly that source
+ID and `sha256=<source hash>` revision; a contradictory stored envelope or receipt
+is rejected. This means HTTPS provenance and strict local
+data checks, not `REMOTE_AUTHENTICATED` or an author's cryptographic signature.
+The source's operators can change its data; locally computed hashes do not
+authenticate authorship. A configured signed channel takes precedence, and an
+invalid signed configuration never falls back to this channel.
+
+Pointer schema v3 adds a typed staged channel, an exact HTTPS candidate receipt
+with a local sequence, and a separate source-date/content floor. It preserves
+v1/v2 active/LKG/baseline identities and the signed channel's authenticated
+high-water mark. The source floor starts at the verified packaged baseline:
+older dates are rejected, and equal dates with different routing content conflict.
+A later observation of identical selected routing content is `UNCHANGED`; it
+may advance the date floor but does not overwrite or relabel packaged bytes.
+An old artifact that is no longer selected cannot be replayed as a fresh update.
+Changed comments/source hashes alone do not force a new routing generation.
+There is no age-based expiry: a valid unchanged source may still be old.
+The UI therefore separates source-data time from the time of the latest check.
+
+The no-input `firefox.provider.update.check` RPC and the 12-hour alarm run the
+same serialized check-and-promotion operation. The first alarm is scheduled
+five minutes after initialization when no matching alarm exists. A verified
+candidate is installed when the runtime is fully `OFF` or active `READY` and live
+ownership permits it and neither Saved nor Effective selects manual;
+blocked/external-owner or manual-source cases retain the candidate for later.
+The separate no-input install RPC can apply that exact staged candidate.
+
+OFF installation updates dataset selection for the next explicit Apply and never
+acquires proxy control. Active installation prepares the replacement with
+Effective user settings and credentials, rechecks private access, ownership and
+candidate identity, then replaces the generation without Clear or an OFF interval.
+Pending Saved changes stay pending. Signed journal versions 1/2 remain readable;
+HTTPS versions 3/4 add the exact channel and source receipt. OFF recovery resolves
+the cross-store selection; active recovery uses durable ON as the commit decision.
+Ambiguity blocks recovery rather than selecting latest Saved. See
 [active installation and recovery](FIREFOX_ARCHITECTURE.md) for the transaction.
-The alarm still checks/stages only; no automatic installation policy is added.

@@ -544,8 +544,17 @@
 
     function requestRefresh(params = {}) {
 
+      if (params.forcePresentation === true) {
+        const tabId = params.tab && Number.isInteger(params.tab.id) ? params.tab.id :
+          Number.isInteger(params.tabId) ? params.tabId : activeTabId;
+        // Navigation resets browser-owned Action state. Invalidate this tab now,
+        // so a newer refresh cannot lose the reset or carry it to another tab.
+        if (Number.isInteger(tabId)) forgetStatus(tabId, {actionApi: chromeApi.action});
+      }
       latestToken = {};
-      pendingParams = mergeRefreshParams(pendingParams, params);
+      pendingParams = Object.assign({}, params, {
+        overrides: Object.assign({}, params.overrides),
+      });
       if (!scheduledRefresh) {
         scheduledRefresh = Promise.resolve().then(() => {
           const nextParams = pendingParams;
@@ -556,18 +565,6 @@
         });
       }
       return scheduledRefresh;
-
-    }
-
-    function mergeRefreshParams(previous, latest) {
-
-      return Object.assign({}, latest, {
-        forcePresentation: Boolean(
-            previous && previous.forcePresentation ||
-            latest && latest.forcePresentation,
-        ),
-        overrides: Object.assign({}, latest && latest.overrides),
-      });
 
     }
 
@@ -601,11 +598,11 @@
       if (token !== latestToken) {
         return {ok: false, status: 'stale'};
       }
-      const update = presentationQueue.then(() => {
+      const update = presentationQueue.then(async () => {
         if (token !== latestToken) {
           return {ok: false, status: 'stale'};
         }
-        return updateStatus(
+        const result = await updateStatus(
             Object.assign({}, status, params.overrides),
             {
               actionApi: chromeApi.action,
@@ -614,6 +611,12 @@
               forcePresentation: params.forcePresentation === true,
             },
         );
+        // An older write can finish after navigation invalidated its cache.
+        // The next serialized presentation must reconstruct all properties.
+        if (token !== latestToken && result.changed && result.changed.length) {
+          forgetStatus(tab.id, {actionApi: chromeApi.action});
+        }
+        return result;
       });
       presentationQueue = update.catch(() => undefined);
       return update;

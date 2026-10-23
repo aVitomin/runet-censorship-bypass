@@ -52,8 +52,6 @@
   "transferUnsupported_language": {"message":"This browser does not import the interface language preference."},
   "transferUnsupported_disabledRules": {"message":"Disabled rules are not stored by this browser and will be omitted."},
   "transferUnsupported_proxyOptions": {"message":"Per-proxy DNS and timeout preferences are not supported here; browser defaults remain in use."},
-  "transferUnsupported_torScope": {"message":"This browser cannot use a disabled Tor mode for only .onion or Direct replacement. Review the Tor mode after import."},
-  "transferUnsupported_torExclusive": {"message":"This browser supports one Tor mode at a time. Both modes will be disabled until you choose one."},
   "transferUnsupported_warpScope": {"message":"WARP scope switches apply to the whole list here. Mixed switches are conservatively disabled; review them before Apply."},
   "unifiedSaveSection": {"message": "Save settings"},
   "unifiedPopupConflict": {"message": "Settings changed elsewhere. Review the current state and confirm again."},
@@ -488,25 +486,25 @@
     "message": "Tor service"
   },
   "popupLocalTorHelp": {
-    "message": "Tor service, usually 127.0.0.1:9050."
+    "message": "Tor service for Proxy rules, usually localhost:9050. Other scopes are configured in Options."
   },
   "popupTorBrowser": {
     "message": "Tor Browser"
   },
   "popupTorBrowserHelp": {
-    "message": "Requires opened Tor Browser, usually 127.0.0.1:9150."
+    "message": "Tor Browser for Proxy rules, usually localhost:9150. Requires Tor Browser to be running; other scopes are configured in Options."
   },
   "popupTorModeNote": {
-    "message": "Use one Tor mode at a time."
+    "message": "When both Tor connections apply, the Tor service is tried before Tor Browser."
   },
   "popupTorAvailabilityNote": {
-    "message": "Enabling Tor only makes it available for your Proxy rules. Auto mode still follows the selected source."
+    "message": "Quick Tor controls change only Proxy availability. Existing .onion and Direct replacement scopes stay active; enabling a disabled connection here starts only its Proxy scope."
   },
   "popupWarpCustomProxy": {
     "message": "WARP/custom proxy"
   },
   "popupWarpHelp": {
-    "message": "Use a configured WARP or custom local proxy as a proxy candidate."
+    "message": "Change WARP availability for Proxy rules. Active Direct replacement stays enabled; enabling a disabled connection here starts only its Proxy scope."
   },
   "popupOwnProxies": {
     "message": "Custom proxy servers"
@@ -693,6 +691,9 @@
   "optionsUseForOnion": {
     "message": "Use for .onion"
   },
+  "optionsUseForProxyRules": {
+    "message": "Use for Proxy rules"
+  },
   "optionsUseAsDirectReplacement": {
     "message": "Use as DIRECT replacement candidate"
   },
@@ -727,10 +728,10 @@
     "message": "Notifications"
   },
   "optionsLocalTorHelp": {
-    "message": "Use a separately running Tor daemon/service, usually SOCKS5 127.0.0.1:9050."
+    "message": "Use a separately running Tor daemon/service, usually SOCKS5 localhost:9050."
   },
   "optionsTorBrowserHelp": {
-    "message": "Use the Tor proxy started by Tor Browser, usually SOCKS5 127.0.0.1:9150. Tor Browser must be open."
+    "message": "Use the Tor proxy started by Tor Browser, usually SOCKS5 localhost:9150. Tor Browser must be open."
   },
   "popupSettingsApplied": {
     "message": "Settings applied."
@@ -988,10 +989,10 @@
     "message": "Proxy error"
   },
   "proxyHealthTorBrowserError": {
-    "message": "Could not connect to Tor Browser. Make sure Tor Browser is running and 127.0.0.1:9150 is available."
+    "message": "Could not connect to Tor Browser. Make sure Tor Browser is running and localhost:9150 is available."
   },
   "proxyHealthLocalTorError": {
-    "message": "Could not connect to the Tor service. Make sure Tor is running and 127.0.0.1:9050 is available."
+    "message": "Could not connect to the Tor service. Make sure Tor is running and localhost:9050 is available."
   },
   "proxyHealthGenericError": {
     "message": "Could not connect through the configured proxy."

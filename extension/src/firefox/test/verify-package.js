@@ -13,7 +13,7 @@ const NOTICE_SOURCES = distributionNoticeSources('firefox');
 
 const FIREFOX_GECKO_ID = '{adf5f697-1149-42a2-92eb-c163cb9a4146}';
 const EXPECTED_FIREFOX_VERSION =
-  `0.0.${Templates.contexts.chromium.storeVersion}`;
+  Templates.contexts.chromium.storeVersion;
 const EXPECTED_ICON_FILES = Object.freeze([
   'active',
   'busy',
@@ -50,6 +50,8 @@ const EXPECTED_FILES = Object.freeze([
   'background/provider-lookup.js',
   'background/provider-update-control.js',
   'background/provider-updater.js',
+  'background/anticensority-source.js',
+  'background/provider-source-updater.js',
   'background/proxy-auth.js',
   'background/proxy-control.js',
   'background/routing-adapter.js',
@@ -169,6 +171,8 @@ function verifyPackage(packageRoot, sourceRoot) {
     'background/proxy-control.js',
     'background/dataset-store.js',
     'background/provider-updater.js',
+    'background/anticensority-source.js',
+    'background/provider-source-updater.js',
     'background/provider-update-control.js',
     'background/provider-lookup.js',
     'background/dataset-runtime.js',

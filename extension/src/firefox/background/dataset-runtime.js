@@ -27,6 +27,20 @@
         READY: 'READY',
         FAILED: 'FAILED',
       });
+      // This identity describes a package-owned policy, never a downloaded
+      // dataset. Its digest is SHA-256("RUCB_FIREFOX_MANUAL_DIRECT_V1").
+      const MANUAL_IDENTITY = Object.freeze({
+        providerKey: 'manual',
+        datasetVersion: 'builtin-direct-v1',
+        artifactSha256: '060de687997e4e0010799478a472d62299766f6bc9d13ab2faf0e14d4f78ed4b',
+      });
+
+      function isManualIdentity(value) {
+
+        return Boolean(value && Object.keys(value).length === 3 &&
+          Object.keys(MANUAL_IDENTITY).every((key) => value[key] === MANUAL_IDENTITY[key]));
+
+      }
 
       function runtimeError(code) {
 
@@ -117,6 +131,15 @@
         async function initializeUnchecked() {
 
           if (state === STATES.OFF) {
+            return snapshot();
+          }
+          if (providerKey === MANUAL_IDENTITY.providerKey) {
+            if (!isManualIdentity(options.datasetIdentity)) {
+              throw runtimeError('INVALID_MANUAL_POLICY_IDENTITY');
+            }
+            lookupIndex = Object.freeze({lookup: () => ({kind: ProviderLookup.KINDS.MISS})});
+            selected = Object.freeze(Object.assign({source: 'BUILTIN_MANUAL'}, MANUAL_IDENTITY));
+            state = STATES.READY;
             return snapshot();
           }
           if (!store || typeof store.loadVerifications !== 'function') {
@@ -242,8 +265,10 @@
       }
 
       return Object.freeze({
+        MANUAL_IDENTITY,
         STATES,
         createRuntime,
+        isManualIdentity,
       });
 
     });

@@ -364,11 +364,17 @@ describe('Firefox production provider baseline', function() {
             Production.BOOTSTRAP_STORAGE_KEY in storage.values,
             false,
         );
+        const config = await ProductConfig.verifyProductConfig(
+            storage.values[ProductConfig.CONFIG_STORAGE_KEY], sha256,
+        );
+        Assert.strictEqual(config.config.providerKey, Production.PROVIDER_KEY);
+        Assert.strictEqual(result.datasetAvailable, false);
 
       });
 
-  it('ships no enabled remote update trust configuration', function() {
+  it('enables the fixed HTTPS source separately from disabled signed trust', function() {
 
+    Assert.strictEqual(Production.SOURCE_UPDATE_ENABLED, true);
     Assert.deepStrictEqual(Production.UPDATE_TRUST_CONFIGURATION, {
       enabled: false,
       manifestUrl: null,

@@ -27,3 +27,6 @@ browser-profile/
 .env
 .env.*
 !.env.example
+
+# Personal agent configuration and session state stay local.
+.omp/

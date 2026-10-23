@@ -78,6 +78,8 @@ const firefoxRuntimeSrc = [
   './src/firefox/background/proxy-control.js',
   './src/firefox/background/dataset-store.js',
   './src/firefox/background/provider-updater.js',
+  './src/firefox/background/anticensority-source.js',
+  './src/firefox/background/provider-source-updater.js',
   './src/firefox/background/provider-update-control.js',
   './src/firefox/background/dataset-promotion.js',
   './src/firefox/background/provider-lookup.js',

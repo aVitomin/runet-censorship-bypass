@@ -41,6 +41,8 @@
         providerKey: PROVIDER_KEY,
         trustedPublicKeys: Object.freeze({}),
       });
+      // Fixed HTTPS source endpoints are validated as data, not as a signed feed.
+      const SOURCE_UPDATE_ENABLED = true;
       const BOOTSTRAP_FIELDS = Object.freeze([
         'artifactSha256',
         'providerKey',
@@ -213,6 +215,11 @@
           } catch (_error) {
             throw providerError('PROVIDER_BOOTSTRAP_STORAGE_UNAVAILABLE');
           }
+          // Keep a verifiable Saved default available for choosing manual mode
+          // even if the packaged database cannot be installed. This is not Apply.
+          if (!Object.prototype.hasOwnProperty.call(stored, ProductConfig.CONFIG_STORAGE_KEY)) {
+            await storageArea.set({[ProductConfig.CONFIG_STORAGE_KEY]: expectedConfig});
+          }
           if (validBootstrapMarker(stored[BOOTSTRAP_STORAGE_KEY])) {
             const verified = await datasetStore.loadVerifications(PROVIDER_KEY);
             const baseline = verified && verified.packagedBaseline;
@@ -304,6 +311,7 @@
         GENERIC_SOCKS_MAPPING,
         PROVIDER_KEY,
         RULE_COUNT,
+        SOURCE_UPDATE_ENABLED,
         UPDATE_TRUST_CONFIGURATION,
         createBootstrap,
         createProductionProductConfig,

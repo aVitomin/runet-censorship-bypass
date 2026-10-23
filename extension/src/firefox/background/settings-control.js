@@ -10,7 +10,9 @@
   const routing = typeof module === 'object' && module.exports ?
     require('../../shared/routing-contract') :
     root.mv3RoutingContract;
-  const api = factory(productConfig, productionProvider, routing);
+  const datasetRuntime = typeof module === 'object' && module.exports ?
+    require('./dataset-runtime') : root.rucbFirefoxDatasetRuntime;
+  const api = factory(productConfig, productionProvider, routing, datasetRuntime);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
     return;
@@ -18,7 +20,7 @@
   root.rucbFirefoxSettingsControl = api;
 
 })(typeof globalThis === 'object' ? globalThis : this,
-    function(ProductConfig, ProductionProvider, Routing) {
+    function(ProductConfig, ProductionProvider, Routing, DatasetRuntime) {
 
       const SCHEMA_VERSION = 1;
       const COMMIT_SCHEMA_VERSION = 1;
@@ -31,6 +33,7 @@
         'ownProxies',
         'rules',
         'schemaVersion',
+        'source',
         'torBrowser',
         'warp',
       ]);
@@ -312,7 +315,12 @@
           throw settingsError(Number.isSafeInteger(value.schemaVersion) ?
             ERRORS.SETTINGS_VERSION_UNSUPPORTED : ERRORS.SETTINGS_MALFORMED);
         }
+        // Existing Saved generations predate explicit source selection.
+        if (!Object.prototype.hasOwnProperty.call(value, 'source')) {
+          value = Object.assign({source: 'anticensority'}, value);
+        }
         if (!hasExactKeys(value, SETTINGS_KEYS) ||
+            !['anticensority', 'manual'].includes(value.source) ||
             !Array.isArray(value.ownProxies) ||
             value.ownProxies.length > MAX_PUBLIC_PROXIES) {
           throw settingsError(ERRORS.SETTINGS_MALFORMED);
@@ -332,6 +340,7 @@
         }
         return Object.freeze({
           schemaVersion: SCHEMA_VERSION,
+          source: value.source,
           rules: canonicalRules(value.rules, storedOnly),
           ownProxies,
           localTor,
@@ -371,6 +380,7 @@
       function buildRoutingSnapshot(settings, current = null) {
 
         const base = ProductionProvider.createProductionRoutingConfig();
+        if (settings.source === 'manual') base.providerCandidates = [];
         const configured = emptyGroup();
         const directReplacement = emptyGroup();
         const onion = emptyGroup();
@@ -499,6 +509,7 @@
 
         return clone(canonicalSettings({
           schemaVersion: SCHEMA_VERSION,
+          source: 'anticensority',
           rules: {direct: [], proxy: [], whitelist: []},
           ownProxies: [],
           localTor: {
@@ -664,21 +675,21 @@
             throw settingsError(ERRORS.SETTINGS_STATE_UNAVAILABLE);
           }
           const config = verified.config;
-          if (config.providerKey !== ProductionProvider.PROVIDER_KEY ||
-              config.datasetIdentity.providerKey !==
-                ProductionProvider.PROVIDER_KEY) {
+          if (![ProductionProvider.PROVIDER_KEY, 'manual'].includes(config.providerKey)) {
             throw settingsError(ERRORS.SETTINGS_DATASET_BINDING_FAILED);
           }
-          let datasetAvailable;
-          try {
-            datasetAvailable = await datasetIdentityAvailable(
-                config.datasetIdentity,
-            );
-          } catch (_error) {
-            datasetAvailable = false;
-          }
-          if (datasetAvailable !== true) {
-            throw settingsError(ERRORS.SETTINGS_DATASET_BINDING_FAILED);
+          // Saved configuration is editable even when its provider data is
+          // unavailable. Apply/recovery still verify the exact runtime input.
+          if (config.providerKey !== 'manual') {
+            let available = false;
+            try {
+              available = await datasetIdentityAvailable(config.datasetIdentity);
+            } catch (_error) {
+              // Saved remains repairable after data loss.
+            }
+            if (options.requireDataset && available !== true) {
+              throw settingsError(ERRORS.SETTINGS_DATASET_BINDING_FAILED);
+            }
           }
           const credentials = credentialsMap(
               stored[ProductConfig.CREDENTIALS_STORAGE_KEY],
@@ -709,6 +720,9 @@
             }
           } else {
             commit = canonicalCommit(rawCommit);
+            if (commit.settings.source !== config.providerKey) {
+              throw settingsError(ERRORS.SETTINGS_DATASET_BINDING_FAILED);
+            }
             if (!sameDescriptor(commit.routingDescriptor,
                 config.routingDescriptor)) {
               throw settingsError(ERRORS.SETTINGS_STATE_UNAVAILABLE);
@@ -721,7 +735,7 @@
               configurationKey: ProductionProvider.CONFIGURATION_KEY,
               configurationVersion: `settings-${commit.revision}`,
               datasetIdentity: config.datasetIdentity,
-              providerKey: ProductionProvider.PROVIDER_KEY,
+              providerKey: config.providerKey,
               routingConfig: rebuilt.routingConfig,
               sha256,
             });
@@ -750,7 +764,7 @@
 
         async function getUnchecked(records = null) {
 
-          const current = await currentSnapshot({records});
+          const current = await currentSnapshot({records, requireDataset: Boolean(records)});
           return Object.freeze({
             revision: current.commit.revision,
             settings: clone(current.commit.settings),
@@ -787,11 +801,18 @@
             settings: current.commit.settings,
             credentials: current.credentials,
           });
+          let datasetIdentity = current.config.datasetIdentity;
+          if (settings.source === 'manual') {
+            datasetIdentity = DatasetRuntime.MANUAL_IDENTITY;
+          } else if (current.config.providerKey === 'manual') {
+            datasetIdentity = typeof options.currentProviderDatasetIdentity === 'function' ?
+              await options.currentProviderDatasetIdentity() : ProductionProvider.datasetIdentity();
+          }
           const config = await ProductConfig.createProductConfig({
             configurationKey: ProductionProvider.CONFIGURATION_KEY,
             configurationVersion: `settings-${nextRevision}`,
-            datasetIdentity: current.config.datasetIdentity,
-            providerKey: ProductionProvider.PROVIDER_KEY,
+            datasetIdentity,
+            providerKey: settings.source,
             routingConfig: built.routingConfig,
             sha256,
           });

@@ -62,8 +62,8 @@ function releaseIdentity() {
       Path.join(BUILD_ROOT, 'manifest.json'),
       'utf8',
   ));
-  const expectedVersion = `0.0.${Templates.contexts.chromium.storeVersion}`;
-  const expectedVersionName = `0.0.${Templates.contexts.chromium.version}`;
+  const expectedVersion = Templates.contexts.chromium.storeVersion;
+  const expectedVersionName = Templates.contexts.chromium.version;
   Assert.strictEqual(manifest.version, expectedVersion);
   Assert.strictEqual(manifest.version_name, expectedVersionName);
   const shortSha = runGit(['rev-parse', '--short=7', 'HEAD']);

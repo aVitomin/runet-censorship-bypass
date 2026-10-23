@@ -8,7 +8,9 @@
     root.mv3RoutingContract;
   const offState = typeof module === 'object' && module.exports ?
     require('./off-state') : root.rucbFirefoxOffState;
-  const api = factory(routing, offState);
+  const datasetRuntime = typeof module === 'object' && module.exports ?
+    require('./dataset-runtime') : root.rucbFirefoxDatasetRuntime;
+  const api = factory(routing, offState, datasetRuntime);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
     return;
@@ -16,7 +18,7 @@
   root.rucbFirefoxProductConfig = api;
 
 })(typeof globalThis === 'object' ? globalThis : this,
-    function(Routing, OffState) {
+    function(Routing, OffState, DatasetRuntime) {
 
       const CONFIG_STORAGE_KEY = 'firefoxMv3ProductRoutingConfig';
       const CREDENTIALS_STORAGE_KEY = 'firefoxMv3ProxyCredentials';
@@ -384,7 +386,11 @@
         );
         const routingConfig = canonicalRoutingConfig(value.routingConfig);
         if (!datasetIdentity || !routingDescriptor ||
-            value.providerKey !== datasetIdentity.providerKey) {
+            value.providerKey !== datasetIdentity.providerKey ||
+            value.providerKey === 'manual' &&
+              (!DatasetRuntime.isManualIdentity(datasetIdentity) ||
+                routingConfig.value.providerCandidates.length !== 0 ||
+                routingConfig.value.providerFallback !== Routing.FALLBACKS.DIRECT)) {
           throw configError(ERRORS.PRODUCT_CONFIG_MALFORMED);
         }
         return Object.freeze({
@@ -724,12 +730,13 @@
 
           let datasetStore;
           try {
-            datasetStore = createDatasetStore();
+            datasetStore = DatasetRuntime.isManualIdentity(config.datasetIdentity) ?
+              null : createDatasetStore();
           } catch (_error) {
             throw configError(ERRORS.DATASET_STORE_UNAVAILABLE);
           }
-          if (!datasetStore ||
-              typeof datasetStore.loadVerifications !== 'function') {
+          if (!DatasetRuntime.isManualIdentity(config.datasetIdentity) &&
+              (!datasetStore || typeof datasetStore.loadVerifications !== 'function')) {
             throw configError(ERRORS.DATASET_STORE_UNAVAILABLE);
           }
           return Object.freeze({

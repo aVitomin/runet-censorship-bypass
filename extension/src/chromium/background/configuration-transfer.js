@@ -14,7 +14,9 @@
 
     const mods = Mods.normalizePacMods(state.pacMods);
     const profile = (value, kind, index) => ({name: `${kind}-${index + 1}`, kind,
-      type: type(value.type), host: value.host, port: value.port, enabled: value.enabled !== false,
+      type: type(value.type), host: value.host, port: value.port,
+      enabled: value.enabled !== false &&
+        (kind === 'own' || value.useForProxyRules),
       useForOnion: kind === 'localTor' || kind === 'torBrowser' ?
         value.enabled && value.useForOnion : false,
       useAsDirectReplacement: value.enabled !== false && value.useAsDirectReplacement === true,
@@ -25,6 +27,7 @@
     const warpProxies = Mods.normalizePacMods({ownProxies: mods.warp.proxyString}).ownProxies;
     warpProxies.forEach((value, index) => {
       proxies.push(profile(Object.assign({}, value, {enabled: mods.warp.enabled,
+        useForProxyRules: mods.warp.useForProxyRules,
         useAsDirectReplacement: mods.warp.useAsDirectReplacement}), 'warp', index));
     });
     const selected = Object.keys(PROVIDERS).find((key) =>
@@ -60,26 +63,21 @@
         useAsDirectReplacement: value.useAsDirectReplacement}));
     for (const kind of ['localTor', 'torBrowser']) {
       const value = config.proxies.find((entry) => entry.kind === kind);
-      mods[kind] = value ? Object.assign(endpoint(value), {enabled: value.enabled,
+      mods[kind] = value ? Object.assign(endpoint(value), {
+        enabled: value.enabled || value.useForOnion || value.useAsDirectReplacement,
+        useForProxyRules: value.enabled,
         useForOnion: value.useForOnion, useAsDirectReplacement: value.useAsDirectReplacement}) :
         Object.assign({}, mods[kind], {enabled: false});
-      if (value && !value.enabled && (value.useForOnion || value.useAsDirectReplacement)) {
-        unsupported.push('torScope');
-      }
-    }
-    if (mods.localTor.enabled && mods.torBrowser.enabled) {
-      // This target supports one enabled Tor mode. Require a user choice later.
-      mods.localTor.enabled = false;
-      mods.torBrowser.enabled = false;
-      unsupported.push('torExclusive');
     }
     const warp = config.proxies.filter((value) => value.kind === 'warp');
     if (warp.length) {
-      mods.warp = {enabled: warp.every((value) => value.enabled),
-        useAsDirectReplacement: warp.every((value) => value.useAsDirectReplacement),
+      const useForProxyRules = warp.every((value) => value.enabled);
+      const useAsDirectReplacement = warp.every((value) => value.useAsDirectReplacement);
+      mods.warp = {enabled: useForProxyRules || useAsDirectReplacement,
+        useForProxyRules, useAsDirectReplacement,
         proxyString: warp.map((value) => `${chromiumType(value.type)} ${value.host.includes(':') ?
           `[${value.host}]` : value.host}:${value.port}`).join('; ')};
-      if (warp.some((value) => value.enabled !== mods.warp.enabled ||
+      if (warp.some((value) => value.enabled !== mods.warp.useForProxyRules ||
           value.useAsDirectReplacement !== mods.warp.useAsDirectReplacement)) unsupported.push('warpScope');
     } else mods.warp.enabled = false;
     if (config.proxies.some((value) => value.proxyDNS !== null || value.timeoutSeconds !== null)) {

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "0.0.4.0",
+  "version": "1.0.0",
   "description": "__MSG_extensionDescription__",
   "default_locale": "en",
   "permissions": [
@@ -25,6 +25,8 @@
       "background/proxy-control.js",
       "background/dataset-store.js",
       "background/provider-updater.js",
+      "background/anticensority-source.js",
+      "background/provider-source-updater.js",
       "background/provider-update-control.js",
       "background/provider-lookup.js",
       "background/dataset-runtime.js",

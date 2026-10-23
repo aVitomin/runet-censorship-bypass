@@ -12,8 +12,8 @@ const PROVIDER_PROXY = 'PROXY 192.0.2.10:8080';
 const PROVIDER_SOCKS = 'SOCKS5 192.0.2.11:1080';
 const OWN = 'HTTPS own-proxy.test:8443';
 const SECOND_OWN = 'SOCKS4 second-own.test:1080';
-const LOCAL_TOR = 'SOCKS5 127.0.0.1:9050';
-const TOR_BROWSER = 'SOCKS5 127.0.0.1:9150';
+const LOCAL_TOR = 'SOCKS5 localhost:9050';
+const TOR_BROWSER = 'SOCKS5 localhost:9150';
 const WARP_SOCKS = 'SOCKS5 127.0.0.1:40000';
 const WARP_HTTPS = 'HTTPS 127.0.0.1:40000';
 
@@ -189,9 +189,13 @@ function candidateGroupsFromPacMods(pacMods) {
   return {
     configured: {
       own: candidatesFromPacStrings(own),
-      localTor: candidatesFromPacStrings(localTor),
-      torBrowser: candidatesFromPacStrings(torBrowser),
-      warp: candidatesFromPacStrings(warp),
+      localTor: mods.localTor.useForProxyRules ?
+        candidatesFromPacStrings(localTor) :
+        [],
+      torBrowser: mods.torBrowser.useForProxyRules ?
+        candidatesFromPacStrings(torBrowser) :
+        [],
+      warp: mods.warp.useForProxyRules ? candidatesFromPacStrings(warp) : [],
     },
     onion: {
       own: [],
@@ -315,6 +319,15 @@ const FIXTURES = Object.freeze([
     expectedPacResult: 'DIRECT',
   },
   {
+    name: 'fresh defaults use both onion-only Tor connections before provider',
+    host: 'service.onion',
+    pacMods: {},
+    providerResult: PROVIDER_PROXY,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.ONION,
+    expectedPacResult: `${LOCAL_TOR}; ${TOR_BROWSER}`,
+  },
+  {
     name: '.onion uses local Tor before provider policy',
     host: 'hidden-service.onion',
     pacMods: {
@@ -327,6 +340,66 @@ const FIXTURES = Object.freeze([
     providerSource: 'PROVIDER_DIRECT',
     expectedSource: Routing.SOURCES.ONION,
     expectedPacResult: LOCAL_TOR,
+  },
+  {
+    name: '.onion uses onion-only Tor independently of Proxy availability',
+    host: 'service.onion',
+    pacMods: {
+      localTor: {enabled: true, useForProxyRules: false},
+      torBrowser: {enabled: true, useForOnion: false},
+    },
+    providerResult: PROVIDER_PROXY,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.ONION,
+    expectedPacResult: LOCAL_TOR,
+  },
+  {
+    name: 'explicit Proxy excludes onion-only Tor without provider fallback',
+    host: 'explicit.test',
+    pacMods: {
+      localTor: {enabled: true, useForProxyRules: false},
+      torBrowser: {enabled: true, useForOnion: false},
+      exceptions: [explicitRule('explicit.test', 'PROXY')],
+    },
+    providerResult: `${PROVIDER_PROXY}; DIRECT`,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.EXPLICIT_PROXY,
+    expectedPacResult: TOR_BROWSER,
+  },
+  {
+    name: 'explicit Proxy rejects onion-only and Direct-only Tor candidates',
+    host: 'explicit.test',
+    pacMods: {
+      localTor: {enabled: true, useForProxyRules: false},
+      torBrowser: {
+        enabled: true,
+        useForProxyRules: false,
+        useForOnion: false,
+        useAsDirectReplacement: true,
+      },
+      exceptions: [explicitRule('explicit.test', 'PROXY')],
+    },
+    providerResult: PROVIDER_PROXY,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.EXPLICIT_PROXY,
+    expectedError: 'PROXY_RULE_NO_CANDIDATE',
+  },
+  {
+    name: 'Direct replacement uses Tor independently of Proxy availability',
+    host: 'provider-direct.test',
+    pacMods: {
+      torBrowser: {
+        enabled: true,
+        useForProxyRules: false,
+        useForOnion: false,
+        useAsDirectReplacement: true,
+      },
+      replaceDirectWithProxy: true,
+    },
+    providerResult: 'DIRECT',
+    providerSource: 'PROVIDER_DIRECT',
+    expectedSource: 'PROVIDER_DIRECT',
+    expectedPacResult: TOR_BROWSER,
   },
   {
     name: 'provider match returns the provider proxy',
@@ -488,6 +561,33 @@ const FIXTURES = Object.freeze([
     expectedPacResult: 'DIRECT',
   },
   {
+    name: 'explicit Proxy orders own, both Tor connections, then WARP',
+    host: 'explicit.test',
+    pacMods: {
+      ownProxies: [ownProxy()],
+      localTor: {enabled: true},
+      torBrowser: {enabled: true},
+      warp: {enabled: true},
+      exceptions: [explicitRule('explicit.test', 'PROXY')],
+    },
+    providerResult: `${PROVIDER_PROXY}; DIRECT`,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.EXPLICIT_PROXY,
+    expectedPacResult: [OWN, LOCAL_TOR, TOR_BROWSER, WARP_SOCKS, WARP_HTTPS].join('; '),
+  },
+  {
+    name: '.onion preserves local Tor then Tor Browser when both apply',
+    host: 'service.onion',
+    pacMods: {
+      localTor: {enabled: true},
+      torBrowser: {enabled: true},
+    },
+    providerResult: PROVIDER_PROXY,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.ONION,
+    expectedPacResult: `${LOCAL_TOR}; ${TOR_BROWSER}`,
+  },
+  {
     name: 'Proxy rule wins before whitelist and .onion handling',
     host: 'precedence.onion',
     pacMods: {
@@ -518,7 +618,7 @@ const FIXTURES = Object.freeze([
   {
     name: '.onion without onion candidates uses provider policy',
     host: 'no-tor.onion',
-    pacMods: {},
+    pacMods: {localTor: {enabled: false}, torBrowser: {enabled: false}},
     providerResult: PROVIDER_PROXY,
     providerSource: 'PROVIDER_MATCH',
     expectedSource: 'PROVIDER_MATCH',
@@ -574,6 +674,30 @@ const FIXTURES = Object.freeze([
       WARP_SOCKS,
       WARP_HTTPS,
     ].join('; '),
+  },
+  {
+    name: 'replacement-only WARP replaces provider Direct independently of Proxy scope',
+    host: 'provider-direct.test',
+    pacMods: {
+      warp: {enabled: true, useForProxyRules: false, useAsDirectReplacement: true},
+      replaceDirectWithProxy: true,
+    },
+    providerResult: 'DIRECT',
+    providerSource: 'PROVIDER_DIRECT',
+    expectedSource: 'PROVIDER_DIRECT',
+    expectedPacResult: `${WARP_SOCKS}; ${WARP_HTTPS}`,
+  },
+  {
+    name: 'explicit Proxy rejects replacement-only WARP without provider fallback',
+    host: 'explicit.test',
+    pacMods: {
+      warp: {enabled: true, useForProxyRules: false, useAsDirectReplacement: true},
+      exceptions: [explicitRule('explicit.test', 'PROXY')],
+    },
+    providerResult: PROVIDER_PROXY,
+    providerSource: 'PROVIDER_MATCH',
+    expectedSource: Routing.SOURCES.EXPLICIT_PROXY,
+    expectedError: 'PROXY_RULE_NO_CANDIDATE',
   },
   {
     name: 'disabled provider proxies synthesize Direct',

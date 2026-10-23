@@ -1681,6 +1681,65 @@ async function waitForProxyControl(page) {
 
 }
 
+async function assertIndependentTorOptions(page) {
+
+  await page.waitForSelector('form.proxy-connections-form input[name="localTor.enabled"]',
+      {timeout: CHROME_TIMEOUT_MS});
+  const before = await readProxySettings(page);
+  const fresh = await callRpc(page, 'getPacMods');
+  for (const kind of ['localTor', 'torBrowser']) {
+    Assert.strictEqual(fresh[kind].enabled, true);
+    Assert.strictEqual(fresh[kind].useForProxyRules, false);
+    Assert.strictEqual(fresh[kind].useForOnion, true);
+    Assert.strictEqual(fresh[kind].useAsDirectReplacement, false);
+    Assert.strictEqual(fresh[kind].host, 'localhost');
+  }
+  const draft = await page.evaluate(() => {
+    const local = document.querySelector('[name="localTor.enabled"]');
+    const tor = document.querySelector('[name="torBrowser.enabled"]');
+    if (!local.checked) local.click();
+    if (!tor.checked) tor.click();
+    const scopes = {
+      'localTor.useForProxyRules': false,
+      'localTor.useForOnion': true,
+      'torBrowser.useForProxyRules': true,
+      'torBrowser.useForOnion': false,
+    };
+    for (const [name, expected] of Object.entries(scopes)) {
+      const input = document.querySelector(`[name="${name}"]`);
+      if (input.checked !== expected) input.click();
+    }
+    return {local: local.checked, tor: tor.checked};
+  });
+  Assert.deepStrictEqual(draft, {local: true, tor: true});
+  const unchanged = await callRpc(page, 'getPacMods');
+  Assert.deepStrictEqual(unchanged, fresh);
+  await page.evaluate(() => document.querySelector(
+      'form.proxy-connections-form .split-actions button.primary').click());
+  await page.waitForFunction(async () => {
+    const mods = await window.mv3Rpc.callBackground('getPacMods');
+    return mods.localTor.enabled && !mods.localTor.useForProxyRules && mods.localTor.useForOnion &&
+      mods.torBrowser.enabled && mods.torBrowser.useForProxyRules && !mods.torBrowser.useForOnion;
+  }, {timeout: CHROME_TIMEOUT_MS});
+  Assert.deepStrictEqual(await readProxySettings(page), before,
+      'Saving Tor options must not activate or replace browser routing.');
+  await page.waitForFunction(() => {
+    const form = document.querySelector('form.proxy-connections-form');
+    return form && form.dataset.dirty === 'false';
+  }, {timeout: CHROME_TIMEOUT_MS});
+  await page.reload({waitUntil: 'domcontentloaded'});
+  await page.waitForFunction(() => {
+    const local = document.querySelector('[name="localTor.enabled"]');
+    const tor = document.querySelector('[name="torBrowser.enabled"]');
+    return local && tor && local.checked && tor.checked &&
+      !document.querySelector('[name="localTor.useForProxyRules"]').checked &&
+      document.querySelector('[name="localTor.useForOnion"]').checked &&
+      document.querySelector('[name="torBrowser.useForProxyRules"]').checked &&
+      !document.querySelector('[name="torBrowser.useForOnion"]').checked;
+  }, {timeout: CHROME_TIMEOUT_MS});
+
+}
+
 async function configureExtension(page, infrastructure) {
 
   const reset = await callRpc(page, 'resetMv3State');
@@ -2660,6 +2719,8 @@ async function runSmoke() {
     browser = session.browser;
     chromeVersion = await browser.version();
     const optionsPage = await openExtensionPage(session);
+    await assertIndependentTorOptions(optionsPage);
+    console.log('Chrome smoke: independent Tor controls preserve Draft/Save and remain off.');
     await configureExtension(optionsPage, infrastructure);
     const initialEffective = await readEffectiveGenerationProof(optionsPage);
     console.log('Chrome smoke: applied synthetic PAC configuration.');

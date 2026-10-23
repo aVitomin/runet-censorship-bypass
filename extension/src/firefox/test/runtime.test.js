@@ -194,6 +194,7 @@ function startEventPage(options = {}) {
     value: {proxyType: 'none'},
   };
   let messageListener;
+  let providerUpdateOptions;
   const networkListeners = {};
   let proxySettingsChangeListener;
   const actionCalls = [];
@@ -421,6 +422,14 @@ function startEventPage(options = {}) {
 
         },
       },
+      onHeadersReceived: {
+        addListener(listener, filter, extraInfoSpec) {
+
+          events.push('headers-listener-registered');
+          networkListeners.headers = {extraInfoSpec, filter, listener};
+
+        },
+      },
       onCompleted: {
         addListener(listener, filter) {
 
@@ -499,6 +508,10 @@ function startEventPage(options = {}) {
   Vm.runInContext(providerUpdaterSource, context, {
     filename: 'provider-updater.js',
   });
+  for (const file of ['anticensority-source.js', 'provider-source-updater.js']) {
+    Vm.runInContext(Fs.readFileSync(Path.join(sourceRoot, 'background', file), 'utf8'), context,
+        {filename: file});
+  }
   Vm.runInContext(providerUpdateControlSource, context, {
     filename: 'provider-update-control.js',
   });
@@ -544,7 +557,9 @@ function startEventPage(options = {}) {
       {
         createController: (settingsOptions) => createSettingsController(
             Object.assign({}, settingsOptions, {
-              datasetIdentityAvailable: () => true,
+              datasetIdentityAvailable: options.datasetIdentityAvailable ||
+                (options.verifyDatasetIdentity ?
+                  settingsOptions.datasetIdentityAvailable : () => true),
             }),
         ),
       },
@@ -575,6 +590,9 @@ function startEventPage(options = {}) {
   const providerUpdateStatus = Object.freeze({
     schemaVersion: 1,
     trustConfigured: false,
+    updateConfigured: false,
+    updateChannel: 'NONE',
+    sourceUpdatedAt: null,
     automaticChecksEnabled: false,
     status: 'NOT_CONFIGURED',
     currentDatasetVersion: ProductionProvider.DATASET_VERSION,
@@ -585,23 +603,38 @@ function startEventPage(options = {}) {
     lastSuccessfulCheckAt: null,
     errorCategory: null,
   });
+  const createProviderUpdateController = context.rucbFirefoxProviderUpdateControl.createController;
   context.rucbFirefoxProviderUpdateControl = Object.freeze(Object.assign(
       {},
       context.rucbFirefoxProviderUpdateControl,
       {
-        createController: () => ({
-          check: options.providerUpdateCheck || (async () => ({
-            ok: false,
-            code: 'UPDATE_TRUST_NOT_CONFIGURED',
-          })),
-          handleAlarm: options.providerUpdateAlarm || (async () => ({
-            ok: true, status: 'IGNORED',
-          })),
-          initialize: async () => providerUpdateStatus,
-          markInstalled: async () => providerUpdateStatus,
-          publicStatus: async () => providerUpdateStatus,
-          trustConfigured: () => options.providerUpdateTrustConfigured === true,
-        }),
+        createController: (controlOptions) => {
+
+          providerUpdateOptions = controlOptions;
+          if (options.realProviderUpdateControl) {
+            return createProviderUpdateController(controlOptions);
+          }
+          return {
+            check: options.providerUpdateCheck || (async () => ({
+              ok: false,
+              code: 'UPDATE_TRUST_NOT_CONFIGURED',
+            })),
+            handleAlarm: options.providerUpdateAlarm || (async () => ({
+              ok: true, status: 'IGNORED',
+            })),
+            initialize: async () => providerUpdateStatus,
+            markInstalled: options.providerMarkInstalled || (async () => providerUpdateStatus),
+            publicStatus: async () => Object.assign({}, providerUpdateStatus,
+                options.providerUpdateStatus, options.readProviderDatasetInfo ?
+                  {sourceUpdatedAt:
+                    (await controlOptions.readCurrentDatasetInfo()).sourceUpdatedAt} :
+                  {}),
+            trustConfigured: () => options.providerUpdateTrustConfigured === true,
+            updateConfigured: () => options.providerUpdateTrustConfigured === true ||
+              options.providerSourceUpdateConfigured === true,
+          };
+
+        },
       },
   ));
   if (options.activationFactory) {
@@ -631,6 +664,11 @@ function startEventPage(options = {}) {
     notificationListeners,
     alarmListeners,
     proxySettingsCalls,
+    get providerUpdateOptions() {
+
+      return providerUpdateOptions;
+
+    },
     proxySettingsChange(change) {
 
       Assert.strictEqual(typeof proxySettingsChangeListener, 'function');
@@ -655,7 +693,7 @@ function startEventPage(options = {}) {
 }
 
 describe('Firefox production control package', function() {
-  async function unifiedFixture(privateWindowAccess = true) {
+  async function unifiedFixture(privateWindowAccess = true, options = {}) {
 
     const sha256 = async (bytes) => Helpers.sha256(Buffer.from(bytes));
     const artifact = Helpers.artifact({providerKey: ProductionProvider.PROVIDER_KEY});
@@ -669,11 +707,224 @@ describe('Firefox production control package', function() {
       artifactSha256: artifact.envelope.artifactSha256};
     const storage = makeStorage();
     storage.values[ProductConfig.CONFIG_STORAGE_KEY] = config;
-    const page = startEventPage({storage, datasetStore, privateWindowAccess});
+    const page = startEventPage(Object.assign({}, options,
+        {storage, datasetStore, privateWindowAccess}));
     await page.ready();
     return page;
 
   }
+
+  it('verifies one Saved snapshot per OFF Options request and keeps missing data repairable', async function() {
+    let checks = 0;
+    let trusted = true;
+    const page = await unifiedFixture(true, {datasetIdentityAvailable: () => {
+      checks += 1; return trusted;
+    }});
+    checks = 0;
+    for (let request = 1; request <= 2; request += 1) {
+      const result = await page.send({type: 'firefox.options.get'});
+      Assert.strictEqual(result.ok, true);
+      Assert.deepStrictEqual(Object.keys(result.result).sort(),
+          ['capabilities', 'configuration', 'operational', 'providerUpdate', 'settings']);
+      Assert.strictEqual(result.result.configuration.savedRevision,
+          result.result.settings.revision);
+      Assert.strictEqual(result.result.configuration.active, false);
+      Assert.strictEqual(checks, request);
+    }
+    Assert.deepStrictEqual(await page.send({type: 'firefox.options.get', snapshot: {}}),
+        {ok: false, error: {code: 'INVALID_RPC_REQUEST'}});
+    Assert.strictEqual(checks, 2);
+    trusted = false;
+    Assert.strictEqual((await page.send({type: 'firefox.options.get'})).ok, true);
+    Assert.strictEqual(checks, 3);
+    trusted = true;
+    page.storage.values[ProductConfig.CONFIG_STORAGE_KEY].routingDescriptor.configurationSha256 = 'f'.repeat(64);
+    Assert.deepStrictEqual(await page.send({type: 'firefox.options.get'}),
+        {ok: false, error: {code: 'SETTINGS_STATE_UNAVAILABLE'}});
+    Assert.strictEqual(page.proxySettingsCalls.set, 0);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+  });
+
+  it('verifies fresh popup state on each request and rejects caller snapshots without exposing URLs', async function() {
+    let checks = 0;
+    let trusted = true;
+    const page = await unifiedFixture(true, {datasetIdentityAvailable: () => {
+      checks += 1; return trusted;
+    }});
+    const request = {type: 'firefox.popup.get', tabUrl: 'https://sub.example.com/private?synthetic=1'};
+    checks = 0;
+    for (let count = 1; count <= 2; count += 1) {
+      const response = await page.send(request);
+      Assert.strictEqual(response.ok, true);
+      Assert.deepStrictEqual(Object.keys(response.result).sort(),
+          ['capabilities', 'configuration', 'operational', 'site']);
+      Assert.strictEqual(response.result.configuration.savedRevision,
+          response.result.site.revision);
+      Assert.strictEqual(response.result.configuration.active, false);
+      Assert.strictEqual(response.result.site.target.host, 'sub.example.com');
+      Assert.strictEqual(JSON.stringify(response).includes('synthetic'), false);
+      Assert.strictEqual(checks, count);
+    }
+    for (const invalid of [{type: request.type}, {type: request.type, tabUrl: null},
+      Object.assign({}, request, {verifiedSettings: {}})]) {
+      Assert.deepStrictEqual(await page.send(invalid),
+          {ok: false, error: {code: 'INVALID_RPC_REQUEST'}});
+    }
+    Assert.strictEqual(checks, 2);
+    for (const tabUrl of ['about:config', 'https://user:synthetic-password@example.com/']) {
+      const response = await page.send({type: request.type, tabUrl});
+      Assert.strictEqual(response.ok, true);
+      Assert.strictEqual(response.result.site.target.controllable, false);
+      Assert.strictEqual(response.result.site.target.host, '');
+      Assert.strictEqual(JSON.stringify(response).includes(tabUrl), false);
+      Assert.strictEqual(JSON.stringify(response).includes('synthetic-password'), false);
+    }
+    trusted = false;
+    Assert.strictEqual((await page.send(request)).ok, true);
+    Assert.strictEqual(page.proxySettingsCalls.set, 0);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+  });
+
+  it('reuses source date metadata without skipping fresh Options dataset verification', async function() {
+
+    const sha256 = async (bytes) => Helpers.sha256(Buffer.from(bytes));
+    const artifact = Helpers.artifact({providerKey: ProductionProvider.PROVIDER_KEY});
+    const backend = Helpers.memoryBackend();
+    const store = DatasetStore.createStore({backend, sha256});
+    await store.commitPackagedBaseline(artifact);
+    let loads = 0;
+    const countedStore = Object.assign({}, store, {async loadVerifications(providerKey) {
+
+      loads += 1;
+      return store.loadVerifications(providerKey);
+
+    }});
+    const config = JSON.parse(JSON.stringify(
+        await ProductionProvider.createProductionProductConfig(sha256)));
+    config.datasetIdentity = {providerKey: artifact.envelope.providerKey,
+      datasetVersion: artifact.envelope.datasetVersion,
+      artifactSha256: artifact.envelope.artifactSha256};
+    const storage = makeStorage();
+    storage.values[ProductConfig.CONFIG_STORAGE_KEY] = config;
+    const page = startEventPage({storage, datasetStore: countedStore, privateWindowAccess: true,
+      verifyDatasetIdentity: true, readProviderDatasetInfo: true});
+    await page.ready();
+    loads = 0;
+    for (let request = 1; request <= 2; request += 1) {
+      const response = await page.send({type: 'firefox.options.get'});
+      Assert.strictEqual(response.ok, true);
+      Assert.strictEqual(response.result.providerUpdate.sourceUpdatedAt,
+          Date.parse(artifact.envelope.generatedAt));
+      Assert.strictEqual(loads, request, 'displaying source date must not add a second artifact verification');
+    }
+    backend.artifacts.clear();
+    const missing = await page.send({type: 'firefox.options.get'});
+    Assert.strictEqual(missing.ok, true);
+    Assert.strictEqual(missing.result.capabilities.providerDatasetAvailable, false);
+    Assert.strictEqual(loads, 3, 'historical source date must never bypass a corrupt/missing artifact');
+    const historical = await page.providerUpdateOptions.readCurrentDatasetInfo();
+    Assert.strictEqual(historical.sourceUpdatedAt, Date.parse(artifact.envelope.generatedAt));
+    Assert.strictEqual(loads, 3);
+
+  });
+
+  it('keeps popup routes and diagnostics Effective while showing the latest queued Saved revision', async function() {
+    let checks = 0;
+    const page = await unifiedFixture(true, {datasetIdentityAvailable: () => {
+      checks += 1; return true;
+    }});
+    const request = {type: 'firefox.popup.get', tabUrl: 'https://sub.example.com/private?synthetic=1'};
+    const saved = (await page.send({type: 'firefox.settings.get'})).result;
+    saved.settings.rules.direct = ['sub.example.com'];
+    saved.settings.ownProxies = [{id: 'one', enabled: true, type: 'HTTP',
+      host: 'first.example', port: 8080, proxyDNS: false, failoverTimeoutSeconds: null,
+      useAsDirectReplacement: false,
+      credentials: {mode: 'SET', username: 'account-a', password: 'synthetic-secret'}}];
+    Assert.strictEqual((await page.send({type: 'firefox.settings.replace',
+      expectedRevision: 0, settings: saved.settings})).ok, true);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 1})).ok, true);
+    const before = (await page.send(request)).result;
+    saved.settings.rules.direct = [];
+    saved.settings.rules.proxy = ['sub.example.com'];
+    saved.settings.ownProxies.push({id: 'two', enabled: true, type: 'HTTP',
+      host: 'second.example', port: 8081, proxyDNS: false, failoverTimeoutSeconds: null,
+      useAsDirectReplacement: false, credentials: {mode: 'NONE'}});
+    const writes = page.proxySettingsCalls.set;
+    const [save, response] = await Promise.all([
+      page.send({type: 'firefox.settings.replace', expectedRevision: 1, settings: saved.settings}),
+      page.send(request),
+    ]);
+    Assert.strictEqual(save.ok, true);
+    Assert.strictEqual(response.ok, true);
+    Assert.deepStrictEqual(response.result.site, before.site);
+    Assert.strictEqual(response.result.site.route.mode, 'DIRECT');
+    Assert.deepStrictEqual(response.result.configuration, Object.assign({}, before.configuration, {
+      savedRevision: 2, pending: true, pendingCategories: ['siteRules', 'proxyConnections'],
+    }));
+    Assert.strictEqual(response.result.operational.diagnostics.enabledProxyCount,
+        before.operational.diagnostics.enabledProxyCount);
+    for (const privateValue of ['synthetic', 'account-a', 'first.example', 'second.example']) {
+      Assert.strictEqual(JSON.stringify(response).includes(privateValue), false);
+    }
+    checks = 0;
+    Assert.strictEqual((await page.send(request)).ok, true);
+    Assert.strictEqual(checks, 2, 'one verification for Saved and one for Effective');
+    Assert.strictEqual(page.proxySettingsCalls.set, writes);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 2})).ok, true);
+    const applied = (await page.send(request)).result;
+    Assert.strictEqual(applied.site.route.mode, 'PROXY');
+    Assert.strictEqual(applied.site.revision, 2);
+    Assert.strictEqual(applied.configuration.pending, false);
+    Assert.strictEqual(applied.operational.diagnostics.enabledProxyCount,
+        before.operational.diagnostics.enabledProxyCount + 1);
+  });
+
+  it('bundles Saved edits with Effective diagnostics after a queued Save without exposing passwords', async function() {
+    let checks = 0;
+    const page = await unifiedFixture(true, {datasetIdentityAvailable: () => {
+      checks += 1; return true;
+    }});
+    const saved = (await page.send({type: 'firefox.settings.get'})).result;
+    saved.settings.ownProxies = [{id: 'one', enabled: true, type: 'HTTP',
+      host: 'first.example', port: 8080, proxyDNS: false, failoverTimeoutSeconds: null,
+      useAsDirectReplacement: false,
+      credentials: {mode: 'SET', username: 'account-a', password: 'synthetic-old-secret'}}];
+    Assert.strictEqual((await page.send({type: 'firefox.settings.replace',
+      expectedRevision: 0, settings: saved.settings})).ok, true);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 1})).ok, true);
+    const before = (await page.send({type: 'firefox.options.get'})).result;
+    saved.settings.ownProxies[0].credentials.password = 'synthetic-new-secret';
+    saved.settings.ownProxies.push({id: 'two', enabled: true, type: 'HTTP',
+      host: 'second.example', port: 8081, proxyDNS: false, failoverTimeoutSeconds: null,
+      useAsDirectReplacement: false, credentials: {mode: 'NONE'}});
+    const writes = page.proxySettingsCalls.set;
+    const [save, after] = await Promise.all([
+      page.send({type: 'firefox.settings.replace', expectedRevision: 1, settings: saved.settings}),
+      page.send({type: 'firefox.options.get'}),
+    ]);
+    Assert.strictEqual(save.ok, true);
+    Assert.strictEqual(after.ok, true);
+    Assert.strictEqual(after.result.settings.revision, 2);
+    Assert.strictEqual(after.result.settings.settings.ownProxies.length, 2);
+    Assert.deepStrictEqual(after.result.configuration, Object.assign({}, before.configuration, {
+      savedRevision: 2, pending: true, pendingCategories: ['proxyConnections'],
+    }));
+    Assert.strictEqual(after.result.operational.diagnostics.configuredProxyCount,
+        before.operational.diagnostics.configuredProxyCount);
+    Assert.strictEqual(after.result.operational.diagnostics.enabledProxyCount,
+        before.operational.diagnostics.enabledProxyCount);
+    for (const secret of ['synthetic-old-secret', 'synthetic-new-secret']) {
+      Assert.strictEqual(JSON.stringify(after).includes(secret), false);
+    }
+    Assert.deepStrictEqual(after.result.settings.settings.ownProxies[0].credentials,
+        {mode: 'KEEP', username: 'account-a'});
+    checks = 0;
+    Assert.strictEqual((await page.send({type: 'firefox.options.get'})).ok, true);
+    Assert.strictEqual(checks, 2, 'one verification for Saved and one for Effective');
+    Assert.strictEqual(page.proxySettingsCalls.set, writes);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+  });
 
   it('notifies Options at external Apply start and after success or permission failure, without state payloads', async function() {
     for (const allowed of [true, false]) {
@@ -1030,6 +1281,8 @@ describe('Firefox production control package', function() {
         'background/proxy-control.js',
         'background/dataset-store.js',
         'background/provider-updater.js',
+        'background/anticensority-source.js',
+        'background/provider-source-updater.js',
         'background/provider-update-control.js',
         'background/provider-lookup.js',
         'background/dataset-runtime.js',
@@ -1196,11 +1449,12 @@ describe('Firefox production control package', function() {
         const eventPage = startEventPage();
         await eventPage.ready();
 
-        Assert.deepStrictEqual(eventPage.events.slice(0, 8), [
+        Assert.deepStrictEqual(eventPage.events.slice(0, 9), [
           'proxy-listener-registered',
           'proxy-settings-change-listener-registered',
           'guard-listener-registered',
           'auth-listener-registered',
+          'headers-listener-registered',
           'completed-listener-registered',
           'error-listener-registered',
           'listener-registered',
@@ -1218,6 +1472,12 @@ describe('Firefox production control package', function() {
             )),
             ['blocking'],
         );
+        Assert.deepStrictEqual(
+            JSON.parse(JSON.stringify(eventPage.networkListeners.headers.filter)),
+            {urls: ['<all_urls>']});
+        Assert.deepStrictEqual(Array.from(eventPage.networkListeners.headers.extraInfoSpec),
+            ['blocking', 'responseHeaders']);
+        Assert.strictEqual(typeof eventPage.networkListeners.headers.listener, 'function');
 
       });
 
@@ -1226,6 +1486,9 @@ describe('Firefox production control package', function() {
 
         const eventPage = startEventPage();
 
+        const challenge = {requestId: 'origin', statusCode: 401,
+          url: 'https://synthetic.example/', responseHeaders: [{name: 'WWW-Authenticate'}]};
+        Assert.strictEqual(eventPage.networkListeners.headers.listener(challenge), undefined);
         Assert.deepStrictEqual(
             JSON.parse(JSON.stringify(
                 eventPage.networkListeners.before.listener({
@@ -1235,6 +1498,7 @@ describe('Firefox production control package', function() {
             {cancel: true},
         );
         await eventPage.ready();
+        Assert.strictEqual(eventPage.networkListeners.headers.listener(challenge), undefined);
 
         Assert.strictEqual(
             eventPage.networkListeners.proxy.listener({requestId: 'off'}),
@@ -1351,10 +1615,11 @@ describe('Firefox production control package', function() {
         );
         Assert.strictEqual(eventPage.proxySettingsCalls.set, 0);
         Assert.strictEqual(eventPage.proxySettingsCalls.clear, 0);
+        // Recovery still checks product config; the FAILED toolbar needs no site read.
         Assert.strictEqual(
             eventPage.events.filter((event) =>
               event === 'product-config-storage-get').length,
-            4,
+            3,
         );
 
       });
@@ -1791,6 +2056,171 @@ describe('Firefox production control package', function() {
 
   });
 
+  it('checks and installs HTTPS source data while OFF without acquiring the floor', async function() {
+
+    let installs = 0;
+    const page = await unifiedFixture(true, {
+      providerSourceUpdateConfigured: true,
+      providerUpdateCheck: async () => ({ok: true, status: 'STAGED'}),
+      promotionInstall: async () => {
+        installs += 1;
+        return {ok: true, status: 'INSTALLED'};
+      },
+    });
+    const before = Object.assign({}, page.proxySettingsCalls);
+    const result = await page.send({type: 'firefox.provider.update.check'});
+    Assert.strictEqual(result.result.status, 'INSTALLED');
+    Assert.strictEqual(installs, 1);
+    const status = await page.send({type: 'firefox.capabilities.get'});
+    Assert.strictEqual(status.result.runtimeState, 'OFF');
+    Assert.strictEqual(status.result.durableIntent, 'OFF');
+    Assert.strictEqual(status.result.providerUpdateConfigured, true);
+    Assert.strictEqual(page.proxySettingsCalls.set, before.set);
+    Assert.strictEqual(page.proxySettingsCalls.clear, before.clear);
+
+  });
+
+  it('offers manual Apply after provider failure and never reports a deferred update as installed', async function() {
+    let marked = 0;
+    const page = await unifiedFixture(true, {
+      providerBootstrapError: 'PACKAGED_ASSET_READ_FAILED',
+      datasetIdentityAvailable: () => false,
+      providerSourceUpdateConfigured: true,
+      providerUpdateCheck: async () => ({ok: true, status: 'STAGED'}),
+      providerMarkInstalled: async () => {
+        marked += 1;
+      },
+      promotionInstall: async () => ({ok: true, status: 'DEFERRED'}),
+    });
+    const saved = (await page.send({type: 'firefox.options.get'})).result;
+    Assert.strictEqual(saved.capabilities.providerDatasetAvailable, false);
+    saved.settings.settings.source = 'manual';
+    Assert.strictEqual((await page.send({type: 'firefox.settings.replace',
+      expectedRevision: 0, settings: saved.settings.settings})).ok, true);
+    Assert.strictEqual(page.proxySettingsCalls.set, 0);
+    const manual = (await page.send({type: 'firefox.options.get'})).result;
+    Assert.strictEqual(manual.capabilities.providerDatasetAvailable, true);
+    Assert.strictEqual(manual.settings.settings.source, 'manual');
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 1})).ok, true);
+    Assert.strictEqual((await page.send({type: 'firefox.provider.update.check'})).result.status, 'DEFERRED');
+    Assert.strictEqual((await page.send({type: 'firefox.provider.update.install'})).result.status, 'DEFERRED');
+    Assert.strictEqual(marked, 0);
+    Assert.strictEqual(page.proxySettingsCalls.set, 1);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+  });
+
+  it('keeps manual Options, Apply and recovery available when real IndexedDB opening fails', async function() {
+    const Settings = require('../background/settings-control');
+    const Runtime = require('../background/dataset-runtime');
+    const settings = Settings.createDefaultSettings();
+    settings.source = 'manual';
+    const config = await ProductConfig.createProductConfig({
+      providerKey: 'manual', datasetIdentity: Runtime.MANUAL_IDENTITY,
+      configurationKey: ProductionProvider.CONFIGURATION_KEY, configurationVersion: 'settings-1',
+      routingConfig: Settings.buildRoutingSnapshot(settings).routingConfig,
+      sha256: async (bytes) => Helpers.sha256(Buffer.from(bytes)),
+    });
+    const storage = makeStorage();
+    storage.values[ProductConfig.CONFIG_STORAGE_KEY] = config;
+    storage.values[ProductConfig.SETTINGS_COMMIT_STORAGE_KEY] = {
+      schemaVersion: 1, revision: 1, routingDescriptor: config.routingDescriptor, settings,
+    };
+    const page = startEventPage({storage, privateWindowAccess: true,
+      realProviderUpdateControl: true,
+      providerBootstrapError: 'INDEXED_DB_UNAVAILABLE', verifyDatasetIdentity: true});
+    await page.ready();
+    let result = await page.send({type: 'firefox.options.get'});
+    Assert.strictEqual(result.ok, true);
+    Assert.strictEqual(result.result.providerUpdate.errorCategory, 'STORAGE_FAILED');
+    Assert.strictEqual(result.result.capabilities.providerDatasetAvailable, true);
+    Assert.strictEqual(result.result.operational.diagnostics.datasetAvailable, true);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 1})).ok, true);
+    Assert.strictEqual(await page.providerUpdateOptions.readCurrentDatasetIdentity(), null);
+    const sourceInfo = await page.providerUpdateOptions.readCurrentDatasetInfo();
+    Assert.deepStrictEqual(JSON.parse(JSON.stringify(sourceInfo)),
+        {identity: null, sourceUpdatedAt: null});
+    result = await page.send({type: 'firefox.options.get'});
+    Assert.strictEqual(result.ok, true);
+    Assert.strictEqual(result.result.configuration.active, true);
+    const reboot = startEventPage({storage, privateWindowAccess: true,
+      realProviderUpdateControl: true,
+      providerBootstrapError: 'INDEXED_DB_UNAVAILABLE', verifyDatasetIdentity: true,
+      liveProxySettings: await page.context.browser.proxy.settings.get({})});
+    await reboot.ready();
+    Assert.strictEqual((await reboot.send({type: 'firefox.options.get'})).result.configuration.active, true);
+  });
+
+  it('refreshes active HTTPS data without applying pending Saved settings', async function() {
+
+    let installs = 0;
+    const page = await unifiedFixture(true, {
+      providerSourceUpdateConfigured: true,
+      providerUpdateCheck: async () => ({ok: true, status: 'STAGED'}),
+      promotionInstall: async () => {
+        installs += 1;
+        return {ok: true, status: 'INSTALLED'};
+      },
+    });
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply'})).ok, true);
+    const settings = (await page.send({type: 'firefox.settings.get'})).result;
+    settings.settings.flags.noDirect = true;
+    Assert.strictEqual((await page.send({type: 'firefox.settings.replace',
+      expectedRevision: settings.revision, settings: settings.settings})).ok, true);
+    const before = (await page.send({type: 'firefox.configuration.get'})).result;
+    Assert.strictEqual(before.pending, true);
+    const writes = Object.assign({}, page.proxySettingsCalls);
+    Assert.strictEqual((await page.send({type: 'firefox.provider.update.check'})).result.status, 'INSTALLED');
+    const after = (await page.send({type: 'firefox.configuration.get'})).result;
+    Assert.strictEqual(installs, 1);
+    Assert.strictEqual(after.active, true);
+    Assert.strictEqual(after.pending, true);
+    Assert.strictEqual(after.savedRevision, before.savedRevision);
+    Assert.strictEqual(after.effectiveId, before.effectiveId);
+    Assert.strictEqual(page.proxySettingsCalls.set, writes.set);
+    Assert.strictEqual(page.proxySettingsCalls.clear, writes.clear);
+
+  });
+
+  it('retains a checked candidate without installation under external control', async function() {
+
+    let installs = 0;
+    const page = await unifiedFixture(true, {
+      liveProxySettings: {levelOfControl: 'controlled_by_other_extensions', value: {proxyType: 'none'}},
+      providerSourceUpdateConfigured: true,
+      providerUpdateCheck: async () => ({ok: true, status: 'STAGED'}),
+      promotionInstall: async () => {
+        installs += 1;
+      },
+    });
+    Assert.strictEqual((await page.send({type: 'firefox.provider.update.check'})).result.status, 'STAGED');
+    Assert.strictEqual(installs, 0);
+    Assert.strictEqual(page.proxySettingsCalls.set, 0);
+    Assert.strictEqual(page.proxySettingsCalls.clear, 0);
+    Assert.ok(page.events.some((event) => event.statusNotification &&
+      event.statusNotification.type === 'firefox.status.changed'));
+
+  });
+
+  it('diagnoses the selected Saved dataset after OFF instead of historical Effective', async function() {
+
+    const page = await unifiedFixture();
+    Assert.strictEqual((await page.send({type: 'firefox.activation.apply'})).ok, true);
+    const effective = await page.providerUpdateOptions.readCurrentDatasetIdentity();
+    const saved = JSON.parse(JSON.stringify(page.storage.values[ProductConfig.CONFIG_STORAGE_KEY]));
+    saved.datasetIdentity.datasetVersion = 'new-source-version';
+    page.storage.values[ProductConfig.CONFIG_STORAGE_KEY] = saved;
+    Assert.strictEqual(
+        (await page.providerUpdateOptions.readCurrentDatasetIdentity()).datasetVersion,
+        effective.datasetVersion);
+    Assert.strictEqual((await page.send({type: 'firefox.activation.clear'})).ok, true);
+    Assert.strictEqual(
+        (await page.providerUpdateOptions.readCurrentDatasetIdentity()).datasetVersion,
+        'new-source-version');
+    const operational = await page.send({type: 'firefox.operational.get'});
+    Assert.strictEqual(operational.result.diagnostics.datasetVersion, 'new-source-version');
+
+  });
+
   it('checks provider updates only through an exact no-input RPC',
       async function() {
 
@@ -1840,10 +2270,13 @@ describe('Firefox production control package', function() {
           'lastCheckStatus',
           'lastSuccessfulCheckAt',
           'schemaVersion',
+          'sourceUpdatedAt',
           'stagedDatasetVersion',
           'status',
           'trustConfigured',
           'updateAvailable',
+          'updateChannel',
+          'updateConfigured',
         ]);
         for (const forbidden of [
           'artifactSha256', 'authRef', 'credentials', 'floorIdentity',
@@ -1854,21 +2287,25 @@ describe('Firefox production control package', function() {
 
       });
 
-  it('registers the update alarm listener synchronously and delegates alarms',
+  it('registers the update alarm synchronously and runs only its configured check',
       async function() {
 
         let calls = 0;
         const eventPage = startEventPage({
-          providerUpdateAlarm: async (alarm) => {
+          providerSourceUpdateConfigured: true,
+          providerUpdateCheck: async () => {
 
             calls += 1;
-            return {ok: true, status: alarm.name};
+            return {ok: true, status: 'UNCHANGED'};
 
           },
         });
         Assert.strictEqual(typeof eventPage.alarmListeners.alarm, 'function');
         eventPage.alarmListeners.alarm({name: 'other'});
         await eventPage.ready();
+        await new Promise((resolve) => setImmediate(resolve));
+        Assert.strictEqual(calls, 0);
+        eventPage.alarmListeners.alarm({name: 'firefox.provider.update.check'});
         await new Promise((resolve) => setImmediate(resolve));
         Assert.strictEqual(calls, 1);
 
@@ -1891,6 +2328,38 @@ describe('Firefox production control package', function() {
         });
 
       });
+
+  it('queues the alarm check and installation together before a later Clear', async function() {
+
+    let releaseInstall;
+    const wait = new Promise((resolve) => {
+      releaseInstall = resolve;
+    });
+    const order = [];
+    const page = await unifiedFixture(true, {
+      providerSourceUpdateConfigured: true,
+      providerUpdateCheck: async () => {
+        order.push('check');
+        return {ok: true, status: 'STAGED'};
+      },
+      promotionInstall: async () => {
+        order.push('install-start');
+        await wait;
+        order.push('install-end');
+        return {ok: true, status: 'INSTALLED'};
+      },
+    });
+    page.alarmListeners.alarm({name: 'firefox.provider.update.check'});
+    await new Promise((resolve) => setImmediate(resolve));
+    Assert.deepStrictEqual(order, ['check', 'install-start']);
+    const clearing = page.send({type: 'firefox.activation.clear'}).then(() => order.push('clear'));
+    await new Promise((resolve) => setImmediate(resolve));
+    Assert.deepStrictEqual(order, ['check', 'install-start']);
+    releaseInstall();
+    await clearing;
+    Assert.deepStrictEqual(order, ['check', 'install-start', 'install-end', 'clear']);
+
+  });
 
   it('serializes provider install with Apply, Clear, and settings operations',
       async function() {
@@ -1960,7 +2429,7 @@ describe('Firefox production control package', function() {
         await Promise.resolve();
         releaseCheck();
         await Promise.all([checking, installing]);
-        Assert.deepStrictEqual(order, ['check-start', 'check-end', 'install']);
+        Assert.deepStrictEqual(order, ['check-start', 'check-end', 'install', 'install']);
 
       });
 

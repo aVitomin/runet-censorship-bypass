@@ -253,6 +253,21 @@ describe('Firefox production recovery configuration', function() {
 
   });
 
+  it('accepts only the exact package-owned manual identity and an empty provider policy', async function() {
+    const identity = require('../background/dataset-runtime').MANUAL_IDENTITY;
+    const valid = await productConfig({providerKey: 'manual', datasetIdentity: identity,
+      routingConfig: routingConfig({providerCandidates: []})});
+    Assert.strictEqual(Config.canonicalProductConfig(valid).config.providerKey, 'manual');
+    for (const invalid of [
+      Object.assign({}, valid, {datasetIdentity: Object.assign({}, identity, {artifactSha256: '0'.repeat(64)})}),
+      Object.assign({}, valid, {routingConfig: routingConfig()}),
+      Object.assign({}, valid, {routingConfig: routingConfig({providerCandidates: [], providerFallback: 'FAIL_CLOSED'})}),
+    ]) {
+      Assert.throws(() => Config.canonicalProductConfig(invalid),
+          (error) => error.code === Config.ERRORS.PRODUCT_CONFIG_MALFORMED);
+    }
+  });
+
   it('rejects duplicate, unsafe, or excessive routing fields', function() {
 
     for (const value of [

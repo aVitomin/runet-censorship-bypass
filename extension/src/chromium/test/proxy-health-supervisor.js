@@ -506,7 +506,7 @@ Mocha.describe('Chromium proxy-health supervisor', function() {
         await runDueAutomaticCheck(harness, seed.clock);
 
         Chai.expect(probe.calls[0].candidate).to.include({
-          candidateEndpoint: '127.0.0.1:9150',
+          candidateEndpoint: 'localhost:9150',
           candidateType: 'torBrowser',
         });
 
@@ -530,7 +530,7 @@ Mocha.describe('Chromium proxy-health supervisor', function() {
         );
 
         Chai.expect(probe.calls[0].candidate).to.include({
-          candidateEndpoint: '127.0.0.1:9050',
+          candidateEndpoint: 'localhost:9050',
           candidateType: 'localTor',
         });
         Chai.expect(candidates.join(';')).not.to.include('9150');

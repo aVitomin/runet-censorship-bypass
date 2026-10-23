@@ -1,9 +1,8 @@
 # Firefox Add-ons listing — 1.0 draft
 
-Primary publication target. English submission copy based on
-`8361608fa4ac52cc118cf5e6d32b3feb8772d167`; not uploaded or approved.
-Verify against the eventual release build and review any Russian localization
-before submission. UI languages currently include English and Russian.
+English submission copy for development version `1.0.0`; not uploaded or
+approved. Verify against the exact release build and review any Russian
+localization before submission. UI languages currently include English and Russian.
 
 ## Listing fields
 
@@ -22,8 +21,8 @@ before submission. UI languages currently include English and Russian.
 The summary is deliberately below Mozilla's 250-character limit. The
 [AMO listing guidance](https://extensionworkshop.com/documentation/develop/create-an-appealing-listing/)
 also recommends natural keywords and choosing only relevant categories.
-The [Other category](https://addons.mozilla.org/en-US/firefox/extensions/category/other/)
-was checked on 2026-09-26.
+Confirm the [Other category](https://addons.mozilla.org/en-US/firefox/extensions/category/other/)
+in the live submission form.
 
 ## Description — copy from here
 
@@ -37,7 +36,10 @@ network service.
 Firefox includes verified Anticensority routing data. Its automatic proxy
 routes need a compatible local service, such as Anticensority, Tor Browser or
 Tor, running separately. You can also configure your own connection for
-explicit Proxy rules. The extension does not install or start these services.
+explicit Proxy rules. Alternatively, choose Only my rules and connections:
+manual routing needs no Anticensority database and keeps your rules, onion routes
+and routing settings. Under default flags, unmatched sites use Direct.
+The extension does not install or start proxy services.
 See [routing-data attribution and provenance](../legal/DATA_SOURCES.md) for
 the bundled source and the distinction between attribution and licensing.
 
@@ -49,7 +51,8 @@ the bundled source and the distinction between attribution and licensing.
 - Save changes for review, then Apply them when ready.
 - Preview and import portable settings, or export settings for manual transfer.
 - Create a separate, sanitized support export.
-- View routing-data status and run a limited connection check.
+- Refresh validated routing data manually or automatically every 12 hours.
+- View the source-data date separately from the last check and run a limited connection check.
 - Configure supported HTTP/HTTPS proxy authentication.
 
 ### How routing control works
@@ -74,6 +77,9 @@ Routing uses destination/request information; selected proxies receive the
 destination and traffic visible to their protocol. Configured proxy credentials
 may be sent to the matching proxy when it requests authentication. This is why
 Firefox declares authentication information and browsing activity.
+Routing-data checks contact the fixed Anticensority HTTPS sources, whose servers
+receive ordinary connection metadata. Source requests omit website credentials
+and referrer; they do not upload your rules or configured proxy passwords.
 
 Settings exports omit usernames and passwords, but still contain site rules
 and proxy addresses: keep them private. Support exports contain only limited
@@ -87,11 +93,22 @@ setting also affects private windows. Grant it in the add-on's settings, return
 to Options and choose Check again, then Apply. Access to restricted Firefox
 sites is separate. Privileged browser pages are not ordinary sites for routing.
 
-This Firefox version uses verified local routing data, not Chromium's custom
-PAC source interface. Remote routing-data updates are currently not configured;
-bundled rules arrive with extension updates. Fresh data does not verify a
-connection. Existing connections and browser authentication caches may persist
-after Apply. SOCKS authentication depends on browser support and is not promised.
+Firefox includes a local routing baseline and can refresh it from the fixed
+Anticensority HTTPS sources. Downloads are parsed as bounded static data without
+executing PAC JavaScript. HTTPS and locally computed hashes do not establish
+an author's cryptographic signature. The source may still contain older data;
+a successful check does not mean a new dataset exists or a connection works.
+Updates keep protection off when it is off and preserve the applied user
+settings when it is on; saved changes remain pending. Blocked updates can
+remain prepared until the protection state permits installation. Manual mode
+does not disable source checks; an update stays prepared while either saved or
+applied settings select manual and cannot switch the source for you.
+
+Chromium's arbitrary PAC-source interface is not available here. Existing
+connections and browser authentication caches may persist after Apply.
+Website authentication remains handled by Firefox; stored proxy credentials
+are not supplied to website challenges. SOCKS authentication depends on browser
+support and is not promised.
 
 The extension does not guarantee bypass, connectivity, anonymity, encryption
 or security protection. Choose services you trust and consider what they can

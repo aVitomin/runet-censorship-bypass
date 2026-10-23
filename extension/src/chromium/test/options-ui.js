@@ -970,6 +970,76 @@ describe('Chromium options UI', function() {
 
   });
 
+  it('coalesces refresh bursts while preserving the latest Draft and revision conflict', async function() {
+
+    const snapshot = createSnapshot();
+    const pending = deferred();
+    let current = snapshot;
+    let reads = 0;
+    const harness = await createHarness({rpcHandler(method) {
+
+      if (method === 'getState') {
+        reads += 1;
+        return reads === 2 ? pending.promise : current;
+      }
+      return {ok: true};
+
+    }});
+    const form = harness.root.querySelector('form[data-draft-key="proxy-methods"]');
+    const host = getInput(form, 'localTor.host');
+    host.value = 'draft.example';
+    host.dispatch('input');
+    harness.dispatchStorageChange();
+    await flush();
+    current = createSnapshot();
+    current.state.savedRevision += 1;
+    for (let index = 0; index < 10; index += 1) {
+      harness.dispatchStorageChange();
+      harness.dispatchProxyChange();
+    }
+    host.value = 'latest-draft.example';
+    host.dispatch('input');
+    expect(reads).to.equal(2);
+    pending.resolve(snapshot);
+    await flush();
+
+    expect(reads).to.equal(3);
+    expect(host.value).to.equal('latest-draft.example');
+    expect(form.dataset.conflict).to.equal('true');
+    await form.saveDraft.onclick();
+    expect(harness.calls.some((entry) => entry.method === 'setPacMods')).to.equal(false);
+
+  });
+
+  it('keeps an operation completion message through a queued refresh burst', async function() {
+
+    const snapshot = createSnapshot();
+    snapshot.configuration = {savedRevision: 4, effectiveId: 'generation-a', active: true,
+      pending: true, blocked: false, applying: false, pendingCategories: ['routingSettings']};
+    const pending = deferred();
+    let reads = 0;
+    const harness = await createHarness({rpcHandler(method) {
+
+      if (method === 'getState') {
+        reads += 1;
+        return reads === 2 ? pending.promise : snapshot;
+      }
+      return {ok: true};
+
+    }});
+    const applying = findButton(harness.root.querySelector('#global-action-bar'), 'Apply').onclick();
+    await flush();
+    for (let index = 0; index < 10; index += 1) harness.dispatchStorageChange();
+    expect(reads).to.equal(2);
+    pending.resolve(snapshot);
+    await applying;
+    await flush();
+
+    expect(reads).to.equal(3);
+    expect(harness.root.textContent).to.include(CATALOGS.en.optionsConfigurationApplied.message);
+
+  });
+
   it('reports safe Apply failure only when the previous Effective is confirmed', async function() {
 
     for (const lost of [false, true]) {
@@ -1524,7 +1594,9 @@ describe('Chromium options UI', function() {
 
         getInput(browser, 'torBrowser.enabled').checked = true;
         getInput(browser, 'torBrowser.enabled').dispatch('change');
-        expect(getInput(tor, 'localTor.enabled').checked).to.equal(false);
+        expect(getInput(tor, 'localTor.enabled').checked).to.equal(true);
+        expect(tor.querySelector('[data-connection-editor]').hidden)
+            .to.equal(false);
         expect(browser.querySelector('[data-connection-editor]').hidden)
             .to.equal(false);
         expect(getInput(browser, 'torBrowser.port').value).to.equal('9150');
@@ -1534,7 +1606,7 @@ describe('Chromium options UI', function() {
         expect(warp.querySelector('[data-connection-editor]').hidden)
             .to.equal(false);
         expect(proxies.querySelector('[data-proxy-availability]').textContent)
-            .to.include('2 Proxy connections available');
+            .to.include('3 Proxy connections available');
 
         harness.dispatchProxyChange();
         await flush();
@@ -1548,8 +1620,15 @@ describe('Chromium options UI', function() {
             '[data-connection-editor]',
         ).hidden).to.equal(false);
         expect(refreshedBrowser.textContent).to.include('Enabled');
+        expect(getInput(refreshed, 'localTor.enabled').checked).to.equal(true);
         expect(refreshed.querySelector('[data-proxy-availability]').textContent)
-            .to.include('2 Proxy connections available');
+            .to.include('3 Proxy connections available');
+        await findButton(refreshed, 'Save proxy settings').onclick();
+        const save = harness.calls.find((call) => call.method === 'setPacMods');
+        expect(save.params.pacMods.localTor.enabled).to.equal(true);
+        expect(save.params.pacMods.torBrowser.enabled).to.equal(true);
+        expect(harness.calls.some((call) => call.method === 'applySavedConfiguration'))
+            .to.equal(false);
 
       });
 
@@ -1572,6 +1651,74 @@ describe('Chromium options UI', function() {
         expect(getInput(harness.root, 'torBrowser.port').value).to.equal('9050');
 
       });
+
+  it('edits Tor Proxy scope independently and counts only usable Proxy methods', async function() {
+
+    const snapshot = createSnapshot();
+    snapshot.state.pacMods.ownProxies = [];
+    snapshot.state.pacMods.warp.enabled = false;
+    Object.assign(snapshot.state.pacMods.localTor,
+        {enabled: true, useForProxyRules: false, useForOnion: true, useAsDirectReplacement: false});
+    Object.assign(snapshot.state.pacMods.torBrowser,
+        {enabled: true, useForProxyRules: true, useForOnion: false, useAsDirectReplacement: true});
+    const harness = await createHarness({snapshot});
+    const proxies = getSection(harness.root, 'proxy-methods');
+    expect(getInput(proxies, 'localTor.useForProxyRules').checked).to.equal(false);
+    expect(getInput(proxies, 'torBrowser.useForProxyRules').checked).to.equal(true);
+    expect(proxies.querySelector('[data-proxy-availability]').textContent)
+        .to.include('1 Proxy connection available');
+    getInput(proxies, 'localTor.useForProxyRules').checked = true;
+    getInput(proxies, 'localTor.useForProxyRules').dispatch('change');
+    expect(proxies.querySelector('[data-proxy-availability]').textContent)
+        .to.include('2 Proxy connections available');
+    getInput(proxies, 'torBrowser.useForProxyRules').checked = false;
+    getInput(proxies, 'torBrowser.useForProxyRules').dispatch('change');
+    expect(getInput(proxies, 'localTor.enabled').checked).to.equal(true);
+    expect(getInput(proxies, 'torBrowser.enabled').checked).to.equal(true);
+    expect(harness.calls.map((call) => call.method)).to.deep.equal(['getState']);
+    await findButton(proxies, 'Save proxy settings').onclick();
+    const saved = harness.calls.find((call) => call.method === 'setPacMods').params.pacMods;
+    expect(saved.localTor.useForProxyRules).to.equal(true);
+    expect(saved.localTor.useForOnion).to.equal(true);
+    expect(saved.localTor.useAsDirectReplacement).to.equal(false);
+    expect(saved.torBrowser.useForProxyRules).to.equal(false);
+    expect(saved.torBrowser.useForOnion).to.equal(false);
+    expect(saved.torBrowser.useAsDirectReplacement).to.equal(true);
+    expect(harness.calls.some((call) => call.method === 'applySavedConfiguration')).to.equal(false);
+
+  });
+
+  it('edits WARP Proxy scope independently without activating its replacement-only draft', async function() {
+
+    const snapshot = createSnapshot();
+    snapshot.state.pacMods.ownProxies = [];
+    snapshot.state.pacMods.localTor.enabled = false;
+    snapshot.state.pacMods.torBrowser.enabled = false;
+    Object.assign(snapshot.state.pacMods.warp,
+        {enabled: true, useForProxyRules: false, useAsDirectReplacement: true});
+    const harness = await createHarness({snapshot});
+    const proxies = getSection(harness.root, 'proxy-methods');
+    expect(getInput(proxies, 'warp.useForProxyRules').checked).to.equal(false);
+    expect(getInput(proxies, 'warp.useAsDirectReplacement').checked).to.equal(true);
+    expect(proxies.querySelector('[data-proxy-availability]').textContent)
+        .to.include('0 Proxy connections available');
+    getInput(proxies, 'warp.useForProxyRules').checked = true;
+    getInput(proxies, 'warp.useForProxyRules').dispatch('change');
+    expect(proxies.querySelector('[data-proxy-availability]').textContent)
+        .to.include('1 Proxy connection available');
+    getInput(proxies, 'warp.useForProxyRules').checked = false;
+    getInput(proxies, 'warp.useForProxyRules').dispatch('change');
+    expect(getInput(proxies, 'warp.enabled').checked).to.equal(true);
+    expect(getInput(proxies, 'warp.useAsDirectReplacement').checked).to.equal(true);
+    expect(harness.calls.map((call) => call.method)).to.deep.equal(['getState']);
+    await findButton(proxies, 'Save proxy settings').onclick();
+    const saved = harness.calls.find((call) => call.method === 'setPacMods').params.pacMods.warp;
+    expect(saved.enabled).to.equal(true);
+    expect(saved.useForProxyRules).to.equal(false);
+    expect(saved.useAsDirectReplacement).to.equal(true);
+    expect(harness.calls.some((call) => call.method === 'applySavedConfiguration')).to.equal(false);
+
+  });
 
   it('renders compact custom summaries and opens new or invalid editors',
       async function() {
@@ -2476,7 +2623,7 @@ describe('Chromium options UI', function() {
 
       });
 
-  it('keeps a newer refresh when an older response resolves last',
+  it('discards an older response before processing the queued visibility refresh',
       async function() {
 
         const oldGate = deferred();
@@ -2501,11 +2648,14 @@ describe('Chromium options UI', function() {
           },
         });
         harness.document.dispatch('visibilitychange');
+        await flush();
         harness.document.dispatch('visibilitychange');
         await flush();
-        expect(harness.root.textContent).to.include('Newer source');
+        expect(calls).to.equal(2);
+        expect(harness.root.textContent).not.to.include('Old source');
         oldGate.resolve(old);
         await flush();
+        expect(calls).to.equal(3);
         expect(harness.root.textContent).to.include('Newer source');
         expect(harness.root.textContent).not.to.include('Old source');
 

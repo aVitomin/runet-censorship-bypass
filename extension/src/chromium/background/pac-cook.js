@@ -439,24 +439,24 @@ ${COOK_END}`;
         })).includes('const mv3BroadOwnProxyResult = null;'),
       torProxyRuleUsesTorCandidate:
         torServiceProxyWrapper.includes(
-            'const mv3ProxyRuleResult = "SOCKS5 127.0.0.1:9050";',
+            'const mv3ProxyRuleResult = "SOCKS5 localhost:9050";',
         ),
       torBrowserProxyRuleFailsClosed:
         torBrowserProxyWrapper.includes(
-            'const mv3ProxyRuleResult = "SOCKS5 127.0.0.1:9150";',
+            'const mv3ProxyRuleResult = "SOCKS5 localhost:9150";',
         ) && !torBrowserProxyWrapper.includes(
-            'const mv3ProxyRuleResult = "SOCKS5 127.0.0.1:9150; DIRECT";',
+            'const mv3ProxyRuleResult = "SOCKS5 localhost:9150; DIRECT";',
         ),
       torServiceProxyRuleFailsClosed:
         torServiceProxyWrapper.includes(
-            'const mv3ProxyRuleResult = "SOCKS5 127.0.0.1:9050";',
+            'const mv3ProxyRuleResult = "SOCKS5 localhost:9050";',
         ) && !torServiceProxyWrapper.includes(
-            'const mv3ProxyRuleResult = "SOCKS5 127.0.0.1:9050; DIRECT";',
+            'const mv3ProxyRuleResult = "SOCKS5 localhost:9050; DIRECT";',
         ),
       multipleExplicitCandidatesHaveNoDirect:
         multipleProxyWrapper.includes(
             'const mv3ProxyRuleResult = "HTTPS proxy.example:443; ' +
-            'SOCKS5 127.0.0.1:9150";',
+            'SOCKS5 localhost:9150";',
         ) && !/mv3ProxyRuleResult = [^\n]*DIRECT/.test(multipleProxyWrapper),
       explicitProxyRulePrecedesWhitelistAndProvider:
         torBrowserProxyWrapper.indexOf(explicitBranch) <

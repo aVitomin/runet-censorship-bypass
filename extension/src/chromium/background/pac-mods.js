@@ -7,23 +7,26 @@
   const RULE_ACTIONS = Object.freeze(['DIRECT', 'PROXY']);
 
   const DEFAULT_LOCAL_TOR = Object.freeze({
-    enabled: false,
+    enabled: true,
     type: 'SOCKS5',
-    host: '127.0.0.1',
+    host: 'localhost',
     port: 9050,
+    useForProxyRules: false,
     useForOnion: true,
     useAsDirectReplacement: false,
   });
   const DEFAULT_TOR_BROWSER = Object.freeze({
-    enabled: false,
+    enabled: true,
     type: 'SOCKS5',
-    host: '127.0.0.1',
+    host: 'localhost',
     port: 9150,
+    useForProxyRules: false,
     useForOnion: true,
     useAsDirectReplacement: false,
   });
   const DEFAULT_WARP = Object.freeze({
     enabled: false,
+    useForProxyRules: true,
     proxyString: 'SOCKS5 127.0.0.1:40000; HTTPS 127.0.0.1:40000',
     useAsDirectReplacement: false,
   });
@@ -190,11 +193,17 @@
   function normalizeTorConfig(value, defaults) {
 
     const source = isObject(value) ? value : {};
+    // Structured settings written before independent scopes used the master
+    // switch for Proxy availability. Preserve that behavior for saved values.
+    const proxyDefault = typeof source.enabled === 'boolean' &&
+      !Object.prototype.hasOwnProperty.call(source, 'useForProxyRules') ?
+      true : defaults.useForProxyRules;
     return {
       enabled: normalizeBoolean(source.enabled, defaults.enabled),
       type: normalizeProxyType(source.type, defaults.type),
       host: normalizeHost(source.host, defaults.host),
       port: normalizePort(source.port, defaults.port),
+      useForProxyRules: normalizeBoolean(source.useForProxyRules, proxyDefault),
       useForOnion: normalizeBoolean(
           source.useForOnion,
           defaults.useForOnion,
@@ -212,29 +221,12 @@
     const source = isObject(value) ? value : {};
     return {
       enabled: normalizeBoolean(source.enabled, ifLegacyUseWarp === true),
+      useForProxyRules: normalizeBoolean(source.useForProxyRules, DEFAULT_WARP.useForProxyRules),
       proxyString: String(source.proxyString || DEFAULT_WARP.proxyString).trim(),
       useAsDirectReplacement: normalizeBoolean(
           source.useAsDirectReplacement,
           DEFAULT_WARP.useAsDirectReplacement,
       ),
-    };
-
-  }
-
-  function enforceExclusiveTorModes(localTor, torBrowser, preferredMode) {
-
-    const nextLocalTor = Object.assign({}, localTor);
-    const nextTorBrowser = Object.assign({}, torBrowser);
-    if (nextLocalTor.enabled && nextTorBrowser.enabled) {
-      if (preferredMode === 'localTor') {
-        nextTorBrowser.enabled = false;
-      } else {
-        nextLocalTor.enabled = false;
-      }
-    }
-    return {
-      localTor: nextLocalTor,
-      torBrowser: nextTorBrowser,
     };
 
   }
@@ -330,24 +322,29 @@
   function normalizePacMods(value) {
 
     const source = isObject(value) ? value : {};
+    const hasLegacyTor = typeof source.useTor === 'boolean';
     const ifLegacyUseTor = source.useTor === true;
     const ifLegacyUseWarp = source.useWarp === true;
     const ifLegacyReplaceDirect = source.replaceDirectWithProxy === true;
-    let localTor = normalizeTorConfig(source.localTor, Object.assign(
+    const localTor = normalizeTorConfig(source.localTor, Object.assign(
         {},
         DEFAULT_LOCAL_TOR,
-        {
+        hasLegacyTor ? {
           enabled: false,
+          host: '127.0.0.1',
+          useForProxyRules: true,
           useAsDirectReplacement: ifLegacyUseTor && ifLegacyReplaceDirect,
-        },
+        } : {},
     ));
-    let torBrowser = normalizeTorConfig(source.torBrowser, Object.assign(
+    const torBrowser = normalizeTorConfig(source.torBrowser, Object.assign(
         {},
         DEFAULT_TOR_BROWSER,
-        {
+        hasLegacyTor ? {
           enabled: ifLegacyUseTor,
+          host: '127.0.0.1',
+          useForProxyRules: true,
           useAsDirectReplacement: ifLegacyUseTor && ifLegacyReplaceDirect,
-        },
+        } : {},
     ));
     const warp = normalizeWarpConfig(source.warp, ifLegacyUseWarp);
     if (ifLegacyUseTor) {
@@ -360,9 +357,6 @@
     if (ifLegacyUseWarp) {
       warp.enabled = true;
     }
-    const torModes = enforceExclusiveTorModes(localTor, torBrowser, 'torBrowser');
-    localTor = torModes.localTor;
-    torBrowser = torModes.torBrowser;
     return {
       usePacScriptProxies: normalizeBoolean(
           source.usePacScriptProxies,
@@ -466,13 +460,13 @@
         .filter((proxy) => proxy.enabled)
         .map((proxy) => proxyEntryToPacString(proxy))
         .filter(Boolean);
-    if (normalized.localTor.enabled) {
+    if (normalized.localTor.enabled && normalized.localTor.useForProxyRules) {
       proxies.push(torConfigToPacString(normalized.localTor));
     }
-    if (normalized.torBrowser.enabled) {
+    if (normalized.torBrowser.enabled && normalized.torBrowser.useForProxyRules) {
       proxies.push(torConfigToPacString(normalized.torBrowser));
     }
-    if (normalized.warp.enabled) {
+    if (normalized.warp.enabled && normalized.warp.useForProxyRules) {
       proxies.push(...splitProxyString(normalized.warp.proxyString));
     }
     return proxies.filter(Boolean);
@@ -948,11 +942,11 @@
       legacyUseTorKeepsOnlyTorBrowser:
         legacy.localTor.enabled === false &&
         legacy.torBrowser.enabled === true,
-      bothTorModesNormalizeToTorBrowser:
+      bothTorModesSurviveNormalization:
         normalizePacMods({
           localTor: {enabled: true},
           torBrowser: {enabled: true},
-        }).localTor.enabled === false &&
+        }).localTor.enabled === true &&
         normalizePacMods({
           localTor: {enabled: true},
           torBrowser: {enabled: true},
@@ -1005,7 +999,7 @@
           warp: {enabled: false},
         }).warp.enabled === true,
       localTorPacString:
-        torConfigToPacString(DEFAULT_LOCAL_TOR) === '',
+        torConfigToPacString(DEFAULT_LOCAL_TOR) === 'SOCKS5 localhost:9050',
       directReplacementCandidates:
         getDirectReplacementCandidates(legacy).includes('SOCKS5 127.0.0.1:9150'),
       proxyRuleExceptionMigrated:
@@ -1024,7 +1018,6 @@
     normalizePacMods,
     normalizeOwnProxy,
     parseProxyString,
-    enforceExclusiveTorModes,
     proxyEntryToPacString,
     splitProxyString,
     getOnionProxyCandidates,

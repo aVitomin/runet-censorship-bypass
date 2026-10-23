@@ -109,7 +109,7 @@
         port: ownProxy.port,
       });
     }
-    if (normalized.localTor.enabled) {
+    if (normalized.localTor.enabled && normalized.localTor.useForProxyRules) {
       return createCandidateSummary({
         type: 'localTor',
         proxyType: normalized.localTor.type,
@@ -117,7 +117,7 @@
         port: normalized.localTor.port,
       });
     }
-    if (normalized.torBrowser.enabled) {
+    if (normalized.torBrowser.enabled && normalized.torBrowser.useForProxyRules) {
       return createCandidateSummary({
         type: 'torBrowser',
         proxyType: normalized.torBrowser.type,
@@ -125,7 +125,7 @@
         port: normalized.torBrowser.port,
       });
     }
-    if (normalized.warp.enabled) {
+    if (normalized.warp.enabled && normalized.warp.useForProxyRules) {
       const candidate = mv3PacMods.splitProxyString(
           normalized.warp.proxyString,
       )[0];
@@ -446,10 +446,10 @@
         }).includes(samplePassword),
       torBrowserSummary:
         getCandidateSummary({torBrowser: {enabled: true}}).key ===
-        'torBrowser|SOCKS5|127.0.0.1:9150',
+        'torBrowser|SOCKS5|localhost:9150',
       localTorSummary:
         getCandidateSummary({localTor: {enabled: true}}).key ===
-        'localTor|SOCKS5|127.0.0.1:9050',
+        'localTor|SOCKS5|localhost:9050',
       retrySchedule:
         FAILURE_RETRY_MS.map((value, index) => getFailureRetryMs(index))
             .join(',') === FAILURE_RETRY_MS.join(','),

@@ -222,6 +222,124 @@ describe('Firefox immutable provider dataset store', function() {
 
       });
 
+  it('reads and hashes each distinct artifact once per pointer snapshot', async function() {
+
+    const backend = memoryBackend();
+    const reads = [];
+    let hashes = 0;
+    const originalRead = backend.readArtifact;
+    backend.readArtifact = async (key) => {
+      reads.push(key);
+      return originalRead(key);
+    };
+    const store = Store.createStore({backend, sha256: (bytes) => {
+      hashes += 1;
+      return sha256(bytes);
+    }});
+    const baseline = release('base');
+    const active = release('curr', Dataset.TRUST.REMOTE_AUTHENTICATED);
+    await store.commitPackagedBaseline(baseline);
+    await store.activateCandidate(active);
+    const pointers = backend.pointers.get(PROVIDER_KEY);
+    pointers.previousLkgArtifactSha256 = active.envelope.artifactSha256;
+    const commits = backend.commits.length;
+    reads.length = 0;
+    hashes = 0;
+
+    const loaded = await store.loadVerifications(PROVIDER_KEY);
+
+    Assert.deepStrictEqual(reads, [active.envelope.artifactSha256,
+      baseline.envelope.artifactSha256]);
+    Assert.strictEqual(hashes, 2);
+    Assert.strictEqual(loaded.active, loaded.previousLkg);
+    Assert.strictEqual(loaded.active.dataset.identity.datasetVersion, 'curr');
+    Assert.strictEqual(loaded.packagedBaseline.dataset.identity.datasetVersion, 'base');
+    Assert.strictEqual(backend.commits.length, commits);
+
+    pointers.packagedBaselineArtifactSha256 = active.envelope.artifactSha256;
+    reads.length = 0;
+    hashes = 0;
+    const shared = await store.loadVerifications(PROVIDER_KEY);
+    Assert.deepStrictEqual(reads, [active.envelope.artifactSha256]);
+    Assert.strictEqual(hashes, 1);
+    Assert.strictEqual(shared.active, shared.previousLkg);
+    Assert.strictEqual(shared.active, shared.packagedBaseline);
+
+    function assertFrozen(value) {
+
+      if (!value || typeof value !== 'object') return;
+      Assert.strictEqual(Object.isFrozen(value), true);
+      Object.values(value).forEach(assertFrozen);
+
+    }
+    assertFrozen(shared.active);
+    Assert.throws(() => {
+      shared.active.dataset.payload.buckets[0].hosts = 'evil.example';
+    }, TypeError);
+    Assert.strictEqual(shared.previousLkg.dataset.payload.buckets[0].hosts, 'curr.example');
+
+  });
+
+  for (const damage of ['bytes', 'trust', 'provider']) {
+    it(`rechecks ${damage} after a successful load and store recreation`, async function() {
+
+      const {backend, store} = makeStore();
+      const baseline = release('base');
+      await store.commitPackagedBaseline(baseline);
+      const key = baseline.envelope.artifactSha256;
+      const pointers = backend.pointers.get(PROVIDER_KEY);
+      pointers.activeArtifactSha256 = key;
+      pointers.previousLkgArtifactSha256 = key;
+      Assert.strictEqual((await store.loadVerifications(PROVIDER_KEY)).active.ok, true);
+      const record = backend.artifacts.get(key);
+      if (damage === 'bytes') record.artifactBytes[0] ^= 1;
+      if (damage === 'trust') record.trust = Dataset.TRUST.REMOTE_UNAUTHENTICATED;
+      if (damage === 'provider') record.providerKey = 'different-provider';
+
+      for (const reader of [store, Store.createStore({backend, sha256})]) {
+        const loaded = await reader.loadVerifications(PROVIDER_KEY);
+        for (const [role, prefix] of [['active', 'ACTIVE_ARTIFACT'],
+          ['previousLkg', 'LKG_ARTIFACT'], ['packagedBaseline', 'PACKAGED_BASELINE_ARTIFACT']]) {
+          if (damage === 'trust') {
+            Assert.strictEqual(loaded[role].activationEligible, false);
+            Assert.strictEqual(loaded[role].trust, Dataset.TRUST.REMOTE_UNAUTHENTICATED);
+          } else {
+            Assert.strictEqual(loaded[role].ok, false);
+            Assert.strictEqual(loaded[role].code, damage === 'bytes' ?
+              'ARTIFACT_SHA256_MISMATCH' : `${prefix}_IDENTITY_MISMATCH`);
+          }
+        }
+      }
+
+    });
+  }
+
+  it('keeps role-specific failures and retries unreadable duplicate references', async function() {
+
+    const {backend, store} = makeStore();
+    const baseline = release('base');
+    await store.commitPackagedBaseline(baseline);
+    const key = baseline.envelope.artifactSha256;
+    const pointers = backend.pointers.get(PROVIDER_KEY);
+    pointers.activeArtifactSha256 = key;
+    pointers.previousLkgArtifactSha256 = key;
+    const originalRead = backend.readArtifact;
+    let reads = 0;
+    backend.readArtifact = async (hash) => {
+      reads += 1;
+      if (reads <= 2) throw new Error('injected unreadable artifact');
+      return originalRead(hash);
+    };
+
+    const loaded = await store.loadVerifications(PROVIDER_KEY, {firstUsableOnly: true});
+
+    Assert.strictEqual(loaded.active.code, 'ACTIVE_ARTIFACT_UNREADABLE');
+    Assert.strictEqual(loaded.previousLkg.code, 'LKG_ARTIFACT_UNREADABLE');
+    Assert.strictEqual(loaded.packagedBaseline.ok, true);
+    Assert.strictEqual(reads, 3);
+
+  });
+
   it('does not move a pointer when packaged bytes fail verification',
       async function() {
 

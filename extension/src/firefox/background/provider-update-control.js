@@ -5,7 +5,9 @@
 
   const updater = typeof module === 'object' && module.exports ?
     require('./provider-updater') : root.rucbFirefoxProviderUpdater;
-  const api = factory(updater);
+  const sourceUpdater = typeof module === 'object' && module.exports ?
+    require('./provider-source-updater') : root.rucbFirefoxProviderSourceUpdater;
+  const api = factory(updater, sourceUpdater);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
     return;
@@ -13,7 +15,7 @@
   root.rucbFirefoxProviderUpdateControl = api;
 
 })(typeof globalThis === 'object' ? globalThis : this,
-    function(ProviderUpdater) {
+    function(ProviderUpdater, SourceUpdater) {
 
       const STORAGE_KEY = 'firefoxMv3ProviderUpdateStatus';
       const STORAGE_SCHEMA_VERSION = 1;
@@ -65,6 +67,13 @@
         'UPDATE_KEY_ID_MISMATCH',
       ]);
       const NETWORK_CODES = new Set([
+        'SOURCE_TIMEOUT',
+        'SOURCE_FETCH_FAILED',
+        'SOURCE_RESPONSE_REJECTED',
+        'SOURCE_REDIRECT_LIMIT',
+        'SOURCE_HTTP_REJECTED',
+        'SOURCE_FINAL_URL_REJECTED',
+        'UNSAFE_SOURCE_URL',
         'INVALID_UPDATE_RESPONSE',
         'STREAMING_RESPONSE_REQUIRED',
         'TOO_MANY_UPDATE_REDIRECTS',
@@ -81,6 +90,8 @@
       ]);
       const STORAGE_CODES = new Set([
         'AUTHENTICATED_SEQUENCE_STATE_CORRUPT',
+        'HTTPS_SOURCE_STATE_CORRUPT',
+        'SOURCE_STORAGE_FAILED',
         'STAGED_POINTER_CORRUPT',
       ]);
 
@@ -217,10 +228,10 @@
 
       function errorCategory(code) {
 
-        if (code === 'ROLLBACK_REJECTED') {
+        if (code === 'ROLLBACK_REJECTED' || code === 'HTTPS_SOURCE_ROLLBACK_REJECTED') {
           return ERROR_CATEGORIES.ROLLBACK_REJECTED;
         }
-        if (code === 'SEQUENCE_CONFLICT') {
+        if (code === 'SEQUENCE_CONFLICT' || code === 'HTTPS_SOURCE_TIMESTAMP_CONFLICT') {
           return ERROR_CATEGORIES.SEQUENCE_CONFLICT;
         }
         if (AUTHENTICATION_CODES.has(code)) {
@@ -235,6 +246,7 @@
         if (typeof code === 'string' && (
           code.includes('DATASET') || code.includes('ARTIFACT') ||
           code.includes('MANIFEST') || code.includes('PROVIDER') ||
+          code.includes('SOURCE') ||
           code.includes('UTF8') || code.includes('BYTE'))) {
           return ERROR_CATEGORIES.DATASET_REJECTED;
         }
@@ -264,11 +276,18 @@
             options.trustConfiguration,
             providerKey,
         );
+        // HTTPS source validation is an explicit separate production channel.
+        // An invalid/enabled signed configuration must never fall back to it.
+        const sourceConfigured = options.sourceUpdateEnabled === true &&
+          providerKey === 'anticensority' && trust.reason === 'DISABLED';
+        const configured = trust.configured || sourceConfigured;
         const now = typeof options.now === 'function' ?
           options.now : () => Date.now();
         const readCurrentDatasetIdentity = options.readCurrentDatasetIdentity;
         const createUpdater = typeof options.createUpdater === 'function' ?
           options.createUpdater : ProviderUpdater.createUpdater;
+        const createSourceUpdater = options.createSourceUpdater ||
+          SourceUpdater && SourceUpdater.createUpdater;
         if (!storageArea || typeof storageArea.get !== 'function' ||
             typeof storageArea.set !== 'function' || !datasetStore ||
             typeof datasetStore.loadStaged !== 'function' ||
@@ -277,6 +296,10 @@
             typeof readCurrentDatasetIdentity !== 'function' ||
             typeof providerKey !== 'string' ||
             !IDENTIFIER_PATTERN.test(providerKey)) {
+          throw controlError(ERRORS.INVALID_DEPENDENCIES);
+        }
+        if (sourceConfigured && (typeof createSourceUpdater !== 'function' ||
+            typeof datasetStore.stageHttpsCandidate !== 'function')) {
           throw controlError(ERRORS.INVALID_DEPENDENCIES);
         }
         let state = initialState();
@@ -312,11 +335,11 @@
 
         function createProductionUpdater() {
 
-          if (!trust.configured) {
+          if (!configured) {
             return null;
           }
           if (!updater) {
-            updater = createUpdater({
+            updater = (sourceConfigured ? createSourceUpdater : createUpdater)({
               fetchImpl: options.fetchImpl,
               cryptoSubtle: options.cryptoSubtle,
               trustedPublicKeys: trust.trustedPublicKeys,
@@ -333,11 +356,18 @@
         async function inspectDatasets() {
 
           const values = await Promise.all([
-            readCurrentDatasetIdentity(),
+            typeof options.readCurrentDatasetInfo === 'function' ?
+              options.readCurrentDatasetInfo() :
+              readCurrentDatasetIdentity().then((identity) => ({identity, sourceUpdatedAt: null})),
             datasetStore.loadStaged(providerKey),
           ]);
-          const current = validDatasetIdentity(values[0], providerKey) ?
-            values[0] : null;
+          if (!values[1] || values[1].ok !== true) {
+            throw controlError(ERRORS.STATE_UNAVAILABLE);
+          }
+          const current = validDatasetIdentity(values[0] && values[0].identity, providerKey) ?
+            values[0].identity : null;
+          const sourceUpdatedAt = current && Number.isSafeInteger(values[0].sourceUpdatedAt) &&
+            values[0].sourceUpdatedAt > 0 ? values[0].sourceUpdatedAt : null;
           const staged = values[1] && values[1].ok === true &&
             values[1].status === 'STAGED' && values[1].verification &&
             values[1].verification.ok === true &&
@@ -345,23 +375,30 @@
                 values[1].verification.dataset.identity,
                 providerKey,
             ) ? values[1].verification.dataset.identity : null;
-          return Object.freeze({current, staged});
+          return Object.freeze({current, staged, sourceUpdatedAt});
 
         }
 
         async function publicStatus() {
 
           let datasets;
+          let storageUnavailable = false;
           try {
             datasets = await inspectDatasets();
           } catch (_error) {
-            throw controlError(ERRORS.STATE_UNAVAILABLE);
+            // Provider maintenance is optional for manual routing. Expose a
+            // sanitized failure without hiding the rest of Options or changing
+            // persisted check history when the artifact database is unavailable.
+            storageUnavailable = true;
+            datasets = {current: null, staged: null, sourceUpdatedAt: null};
           }
           const updateAvailable = Boolean(datasets.staged &&
             (!datasets.current || datasets.staged.artifactSha256 !==
               datasets.current.artifactSha256));
           let status = 'IDLE';
-          if (!trust.configured) {
+          if (storageUnavailable) {
+            status = 'CHECK_FAILED';
+          } else if (!configured) {
             status = 'NOT_CONFIGURED';
           } else if (checking) {
             status = 'CHECKING';
@@ -378,7 +415,10 @@
           return Object.freeze({
             schemaVersion: 1,
             trustConfigured: trust.configured,
-            automaticChecksEnabled: trust.configured,
+            updateConfigured: configured,
+            updateChannel: trust.configured ? 'SIGNED' : sourceConfigured ? 'HTTPS' : 'NONE',
+            sourceUpdatedAt: datasets.sourceUpdatedAt,
+            automaticChecksEnabled: configured,
             status,
             currentDatasetVersion: datasets.current ?
               datasets.current.datasetVersion : null,
@@ -388,7 +428,8 @@
             lastCheckStatus: state.lastCheckStatus,
             lastCheckAt: state.lastCheckAt,
             lastSuccessfulCheckAt: state.lastSuccessfulCheckAt,
-            errorCategory: state.lastErrorCategory,
+            errorCategory: storageUnavailable ? ERROR_CATEGORIES.STORAGE_FAILED :
+              state.lastErrorCategory,
           });
 
         }
@@ -396,7 +437,7 @@
         async function runCheck() {
 
           const checkedAt = now();
-          if (!trust.configured) {
+          if (!configured) {
             await persistState({
               schemaVersion: STORAGE_SCHEMA_VERSION,
               lastCheckStatus: 'FAILED',
@@ -419,10 +460,9 @@
           checking = true;
           let result;
           try {
-            result = await createProductionUpdater().fetchAndStage({
-              manifestUrl: trust.manifestUrl,
-              providerKey,
-            });
+            const productionUpdater = createProductionUpdater();
+            result = sourceConfigured ? await productionUpdater.fetchAndStage() :
+              await productionUpdater.fetchAndStage({manifestUrl: trust.manifestUrl, providerKey});
           } catch (_error) {
             result = {ok: false, code: 'UPDATE_REJECTED'};
           } finally {
@@ -489,7 +529,7 @@
               typeof alarmsApi.get !== 'function') {
             return null;
           }
-          if (!trust.configured) {
+          if (!configured) {
             await clearAlarm();
             return null;
           }
@@ -528,7 +568,7 @@
 
         async function handleAlarm(alarm) {
 
-          if (!alarm || alarm.name !== ALARM_NAME || !trust.configured) {
+          if (!alarm || alarm.name !== ALARM_NAME || !configured) {
             return Object.freeze({ok: true, status: 'IGNORED'});
           }
           return check();
@@ -541,6 +581,11 @@
           initialize,
           markInstalled,
           publicStatus,
+          updateConfigured() {
+
+            return configured;
+
+          },
           trustConfigured() {
 
             return trust.configured;

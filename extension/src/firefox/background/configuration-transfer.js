@@ -32,7 +32,7 @@
         ownProxiesOnlyForOwnSites: settings.flags.ownProxiesOnlyForOwnSites,
         replaceDirectWithProxy: settings.flags.replaceDirectWithProxy,
         noDirect: settings.flags.noDirect},
-      source: {kind: 'builtin', id: 'anticensority'}});
+      source: {kind: 'builtin', id: settings.source || 'anticensority'}});
 
   }
 
@@ -75,7 +75,9 @@
       ownProxiesOnlyForOwnSites: config.routing.ownProxiesOnlyForOwnSites,
       replaceDirectWithProxy: config.routing.replaceDirectWithProxy,
       noDirect: config.routing.noDirect};
-    if (config.source.kind !== 'builtin' || config.source.id !== 'anticensority') {
+    if (config.source.kind === 'builtin' && ['anticensority', 'manual'].includes(config.source.id)) {
+      settings.source = config.source.id;
+    } else {
       unsupported.push('source');
     }
     if (config.ui) unsupported.push('language');

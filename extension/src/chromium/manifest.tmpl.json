@@ -4,8 +4,8 @@
   "name": "__MSG_extName__",
   "default_locale": "ru",
   "description": "__MSG_extDesc__",
-  "version": "0.0.${storeVersion}",
-  "version_name": "0.0.${version}",
+  "version": "${storeVersion}",
+  "version_name": "${version}",
   "icons": {
     "16": "icons/action-active-16.png",
     "32": "icons/action-active-32.png",
