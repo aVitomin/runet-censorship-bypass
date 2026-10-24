@@ -5,6 +5,9 @@ Draft publication materials for development version `1.0.0`: Firefox Add-ons
 exact release artifact and record its validation separately. These materials
 do not announce 1.0 as available or establish signing, upload or release evidence.
 
+Firefox Add-ons and locally installed desktop packages are independent release
+channels. Chrome Web Store submission is deferred and does not block them.
+
 - [Feature inventory and implementation evidence](FEATURE_INVENTORY_1_0.md)
 - [Firefox title, summary, description and listing fields](FIREFOX_AMO_LISTING_1_0.md)
 - [Firefox AMO reviewer notes](../development/FIREFOX_AMO_REVIEW.md)

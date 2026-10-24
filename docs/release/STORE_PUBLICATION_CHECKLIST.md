@@ -1,7 +1,8 @@
 # Store publication checklist — planned 1.0
 
-**Unexecuted publication plan.** Firefox Add-ons is primary; Chrome Web Store
-submission is optional. This documentation task grants no permission to bump
+**Publication checklist.** Firefox Add-ons and locally installed desktop packages
+can ship independently of Chrome Web Store. Chrome Web Store submission is
+deferred; its review does not block those channels. This document grants no permission to bump
 versions, sign, tag, create releases, upload or submit store packages. Obtain
 separate maintainer authorization for those actions.
 
@@ -49,11 +50,11 @@ release is published.
 - [ ] Approve the [privacy notice](PRIVACY_1_0.md) against actual network/storage
   behavior. Distinguish local settings from proxy/source/check transmissions;
   preserve sensitive-export warnings and no-password/support-export claims.
-- [ ] Publish the approved privacy notice on main and verify it is reachable
-  without sign-in before entering a store privacy URL. Planned canonical URL:
+- [ ] Verify the version's privacy notice on main is reachable without sign-in
+  and matches the submitted package before entering this canonical store URL:
   `https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md`.
-  It is a future URL until this document set is merged, not a verified live
-  policy during draft preparation.
+  Recheck the URL at submission time; repository link validation alone does not
+  establish public availability.
 - [ ] Recheck repository, documentation, support, privacy and security links
   using the [public-link audit](LINK_AUDIT_1_0.md). Verify support/private-report
   forms in the maintainer account; no report needs to be submitted as a test.
