@@ -1,5 +1,5 @@
 name: Сообщить об ошибке
-description: Воспроизводимая проблема опубликованного расширения для Chromium или Firefox
+description: Не работает установка, маршрутизация или интерфейс
 title: "[Bug]: "
 labels:
   - bug
@@ -7,125 +7,57 @@ body:
   - type: markdown
     attributes:
       value: |
-        Спасибо за отчёт. Сначала проверьте [решение частых проблем](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/TROUBLESHOOTING.md).
-
-        Не публикуйте профили браузера, HAR/NetLog, пароли, токены, cookies, приватные адреса прокси или источников PAC, URL без очистки, содержимое приватного PAC и историю посещений. Об уязвимости сообщайте только через [приватную форму GitHub](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new); безопасный запасной способ описан в [SECURITY.md](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SECURITY.md).
+        Сначала проверьте [раздел помощи](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) и похожие обращения.
+        Об уязвимостях сообщайте [приватно](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new).
+        Не прикладывайте экспорт настроек, профили, HAR/NetLog, пароли или частные адреса.
   - type: input
-    id: version
+    id: environment
+    attributes:
+      label: Браузер и операционная система
+      placeholder: "Например: Firefox 156.0.1, Windows 11"
+    validations:
+      required: true
+  - type: input
+    id: extension_version
     attributes:
       label: Версия расширения
-      description: Укажите номер со страницы расширения; если он неизвестен, напишите «Неизвестно».
-      placeholder: "Например: 0.x.y или Неизвестно"
+      description: Указана на странице расширений браузера или в разделе «О программе».
+      placeholder: "Например: 1.0.0"
     validations:
       required: true
   - type: dropdown
-    id: browser
+    id: installation
     attributes:
-      label: Браузер
+      label: Как установлено
       options:
-        - Google Chrome
-        - Microsoft Edge
-        - Brave
-        - Другой браузер на Chromium
-        - Firefox
-        - Неизвестно
-    validations:
-      required: true
-  - type: input
-    id: browser_version
-    attributes:
-      label: Версия браузера
-      placeholder: "Номер версии или Неизвестно"
-    validations:
-      required: true
-  - type: input
-    id: os
-    attributes:
-      label: Операционная система
-      placeholder: "Например: Windows 11, Ubuntu 24.04, macOS или Неизвестно"
-    validations:
-      required: true
-  - type: dropdown
-    id: install_method
-    attributes:
-      label: Как установлено расширение
-      options:
-        - Chromium — опубликованный ZIP, первая установка из распакованной папки
-        - Chromium — обновление из той же распакованной папки
-        - Chromium — локальная сборка из исходников
-        - Firefox — опубликованный подписанный XPI, первая установка
-        - Firefox — обновление подписанным XPI
-        - Firefox — временная установка для разработки
+        - Chromium — ZIP из GitHub, распакованная установка
+        - Firefox — подписанный XPI из GitHub
+        - Chrome Web Store
+        - Firefox Add-ons
+        - Локальная сборка или временная установка для разработки
         - Другой способ или неизвестно
     validations:
       required: true
-  - type: dropdown
-    id: global_state
-    attributes:
-      label: Общее состояние расширения
-      options:
-        - Active — настройки применены
-        - Требуется первоначальная настройка
-        - Есть сохранённые, но ещё не применённые изменения
-        - Выключено
-        - Прокси контролирует другое расширение или приложение
-        - Показано предупреждение или идёт загрузка
-        - Неизвестно
-    validations:
-      required: true
-  - type: dropdown
-    id: site_route
-    attributes:
-      label: Маршрут проблемного сайта
-      options:
-        - Auto
-        - Proxy
-        - Direct
-        - Индикатор маршрута не показан
-        - Неизвестно
-    validations:
-      required: true
-  - type: input
-    id: routing_source
-    attributes:
-      label: Источник маршрутов и способ подключения
-      description: Не указывайте приватные адреса или учётные данные. Если не знаете технических деталей, напишите «Неизвестно».
-      placeholder: "Например: Antizapret; собственный прокси; Tor Browser; Неизвестно"
   - type: textarea
-    id: symptom
+    id: reproduction
     attributes:
-      label: Что произошло
-      description: Опишите видимый симптом и когда он возникает.
-    validations:
-      required: true
-  - type: textarea
-    id: steps
-    attributes:
-      label: Как воспроизвести
+      label: Что произошло и как повторить
+      description: Опишите шаги, ожидаемый и фактический результат.
       placeholder: |
-        1. …
-        2. …
-        3. …
+        Шаги: …
+        Ожидалось: …
+        Получилось: …
     validations:
       required: true
   - type: textarea
-    id: expected_actual
+    id: context
     attributes:
-      label: Ожидаемый и фактический результат
-    validations:
-      required: true
-  - type: textarea
-    id: safe_observations
-    attributes:
-      label: Дополнительные безопасные наблюдения
-      description: Вставьте только короткий очищенный текст. Не прикладывайте профиль, HAR/NetLog, приватные адреса, URL без очистки или секреты.
-      render: text
+      label: Состояние и дополнительные сведения
+      description: "Необязательно: Авто/Прокси/Напрямую, выбранный источник, видимая ошибка или снимок без личных данных. В 1.0 можно приложить просмотренный «Экспорт для поддержки», но не экспорт настроек."
   - type: checkboxes
     id: privacy
     attributes:
-      label: Проверка приватности
+      label: Перед отправкой
       options:
-        - label: Я проверил(а), что отчёт не содержит профилей браузера, HAR/NetLog, паролей, учётных данных, токенов, cookies, приватных адресов или URL без очистки.
-          required: true
-        - label: Я сообщаю об обычной ошибке либо оставляю только запрос `[Security contact]` без деталей уязвимости.
+        - label: Я проверил(а), что текст и вложения не содержат секретов, частных адресов, истории посещений или деталей уязвимости. Для запроса `[Security contact]` оставлены только contact-only сведения.
           required: true

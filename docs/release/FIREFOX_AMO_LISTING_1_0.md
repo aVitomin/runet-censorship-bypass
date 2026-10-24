@@ -4,7 +4,9 @@ Reference material for version `1.0.0`. The canonical package and reviewer
 source archive were submitted to Mozilla on 2026-10-24 with English and Russian
 listing descriptions, current screenshots, a privacy notice and build notes.
 The version is awaiting review. Submission does not establish approval,
-signature availability or a public installation link.
+signature availability or a public installation link. The shorter descriptions
+below are repository drafts for a future listing edit; they have not replaced
+the descriptions already submitted to Mozilla.
 
 ## Listing fields
 
@@ -30,113 +32,88 @@ also recommends natural keywords and choosing only relevant categories.
 Confirm the [Other category](https://addons.mozilla.org/en-US/firefox/extensions/category/other/)
 in the live submission form.
 
-## Description — copy from here
+## Description — English
 
-### What the extension does
+Choose Auto, Proxy or Direct for websites in Firefox. Runet Censorship Bypass
+controls browser routing and provides no VPN or proxy service.
 
-Runet Censorship Bypass lets you control how Firefox routes websites: follow
-automatic rules, use a configured proxy, or connect directly. It manages
-browser routing; it does not provide a VPN, a proxy subscription or a separate
-network service.
+- Set rules for one host or a domain and its subdomains.
+- Use Anticensority routing data or Only my rules and connections.
+- Configure your own proxies and separately running local services.
+- Save settings, review changes, then Apply. Existing settings stay active until Apply.
+- Preview imported settings, export settings for transfer, or create a separate sanitized support report.
+- Refresh Anticensority data manually or automatically every 12 hours.
 
-Firefox includes verified Anticensority routing data. Its automatic proxy
-routes need a compatible local service, such as Anticensority, Tor Browser or
-Tor, running separately. You can also configure your own connection for
-explicit Proxy rules. Alternatively, choose Only my rules and connections:
-manual routing needs no Anticensority database and keeps your rules, onion routes
-and routing settings. Under default flags, unmatched sites use Direct.
-The extension does not install or start proxy services.
-See [routing-data attribution and provenance](../legal/DATA_SOURCES.md) for
-the bundled source and the distinction between attribution and licensing.
+Automatic proxy routes need a suitable local service running separately.
+Own proxies can be used for explicit Proxy rules. Auto follows the selected
+source and rules; it can use a proxy. Explicit Direct takes priority over Proxy.
+Updates do not turn routing on, apply pending settings or switch a manual source.
+The popup asks before including other saved changes; unsaved Options edits are
+not included. Enable private-window access before applying: Firefox requires it
+for the browser-wide proxy setting.
 
-### Main features
+Settings and optional proxy credentials stay in your browser profile. There is
+no developer telemetry or cloud synchronization. Routing-data downloads and
+connection checks make network requests. Proxies receive destination information
+and traffic visible to their protocol, plus matching credentials when needed.
+Settings exports omit credentials but retain site rules and proxy addresses;
+keep them private. Review support reports before sharing.
 
-- Choose Auto, Proxy or Direct for the current website.
-- Create exact-host rules or rules for a domain and its subdomains.
-- Edit settings while existing applied settings remain in use.
-- Save changes for review, then Apply them when ready.
-- Preview and import portable settings, or export settings for manual transfer.
-- Create a separate, sanitized support export.
-- Refresh validated routing data manually or automatically every 12 hours.
-- View the source-data date separately from the last check and run a limited connection check.
-- Configure supported HTTP/HTTPS proxy authentication.
+Firefox parses fixed Anticensority HTTPS downloads as static data without
+executing downloaded PAC JavaScript. The data is validated but has no author's
+cryptographic signature. Arbitrary/custom PAC sources are not supported here.
+The extension does not guarantee bypass, connectivity, anonymity or encryption
+and does not route other applications. SOCKS authentication depends on Firefox.
 
-### How routing control works
+[Guide](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Help](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
+[Privacy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
 
-Auto follows automatic rules after applicable explicit overrides are removed.
-Proxy uses an enabled configured connection. Direct bypasses this extension's
-proxy routing for that site; it does not bypass a system VPN. A rule can apply
-to one exact host or a domain and its subdomains. Explicit Direct takes
-precedence over explicit Proxy.
+## Полное описание — русский
 
-Save does not activate changes. Apply activates the saved settings you reviewed.
-If the popup also finds other saved changes, it asks you to review them or
-explicitly apply all saved changes. Unsaved edits in another Options window
-are not included. “Protection active” means routing control is active, not that
-all websites or proxy connections have been tested.
+Выбирайте «Авто», «Прокси» или «Напрямую» для сайтов в Firefox. Расширение
+управляет маршрутами браузера; VPN или прокси-сервер в комплект не входят.
 
-### Privacy and local data
+- Правила для одного хоста или домена с поддоменами.
+- База Anticensority или режим «Только мои правила и подключения».
+- Собственные прокси и подключение к отдельно запущенным локальным службам.
+- Сохранение, просмотр изменений и отдельное применение. До «Применить» действуют прежние настройки.
+- Перенос настроек с предварительным просмотром и отдельный очищенный отчёт для поддержки.
+- Обновление базы вручную или автоматически каждые 12 часов.
 
-Settings and optional proxy credentials are stored in the local browser
-profile. There is no developer telemetry, analytics or cloud synchronization.
-Routing uses destination/request information; selected proxies receive the
-destination and traffic visible to their protocol. Configured proxy credentials
-may be sent to the matching proxy when it requests authentication. This is why
-Firefox declares authentication information and browsing activity.
-Routing-data checks contact the fixed Anticensority HTTPS sources, whose servers
-receive ordinary connection metadata. Source requests omit website credentials
-and referrer; they do not upload your rules or configured proxy passwords.
+Автоматическим прокси-маршрутам нужна подходящая отдельно запущенная локальная
+служба. Собственные прокси можно использовать для явных правил «Прокси».
+«Авто» следует источнику и правилам, поэтому может использовать прокси.
+Явное «Напрямую» приоритетнее «Прокси». Обновления не включают маршрутизацию,
+не применяют отложенные настройки и не переключают ручной источник. Панель
+спрашивает перед применением других сохранённых изменений; несохранённые правки
+в применение не входят. Перед включением разрешите работу в приватных окнах:
+это требование Firefox к общей настройке прокси.
 
-Settings exports omit usernames and passwords, but still contain site rules
-and proxy addresses: keep them private. Support exports contain only limited
-environment and status information; inspect them before sharing. Import only
-saves settings and does not contact providers, activate routing or turn it on.
+Настройки и учётные данные прокси хранятся в профиле браузера. Телеметрии
+разработчика и облачной синхронизации нет. Загрузка базы и проверки подключений
+выполняют сетевые запросы. Прокси получают адреса назначения, видимую им часть
+трафика и при необходимости подходящие учётные данные. Экспорт исключает
+учётные данные, но сохраняет правила сайтов и адреса прокси: храните его
+приватно. Отчёт для поддержки нужно просмотреть перед отправкой.
 
-### Firefox limitations
+Firefox обрабатывает данные с закреплённых HTTPS-источников Anticensority
+без исполнения скачанного PAC-кода. Данные проходят проверки, но не имеют
+криптографической подписи автора. Произвольные PAC-источники не поддерживаются.
+Расширение не гарантирует обход, доступность, анонимность или шифрование
+и не маршрутизирует другие приложения. Авторизация SOCKS зависит от Firefox.
 
-Private-window access is required before activation because Firefox's proxy
-setting also affects private windows. Grant it in the add-on's settings, return
-to Options and choose Check again, then Apply. Access to restricted Firefox
-sites is separate. Privileged browser pages are not ordinary sites for routing.
-
-Firefox includes a local routing baseline and can refresh it from the fixed
-Anticensority HTTPS sources. Downloads are parsed as bounded static data without
-executing PAC JavaScript. HTTPS and locally computed hashes do not establish
-an author's cryptographic signature. The source may still contain older data;
-a successful check does not mean a new dataset exists or a connection works.
-Updates keep protection off when it is off and preserve the applied user
-settings when it is on; saved changes remain pending. Blocked updates can
-remain prepared until the protection state permits installation. Manual mode
-does not disable source checks; an update stays prepared while either saved or
-applied settings select manual and cannot switch the source for you.
-
-Chromium's arbitrary PAC-source interface is not available here. Existing
-connections and browser authentication caches may persist after Apply.
-Website authentication remains handled by Firefox; stored proxy credentials
-are not supplied to website challenges. SOCKS authentication depends on browser
-support and is not promised.
-
-The extension does not guarantee bypass, connectivity, anonymity, encryption
-or security protection. Choose services you trust and consider what they can
-observe. It controls Firefox traffic, not all applications on your device.
-
-### Support
-
-See the [project and documentation](https://github.com/aVitomin/runet-censorship-bypass).
-For ordinary problems, use the
-[support forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose)
-with browser/version, steps and a sanitized result. Never post credentials,
-private configuration exports or browser profiles. Report possible
-vulnerabilities privately using the
-[security policy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SECURITY.md).
+[Руководство](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Помощь](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
+[Приватность](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
 
 ## Maintainer attachments — not part of description
 
 Use the [current AMO reviewer notes](../development/FIREFOX_AMO_REVIEW.md),
 [permission/privacy audit](PERMISSIONS_AND_PRIVACY_1_0.md), and the five
-[Firefox screenshots](../assets/store/README.md#store-inventory).
-Firefox native popup remains **manual pre-release capture required**; do not
-substitute a standalone page. The English import screenshot has a Russian
+[Firefox screenshots](../assets/releases/1.0/README.md).
+The current gallery includes a genuine Firefox native popup. The English
+import screenshot has a Russian
 native file-input label; review whether to recapture for listing consistency.
 Do not claim Android support or expand tested desktop platforms from the
 manifest minimum alone.

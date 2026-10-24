@@ -1,12 +1,11 @@
 # Разработка Chromium и Firefox
 
-Поддерживаемые цели текущего `main` —
-`extension/src/chromium` и
-`src/firefox` в том же tooling root.
-Корневого npm-пакета нет. Старый Open Collective donation package удалён как
-не связанный со сборкой и содержавший устаревший lifecycle hook. Это не меняет
-[GPL-3.0](../../LICENSE), upstream-атрибуцию или историю спонсоров в
-[архивном README](../legacy/UPSTREAM_README.md).
+Поддерживаемые цели — `extension/src/chromium` и `extension/src/firefox`.
+Единственный npm-пакет находится в `extension`; корневого npm-пакета нет.
+
+[Участие в проекте](../../CONTRIBUTING.md) · [Тестирование](TESTING.md) ·
+[Архитектура](ARCHITECTURE.md) · [Выпуск](RELEASE_PROCESS.md) ·
+[Сборка и QA версии 1.0.0](releases/1.0.0.md)
 
 ## Требования
 

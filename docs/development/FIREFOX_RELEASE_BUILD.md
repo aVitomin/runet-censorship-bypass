@@ -4,7 +4,7 @@ Firefox follows the repository release train. Both targets use the complete
 version from `extension/src/templates-data.js`; the Chromium manifest template
 uses `storeVersion` without an added prefix. The maintained version is `1.0.0`;
 code version and artifact creation do not by themselves establish store approval.
-See the [channel status](../release/STORE_PUBLICATION_CHECKLIST.md#current-channel-status--2026-10-24).
+See the [channel status](../release/STORE_PUBLICATION_CHECKLIST.md#current-channel-status).
 Update the shared version and maintained manifests through the release process,
 without introducing an independent Firefox-only version.
 

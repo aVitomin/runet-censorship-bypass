@@ -1,12 +1,10 @@
-# Chrome Web Store materials — 1.0 submission preparation
+# Chrome Web Store listing — 1.0
 
-English preparation for version `1.0.0`; verify the copy against the exact
-canonical package before submission. Chrome Web Store preparation proceeds
-independently of Firefox Add-ons and local installation. The Chromium package
-has been uploaded to a draft store item; listing/privacy preparation is in
-progress. No review submission or approval has been confirmed for this version.
-Resolve the PAC policy review in the [Chrome reviewer notes](CHROME_REVIEWER_NOTES_1_0.md)
-before deciding to submit.
+Version `1.0.0` was submitted for review, as confirmed by the publisher.
+No approval or public installation link has been verified. The PAC policy
+determination remains open in the [reviewer notes](CHROME_REVIEWER_NOTES_1_0.md).
+The shorter descriptions below are repository drafts for a future listing
+edit; they have not replaced the submitted store copy or package metadata.
 
 ## Short description
 
@@ -21,87 +19,72 @@ this document does not change it. The canonical package currently uses
 Use those package-derived descriptions for this unchanged package; a future
 description change requires a new validated artifact.
 
-## Long description — copy from here
+## Long description — English
 
-Runet Censorship Bypass lets you choose how Chrome routes websites: follow an
-automatic routing source, use a configured proxy, or connect directly. It is
-a browser routing tool, not a VPN service or a proxy subscription.
+Choose how Chrome opens websites: follow automatic rules, use a configured
+proxy, or connect directly. Runet Censorship Bypass controls browser routing;
+it provides no VPN or proxy service.
 
-### Features
+- Choose Auto, Proxy or Direct for a site, an exact host or a domain with subdomains.
+- Use built-in PAC sources, a custom source, or Only my rules and connections.
+- Configure your own proxies or connect to separately running Tor, Tor Browser or WARP.
+- Save settings for review, then Apply them. Existing settings stay active until Apply.
+- Transfer settings with import preview and create a separate sanitized support report.
+- Check routing-data updates and connection status.
 
-- Auto, Proxy and Direct controls for the current website.
-- Exact-host and domain-and-subdomain site rules.
-- Built-in PAC sources, Only my rules and connections, and advanced custom PAC sources.
-- Configurable own proxies and connections to separately running local tools.
-- Separate Save and Apply, with a summary of saved but inactive changes.
-- Manual settings Import/Export with preview and compatibility warnings.
-- A separate sanitized support export.
-- Routing-data status, source updates and limited connection-health checks.
-- Supported HTTP/HTTPS proxy authentication.
+Auto follows the selected source and rules; it can use a proxy. Explicit Direct
+takes priority over Proxy. Proxy needs a suitable enabled connection. Updates
+do not turn routing on or activate pending settings. The popup asks before
+including other saved changes; unsaved Options edits are not included.
 
-### Review changes before applying
+Settings and optional proxy credentials stay in your browser profile. There is
+no developer telemetry or cloud synchronization. Sources, proxies and connection
+checks make network requests; proxies receive destinations and traffic visible
+to their protocol. Settings exports omit credentials and custom-source URLs,
+but still contain site rules and proxy addresses: keep them private.
 
-Auto follows the selected source after applicable explicit overrides are
-removed; it does not always mean Direct. Proxy needs a suitable enabled
-connection. Direct bypasses this extension's proxy routing for the selected
-scope, not a system VPN. Exact-host rules affect one host; domain rules include
-subdomains. Explicit Direct takes precedence over explicit Proxy.
+The active indicator confirms routing control, not connectivity or anonymity.
+The extension does not guarantee bypass or encryption, and does not route other
+applications. Some Chromium/PAC errors can lead to a direct connection.
+SOCKS authentication depends on the browser.
 
-Save records settings without changing active routing or credentials. Apply
-activates the saved settings you reviewed. The popup warns when its Apply would
-also include other saved changes. Unsaved edits in Options are not included.
-Existing connections and browser authentication caches may outlive Apply.
+[Guide](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Help](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
+[Privacy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
 
-### Sources and connections
+## Полное описание — русский
 
-Chromium supports PAC sources and advanced custom source URLs over HTTPS or
-loopback HTTP. Use only sources and proxies you trust: the source determines
-automatic routes, and a selected proxy may observe destinations and traffic
-visible to its protocol. The extension does not install or start local services.
-Only my rules and connections does not require a remote routing-data source.
+Выбирайте, как Chrome открывает сайты: по автоматическим правилам, через
+настроенный прокси или напрямую. Расширение управляет маршрутами браузера;
+VPN или прокси-сервер в комплект не входят.
 
-Source checks and updates are distinct from connection checks. Updating routing
-data retains applied user settings and leaves pending settings pending; it does
-not turn routing on when off. Chromium can refresh sources automatically and
-repeat connection checks for an established target while it remains relevant.
-These checks are limited evidence, not a guarantee that every request uses a
-particular route or that a service will remain available.
+- Режимы «Авто», «Прокси» и «Напрямую» для одного хоста или домена с поддоменами.
+- Встроенные PAC-источники, свой источник или режим «Только мои правила и подключения».
+- Собственные прокси и подключение к отдельно запущенным Tor, Tor Browser или WARP.
+- Сохранение настроек отдельно от применения: прежние продолжают действовать до «Применить».
+- Перенос настроек с предварительным просмотром и отдельный очищенный отчёт для поддержки.
+- Обновление данных маршрутизации и проверка подключений.
 
-Firefox uses a different verified local routing-data model; it does not provide
-this Chromium custom-PAC interface. Do not assume settings or source options
-transfer identically between browsers.
+«Авто» следует выбранному источнику и правилам, поэтому может использовать
+прокси. Явное «Напрямую» приоритетнее «Прокси». Для «Прокси» нужно подходящее
+включённое подключение. Обновление базы не включает маршрутизацию и не применяет
+отложенные настройки. Панель спрашивает перед применением других сохранённых
+изменений; несохранённые правки настроек в применение не входят.
 
-### Privacy and transfer
+Настройки и учётные данные прокси хранятся в профиле браузера. Телеметрии
+разработчика и облачной синхронизации нет. Источники, прокси и проверки подключений
+выполняют сетевые запросы; прокси получают адреса назначения и видимую им часть
+трафика. Экспорт исключает учётные данные и адреса своих источников, но сохраняет
+правила сайтов и адреса прокси. Храните его приватно.
 
-Settings and configured credentials remain in your browser profile. There is
-no developer telemetry, analytics or cloud synchronization. Routing and proxy
-authentication process destination information and can transmit it, or matching
-proxy credentials, to the services you use. Source downloads and connection
-checks also make network requests. They are not analytics uploads.
+Активный статус подтверждает управление маршрутами, а не доступность сайтов
+или анонимность. Гарантий обхода и шифрования нет; другие приложения не
+маршрутизируются. При некоторых ошибках Chromium/PAC возможен прямой выход.
+Поддержка авторизации SOCKS зависит от браузера.
 
-Settings exports omit usernames, passwords and custom-source URLs, but still
-contain site rules and proxy addresses: keep them private. Import previews and
-replaces saved settings only; it does not download sources, Apply or turn on
-routing. Re-enter missing credentials before applying. Support export is a
-separate environment/status file, not a configuration backup; review it before
-sharing.
-
-“Protection active” means that the extension controls browser routing. The
-extension does not promise anonymity, encryption, security protection,
-guaranteed bypass or guaranteed connectivity. Chromium can connect directly
-on some browser/PAC errors. SOCKS authentication depends on browser support and
-is not universally supported. This extension does not route other applications
-on your device.
-
-### Support
-
-Project and documentation:
-[aVitomin/runet-censorship-bypass](https://github.com/aVitomin/runet-censorship-bypass).
-Report ordinary problems through the
-[support forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
-Include browser/version, steps and sanitized results, not passwords, private
-source URLs, configuration exports or profiles. For possible vulnerabilities,
-follow the [security policy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SECURITY.md).
+[Руководство](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Помощь](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
+[Приватность](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
 
 ## Permission justifications for the dashboard
 
@@ -155,4 +138,4 @@ the 440x280 promotional PNG and the verified packaged icon. Native popup images
 are genuine documentation workflow captures, not padded 1280x800 store shots.
 Follow the [current listing guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-listing/)
 and [image requirements](https://developer.chrome.com/docs/webstore/images).
-The material is preparation only; there is no new public Chrome store URL to announce.
+There is no verified public Chrome store URL to announce yet.
