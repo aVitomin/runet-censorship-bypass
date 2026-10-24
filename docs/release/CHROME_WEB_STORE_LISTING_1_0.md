@@ -121,8 +121,12 @@ Privacy-practices preparation:
 
 - Declare **Authentication information** for configured proxy credentials and
   **Web history** for destination/request information handled for routing, even
-  though there is no developer browsing-history upload. Review any other live
-  dashboard category against the exact package and routed-data disclosures.
+  though there is no developer browsing-history upload. Also declare **User
+  activity** for request lifecycle/error handling and connection checks: the
+  current form includes network monitoring in this category. This is a mapping
+  of the observed form to the package's network processing, not a claim of
+  mouse/keyboard tracking. Review any other live dashboard category against the
+  exact package and routed-data disclosures.
 - Explain local storage, source retrieval, proxy transmission, and limited
   connection checks using the [privacy notice](PRIVACY_1_0.md). Do not certify
   “no user data handled” on the basis of local processing alone.
