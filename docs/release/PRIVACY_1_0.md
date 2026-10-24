@@ -120,7 +120,7 @@ privileged browser pages are outside ordinary site routing.
 ## Limited use of user data
 
 In line with the Limited Use requirements of the
-[Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/user-data/),
+[Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/limited-use),
 user data is used only to provide the disclosed website-routing,
 proxy-authentication, source-update and connection-check features.
 The developer does not sell user data,
