@@ -1,8 +1,10 @@
-# Firefox Add-ons listing — 1.0 draft
+# Firefox Add-ons listing — 1.0
 
-English submission copy for development version `1.0.0`; not uploaded or
-approved. Verify against the exact release build and review any Russian
-localization before submission. UI languages currently include English and Russian.
+Reference material for version `1.0.0`. The canonical package and reviewer
+source archive were submitted to Mozilla on 2026-10-24 with English and Russian
+listing descriptions, current screenshots, a privacy notice and build notes.
+The version is awaiting review. Submission does not establish approval,
+signature availability or a public installation link.
 
 ## Listing fields
 
@@ -10,13 +12,17 @@ localization before submission. UI languages currently include English and Russi
 - **Summary:** Choose Auto, Proxy or Direct for websites. Manage site rules and proxy connections, with separate Save and Apply controls.
 - **Category:** Other. One category is sufficient; no security-benefit category
   or keyword is needed to describe routing control.
-- **Keywords/tags:** proxy, routing, site rules, network tools, censorship.
-  Use naturally; confirm the available tags in the live submission form.
+- **Keywords/tags:** no tags were selected: the live form's fixed choices did
+  not include suitable routing/proxy terms. Do not substitute misleading tags.
 - **Homepage:** [repository](https://github.com/aVitomin/runet-censorship-bypass).
 - **Support URL:** [issue forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
-- **Privacy URL:** publish the [1.0 privacy draft](PRIVACY_1_0.md) on main first;
-  use its canonical public URL recorded in the publication checklist. Do not
-  submit a draft-branch or not-yet-existing main URL.
+- **Privacy URL:** the [1.0 privacy notice](PRIVACY_1_0.md) is published on main.
+  The submitted notice uses its public project/support/security links.
+- **Russian title:** Обход блокировок Рунета.
+- **Russian summary:** Выбирайте «Авто», «Прокси» или «Напрямую» для сайтов.
+  Настраивайте правила и подключения, сохраняйте изменения и применяйте их отдельно.
+- **Screenshots:** [current 1.0 gallery](../assets/releases/1.0/README.md),
+  including a genuine Firefox toolbar popup.
 
 The summary is deliberately below Mozilla's 250-character limit. The
 [AMO listing guidance](https://extensionworkshop.com/documentation/develop/create-an-appealing-listing/)

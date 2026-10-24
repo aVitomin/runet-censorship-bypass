@@ -1,6 +1,6 @@
 # Manifest permissions and privacy audit — 1.0
 
-Permission mapping for development version `1.0.0`.
+Permission mapping for version `1.0.0`.
 Sources: [Firefox manifest](../../extension/src/firefox/manifest.json) and
 [Chromium manifest template](../../extension/src/chromium/manifest.tmpl.json).
 Compare these declarations with the final built manifests before submission;

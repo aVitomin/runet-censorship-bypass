@@ -2,9 +2,10 @@
 
 ## Scope and purpose
 
-Submission-note draft for development version `1.0.0`. No new version has been
-uploaded by preparing these notes. Attach them to the exact validated package
-and source archive; record the source commit and checksums separately.
+Reviewer reference for version `1.0.0`, submitted to Mozilla on 2026-10-24
+with its exact canonical package, source archive and concise build instructions.
+Review is pending; these notes do not establish approval or signing.
+For later submissions, attach exact source commit/checksums separately.
 The manifest minimum is Firefox `154.0`.
 
 Runet Censorship Bypass controls Firefox routing with Auto, Proxy and Direct

@@ -1,17 +1,29 @@
-# Store publication checklist — planned 1.0
+# Store publication checklist — 1.0
 
 **Publication checklist.** Firefox Add-ons and locally installed desktop packages
-can ship independently of Chrome Web Store. Chrome Web Store submission is
-deferred; its review does not block those channels. This document grants no permission to bump
+can ship independently of Chrome Web Store. Chrome Web Store preparation now
+proceeds in parallel; its review does not block those channels. This document grants no permission to bump
 versions, sign, tag, create releases, upload or submit store packages. Obtain
 separate maintainer authorization for those actions.
 
-The current development version and maintained manifests identify `1.0.0`.
+The maintained source and manifests identify `1.0.0`.
 This does not declare a published release, completed store submission or
 validation of a particular archive. Record the final approved version, exact
 main SHA, browser QA, trusted-main run, artifact names and SHA-256 in the release
-record. Published-release documentation remains scoped to `0.0.4.0` until a new
-release is published.
+record. Published-release documentation identifies the latest available
+version separately for each browser.
+
+## Current channel status — 2026-10-24
+
+- Firefox 1.0: submitted to Mozilla and awaiting review. Both listing languages,
+  source/build instructions, privacy notice, icon and five screenshots are saved.
+  A signed 1.0 XPI and public listing have not been verified as available.
+- Chrome Web Store: preparation in progress; no package submitted to the store.
+  The PAC policy review below remains a separate requirement.
+- Local packages: Chromium 1.0 is [published on GitHub](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0).
+  Use only the versions and links actually published in the
+  [installation guide](../user/INSTALLATION.md). Unsigned Firefox candidates are
+  excluded from ordinary installation instructions.
 
 ## Before any upload
 
@@ -39,7 +51,8 @@ release is published.
   listings or claiming a verified homepage domain the publisher does not own.
 - [ ] Verify [screenshots and provenance](../assets/store/README.md) against the
   final package: truthful state, readable text, correct dimensions, no private
-  data. Firefox native popup: **manual pre-release capture required**. Resolve
+  data. The [current gallery](../assets/releases/1.0/README.md) includes a genuine
+  Firefox native popup. Resolve
   the mixed-language native file-input label if required for the chosen locale.
 - [ ] Repeat reviewer/browser QA on the exact candidate: clean off, private
   access, modes/scope, Save/Apply, pending categories, imports, auth, recovery,
@@ -88,7 +101,7 @@ release is published.
   against the reviewed candidate accounting for signing metadata, and smoke-test
   normal installation. Record the actual public AMO URL only once available.
 
-## Chrome Web Store — optional
+## Chrome Web Store — parallel channel
 
 - [ ] First resolve the [PAC/remote-code policy review](CHROME_REVIEWER_NOTES_1_0.md#pac-disclosure-and-publication-hold)
   and data-transport review. If unresolved, keep Chrome preparation unpublished;

@@ -1,12 +1,13 @@
-# 1.0 store publication preparation
+# 1.0 distribution and store materials
 
-Draft publication materials for development version `1.0.0`: Firefox Add-ons
-(primary) and Chrome Web Store (optional). Check these descriptions against the
-exact release artifact and record its validation separately. These materials
-do not announce 1.0 as available or establish signing, upload or release evidence.
+Publication materials for version `1.0.0`: Firefox Add-ons, Chrome Web Store
+and local desktop packages. Check copy against the exact release artifact.
+Current download availability is recorded in the [installation guide](../user/INSTALLATION.md).
+Firefox 1.0 was submitted to Mozilla on 2026-10-24 and is awaiting review;
+its submission is not a claim that a signed package or public listing is available.
 
 Firefox Add-ons and locally installed desktop packages are independent release
-channels. Chrome Web Store submission is deferred and does not block them.
+channels. Chrome Web Store preparation proceeds in parallel and does not block them.
 
 - [Feature inventory and implementation evidence](FEATURE_INVENTORY_1_0.md)
 - [Firefox title, summary, description and listing fields](FIREFOX_AMO_LISTING_1_0.md)
@@ -14,13 +15,13 @@ channels. Chrome Web Store submission is deferred and does not block them.
 - [Chrome short/long description, features and dashboard preparation](CHROME_WEB_STORE_LISTING_1_0.md)
 - [Chrome reviewer notes and PAC policy review item](CHROME_REVIEWER_NOTES_1_0.md)
 - [Every manifest permission and privacy alignment](PERMISSIONS_AND_PRIVACY_1_0.md)
-- [Privacy notice draft](PRIVACY_1_0.md)
-- [Unexecuted publication checklist](STORE_PUBLICATION_CHECKLIST.md)
+- [Privacy notice](PRIVACY_1_0.md)
+- [Publication checklist and channel status](STORE_PUBLICATION_CHECKLIST.md)
 - [Public-link audit](LINK_AUDIT_1_0.md)
-- [Reviewed visual assets and remaining native Firefox popup capture](../assets/store/README.md)
+- [Current 1.0 screenshots, including native browser popups](../assets/releases/1.0/README.md)
+- [Historical visual preparation](../assets/store/README.md)
 
-Listing prose is prepared in English; review Russian localization before using
-it in a localized listing. Keep the [published user docs](../README.md) separate
-from these drafts until an actual release is available. The
+Firefox listing prose and captions are saved in English and Russian. Chrome
+copy remains preparation until its live dashboard is completed. The
 [release process](../development/RELEASE_PROCESS.md) remains authoritative for
 future builds, trusted artifacts, signing boundaries and release evidence.

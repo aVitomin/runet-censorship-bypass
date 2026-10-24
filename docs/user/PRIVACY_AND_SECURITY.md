@@ -1,4 +1,4 @@
-# Приватность и безопасность
+# Приватность и безопасность версии 0.0.4.0
 
 Коротко:
 
@@ -15,14 +15,13 @@
 разрешения, потому что должно выбрать прямой или прокси-маршрут и при необходимости
 ответить на запрос аутентификации прокси.
 
-Текущий опубликованный [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0)
+Ранее опубликованный [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0)
 содержит Chromium-пакет и Mozilla-подписанный Firefox XPI.
-Эта страница описывает его границы. Изменения для ещё не выпущенной версии,
-включая перенос настроек и файлы для поддержки, описаны отдельно в
-[подготовке 1.0](../development/UPCOMING_1_0_USER_GUIDE.md#перенос-настроек-и-файл-для-поддержки).
-Для публикации следующего выпуска подготовлен отдельный
-[проект уведомления о приватности 1.0](../release/PRIVACY_1_0.md);
-он не объявляет новый выпуск доступным.
+Эта страница описывает его границы. Для версии 1.0 используйте отдельное
+[уведомление о приватности](../release/PRIVACY_1_0.md) и
+[руководство](USER_GUIDE_1_0.md#перенести-настройки).
+Доступные версии для каждого браузера перечислены в
+[инструкции установки](INSTALLATION.md).
 
 ## Кому могут быть видны сетевые данные
 
@@ -141,8 +140,9 @@ Firefox использует `proxy`, `webRequest`, `webRequestBlocking`, `stora
 
 ## English summary
 
-This page covers published `0.0.4.0`; configuration-transfer privacy and the
-unreleased workflow are covered in the [1.0 preparation guide](../development/UPCOMING_1_0_USER_GUIDE.md).
+This page covers the older published `0.0.4.0`. For version 1.0, use the
+[1.0 privacy notice](../release/PRIVACY_1_0.md) and
+[1.0 guide](USER_GUIDE_1_0.md). Available versions differ by browser.
 
 The extension needs host and proxy permissions to select routes and handle
 configured proxy authentication. It contains no developer telemetry or
@@ -157,5 +157,5 @@ Firefox connection checks are user-triggered. Chromium can also check after
 popup Proxy Apply and repeat checks for a still-relevant established target.
 Checks omit website credentials/referrer; matching proxy authentication can
 still occur. Chromium can follow redirects, while Firefox does not.
-The [1.0 publication privacy draft](../release/PRIVACY_1_0.md) separately covers
-the unreleased transfer workflow and current development data handling.
+The [1.0 privacy notice](../release/PRIVACY_1_0.md) separately covers
+settings transfer and version 1.0 data handling.
