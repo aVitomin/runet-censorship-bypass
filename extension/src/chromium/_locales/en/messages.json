@@ -427,10 +427,10 @@
     "message": "Uses the alternative built-in routing source."
   },
   "providerOnlyOwnSitesLabel": {
-    "message": "Manual rules only"
+    "message": "Only my rules and connections"
   },
   "providerOnlyOwnSitesDescription": {
-    "message": "Only sites you explicitly mark Proxy or Direct are overridden."
+    "message": "Manual mode uses no provider list. Your site rules, .onion routes and connection settings still apply; other sites use Direct with default routing settings."
   },
   "popupPacProvider": {
     "message": "Routing source"

@@ -1140,9 +1140,9 @@ describe('Chromium options UI', function() {
         const routing = getSection(harness.root, 'routing-sources');
         expect(routing.textContent).to.include('Antizapret');
         expect(routing.textContent).to.include('Anticensority');
-        expect(routing.textContent).to.include('Manual rules only');
+        expect(routing.textContent).to.include('Only my rules and connections');
         expect(routing.textContent).to.include(
-            'Only sites you explicitly mark Proxy or Direct are overridden.',
+            'Manual mode uses no provider list.',
         );
         expect(routing.textContent).to.include('Add custom source');
         expect(harness.calls.map((call) => call.method)).to.deep.equal([
@@ -2886,7 +2886,7 @@ describe('Chromium options UI', function() {
         expect(initial.root.textContent).to.include(
             'Прокси-подключения — необязательно',
         );
-        expect(initial.root.textContent).to.include('Только ручные правила');
+        expect(initial.root.textContent).to.include('Только мои правила и подключения');
         expect(initial.root.textContent).not.to.include('Set up routing');
 
       });

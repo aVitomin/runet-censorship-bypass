@@ -80,54 +80,6 @@ refactor); это не отменяет проверки полного lockfile
 runtime/storage/RPC identifiers не меняются автоматически вместе с repository
 name. Release tooling получает корень через Git, а не имя папки или её глубину.
 
-## Опциональный Chrome DevTools MCP
-
-Project-конфигурация в `.codex/config.toml` объявляет
-`chrome-devtools-mcp@1.9.0`, установленный отдельно в игнорируемом каталоге
-`.local/agent-tools`, и по умолчанию держит сервер выключенным. Это не
-зависимость расширения: конфигурация не использует `npx`, не скачивает браузер и
-не меняет tooling package или его lockfile.
-
-Если локального пакета ещё нет, установите только проверенную версию в
-игнорируемый tool cache:
-
-```powershell
-npm install --prefix .\.local\agent-tools\chrome-devtools-mcp\1.9.0 --cache .\.local\agent-tools\npm-cache --registry=https://registry.npmjs.org/ --ignore-scripts --save-exact --package-lock=true --audit=false --fund=false chrome-devtools-mcp@1.9.0
-```
-
-Включайте сервер только для отдельной локальной сессии из корня репозитория:
-
-```powershell
-codex -C . -c 'mcp_servers.chrome_devtools.enabled=true'
-```
-
-Закройте эту Codex CLI-сессию, чтобы остановить сервер; следующая обычная
-сессия снова использует `enabled = false`. Opt-in проверен в CLI, но перезапуск
-VS Code/IDE с этой конфигурацией отдельно не проверялся.
-
-Сессия запускает установленный stable Chrome с временным изолированным профилем
-и pipe transport. Телеметрия, CrUX, проверка обновлений и JavaScript-evaluation
-tools выключены; доступны только навигация/осмотр страницы, screenshot, console
-и network inspection. Если локальный пакет удалён, opt-in завершится ошибкой и
-не должен заменяться глобальной установкой или запуском `@latest`.
-
-## Опциональный Context7
-
-Remote MCP `https://mcp.context7.com/mcp` объявлен в `.codex/config.toml`, по
-умолчанию выключен и проверен с anonymous access. Для одной CLI-сессии:
-
-```powershell
-codex -C . -c 'mcp_servers.context7.enabled=true'
-```
-
-Разрешены только `resolve-library-id` и `query-docs`. Отправляйте сервису лишь
-публичное имя библиотеки и общий несекретный вопрос: сформированный query
-обрабатывается удалённо и может сохраняться для оценки поиска. Версия считается
-точной только при явно возвращённом versioned library ID; иначе результат —
-общая документация. Выход из сессии снова оставляет MCP выключенным. Для полного
-удаления удалите таблицу `mcp_servers.context7` и этот раздел; API key не нужен
-для проверенного базового доступа.
-
 ## Опциональное локальное QA-окружение
 
 Необязательные machine-specific пути и наблюдения хранятся только в

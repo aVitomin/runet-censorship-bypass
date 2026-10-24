@@ -34,7 +34,7 @@
 | Общие product assets | `extension/src/assets/` | Содержит только ресурсы с реальными потребителями в нескольких browser targets; текущие icons используются обоими браузерами. |
 | Сборка и версии | tooling package, `gulpfile.js`, `src/templates-data.js`, manifest templates | Корневого npm-пакета нет; команды npm запускаются только с `--prefix` для tooling package. |
 | Проверки документации | `scripts/verify-docs.mjs`, `docs/release-current.json` | Проверяются навигация, локальные цели и метаданные опубликованного выпуска. |
-| Локальные инструкции | корневой и scoped `AGENTS.md`, `.agents/skills/` | Читайте только применимые инструкции; внешние helper skills вызываются явно. |
+| Локальные инструкции | корневой и scoped `AGENTS.md`, `.agents/skills/` | Применимые правила и четыре repository skills покрывают security, PAC, зависимости и выпуск. |
 
 Chromium и Firefox равноправны; исторические имена родительских каталогов не
 определяют ownership. Поддерживаемая ветка не собирает MV2. MV2-дерево доступно через
@@ -78,9 +78,10 @@ Git history, frozen development branch и явно помеченные архи
 Корневой [`.gitignore`](../../.gitignore) и tooling `.gitignore` исключают
 `node_modules`, `build`, `dist`, coverage, кэши, логи, временные каталоги,
 browser profiles и локальные отчёты. [Настройки VS Code](../../.vscode/settings.json)
-отдельно скрывают и не отслеживают `node_modules`, `build`, `dist`, coverage,
-`.tmp`, `.cache` и browser-profile patterns. Git дополнительно игнорирует
-`.local`, package-manager caches, логи и environment-файлы.
+отдельно исключают из дерева, поиска и наблюдения `node_modules`, `build`,
+`dist`, coverage, `.local`, `.omp`, `.codex`, `.tmp`, `.cache` и browser-profile
+patterns. Git также игнорирует локальные настройки агента, package-manager
+caches, логи и environment-файлы.
 
 Отдельный `.rgignore` не нужен: поддерживаемые исходники, тесты, fixtures,
 skills, lockfiles и security evidence должны оставаться доступными обычному

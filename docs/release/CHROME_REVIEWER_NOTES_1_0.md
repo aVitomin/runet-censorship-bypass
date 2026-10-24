@@ -1,9 +1,9 @@
 # Chrome reviewer notes — optional 1.0 submission draft
 
-Audited source: `8361608fa4ac52cc118cf5e6d32b3feb8772d167`.
-Attach the exact validated candidate version/SHA/checksums when a submission is
-authorized. These are instructions, not a claim that a new release or reviewer
-test run was performed during documentation preparation.
+Reviewer procedure for development version `1.0.0`.
+Attach the exact validated candidate version/SHA/checksums when submitting.
+These instructions do not establish that a release or reviewer test run has
+been completed for that candidate.
 
 ## Purpose and permissions
 
@@ -71,7 +71,7 @@ No test server is started by these notes.
 ## Expected behavior
 
 1. Load the package in a fresh profile. Confirm routing is off. Open Options,
-   select Manual rules only, Save if needed, and explicitly Apply. Active means
+   select Only my rules and connections, Save if needed, and explicitly Apply. Active means
    browser routing control, not connection verification.
 2. Add `news.example` → Direct with exact-host scope. Save only: previous
    applied settings remain active and Site rules changed is pending. Apply

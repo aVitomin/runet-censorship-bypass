@@ -1,10 +1,10 @@
 # 1.0 visual preparation
 
-These are reviewed assets for the upcoming 1.0 milestone, not a published
-release or a store submission. They show unmodified production builds from
-`624e06908b6da2bde8a36f4ef3760c5cc9835c3f`, including PRs #88, #89 and #90.
-The manifest version remains `0.0.4.0`; no version or runtime files changed.
-Published-release screenshots under `docs/assets/readme/` remain untouched.
+These historical preparation captures show unmodified builds from
+`624e06908b6da2bde8a36f4ef3760c5cc9835c3f`, including PRs #88, #89 and #90,
+whose manifest version was `0.0.4.0`. They are not screenshots or validation of
+the current `1.0.0` candidate and must be rechecked before use in a store listing.
+Published-release screenshots under `docs/assets/readme/` retain their own scope.
 
 ## Store inventory
 
@@ -161,9 +161,9 @@ git diff --check
 The asset validator checks the complete PNG inventory, dimensions, hashes,
 non-text PNG chunks, provenance, regression evidence and exclusion from both
 existing production package trees. `--packages` requires those builds to exist;
-it does not build or modify them. Source/package integrity was also checked with
-the existing Chromium and Firefox package verifiers (71 files per target).
-Full runtime suites are not the local gate for this documentation-only change.
+it does not build or modify them. Source/package integrity checks recorded for
+these captures apply to their source revision, not a later candidate. A
+documentation-only asset change does not require rerunning full runtime suites.
 
 ## Remaining manual work before 1.0
 

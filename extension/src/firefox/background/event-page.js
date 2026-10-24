@@ -223,8 +223,8 @@
     getMessage: (key) => browser.i18n.getMessage(key),
     getDatasetInfo: async () => {
       const identity = await readRoutingIdentity();
-      return {available: Boolean(identity && (identity.providerKey === 'manual' ||
-        providerBootstrapState.datasetAvailable)), version: identity && identity.datasetVersion};
+      return {available: Boolean(identity && routingSourceAvailable(identity.providerKey)),
+        version: identity && identity.datasetVersion};
     },
   });
   datasetPromotionController = datasetPromotionApi.createController({
@@ -255,6 +255,12 @@
         sha256,
     );
     return verified.config.datasetIdentity;
+
+  }
+  function routingSourceAvailable(providerKey) {
+
+    return providerKey === 'manual' || providerKey === productionProviderApi.PROVIDER_KEY &&
+      providerBootstrapState.datasetAvailable === true;
 
   }
   async function readCurrentDatasetIdentity() {
@@ -850,7 +856,9 @@
     if (['firefox.transfer.export', 'firefox.transfer.preview', 'firefox.transfer.import'].includes(type)) {
       return enqueueRpcControlOperation(async () => {
         try {
-          const saved = await settingsController.get();
+          const snapshot = type === 'firefox.transfer.export' && message.support === true ?
+            await verifiedConfigurationSnapshot() : null;
+          const saved = snapshot ? snapshot.saved : await settingsController.get();
           if (type === 'firefox.transfer.export') {
             const info = await browser.runtime.getBrowserInfo();
             const platform = await browser.runtime.getPlatformInfo();
@@ -858,11 +866,12 @@
               browser: {family: 'firefox', version: info.version},
               extensionVersion: browser.runtime.getManifest().version,
               locale: browser.i18n.getUILanguage(), platform: platform.os};
-            const status = message.support === true ? await configurationStatus() : null;
+            const status = snapshot ? await configurationStatus(snapshot) : null;
+            const sourceSettings = status && status.active && snapshot.effective || saved;
             return {ok: true, result: transfer.create(message.support === true ? null :
               transferAdapter.fromSettings(saved.settings), metadata,
             status ? Object.assign({}, status,
-                {sourceAvailable: providerBootstrapState.datasetAvailable === true}) : null)};
+                {sourceAvailable: routingSourceAvailable(sourceSettings.settings.source)}) : null)};
           }
           const parsed = transfer.parse(message.text);
           if (!parsed.configuration) transfer.fail('TRANSFER_NO_CONFIGURATION');

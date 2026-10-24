@@ -2129,11 +2129,26 @@ describe('Firefox production control package', function() {
       realProviderUpdateControl: true,
       providerBootstrapError: 'INDEXED_DB_UNAVAILABLE', verifyDatasetIdentity: true});
     await page.ready();
+    let datasetReads = 0;
+    page.context.indexedDB.open = () => {
+      datasetReads += 1;
+      throw new Error('TEST_INDEXED_DB_MUST_NOT_OPEN');
+    };
+    const assertManualSupport = async (active) => {
+      const beforeReads = datasetReads;
+      const exported = await page.send({type: 'firefox.transfer.export', support: true});
+      Assert.strictEqual(exported.ok, true);
+      Assert.strictEqual(exported.result.configuration, null);
+      Assert.strictEqual(exported.result.diagnostics.active, active);
+      Assert.strictEqual(exported.result.diagnostics.sourceAvailable, true);
+      Assert.strictEqual(datasetReads, beforeReads);
+    };
     let result = await page.send({type: 'firefox.options.get'});
     Assert.strictEqual(result.ok, true);
     Assert.strictEqual(result.result.providerUpdate.errorCategory, 'STORAGE_FAILED');
     Assert.strictEqual(result.result.capabilities.providerDatasetAvailable, true);
     Assert.strictEqual(result.result.operational.diagnostics.datasetAvailable, true);
+    await assertManualSupport(false);
     Assert.strictEqual((await page.send({type: 'firefox.activation.apply', expectedRevision: 1})).ok, true);
     Assert.strictEqual(await page.providerUpdateOptions.readCurrentDatasetIdentity(), null);
     const sourceInfo = await page.providerUpdateOptions.readCurrentDatasetInfo();
@@ -2142,6 +2157,7 @@ describe('Firefox production control package', function() {
     result = await page.send({type: 'firefox.options.get'});
     Assert.strictEqual(result.ok, true);
     Assert.strictEqual(result.result.configuration.active, true);
+    await assertManualSupport(true);
     const reboot = startEventPage({storage, privateWindowAccess: true,
       realProviderUpdateControl: true,
       providerBootstrapError: 'INDEXED_DB_UNAVAILABLE', verifyDatasetIdentity: true,

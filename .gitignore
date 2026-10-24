@@ -30,3 +30,4 @@ browser-profile/
 
 # Personal agent configuration and session state stay local.
 .omp/
+.codex/

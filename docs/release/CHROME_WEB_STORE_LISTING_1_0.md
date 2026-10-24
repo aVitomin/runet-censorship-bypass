@@ -1,8 +1,8 @@
 # Chrome Web Store materials — optional 1.0 draft
 
-English preparation only, based on
-`8361608fa4ac52cc118cf5e6d32b3feb8772d167`. No store upload, manifest change or
-approval is implied. Firefox Add-ons remains the primary publication target.
+English preparation for development version `1.0.0`; verify the copy against
+the exact candidate before submission. No store upload or approval is implied.
+Firefox Add-ons remains the primary publication target.
 Resolve the PAC policy review in the [Chrome reviewer notes](CHROME_REVIEWER_NOTES_1_0.md)
 before deciding to submit.
 
@@ -26,7 +26,7 @@ a browser routing tool, not a VPN service or a proxy subscription.
 
 - Auto, Proxy and Direct controls for the current website.
 - Exact-host and domain-and-subdomain site rules.
-- Built-in PAC sources, Manual rules only, and advanced custom PAC sources.
+- Built-in PAC sources, Only my rules and connections, and advanced custom PAC sources.
 - Configurable own proxies and connections to separately running local tools.
 - Separate Save and Apply, with a summary of saved but inactive changes.
 - Manual settings Import/Export with preview and compatibility warnings.
@@ -53,7 +53,7 @@ Chromium supports PAC sources and advanced custom source URLs over HTTPS or
 loopback HTTP. Use only sources and proxies you trust: the source determines
 automatic routes, and a selected proxy may observe destinations and traffic
 visible to its protocol. The extension does not install or start local services.
-Manual rules only does not require a remote routing-data source.
+Only my rules and connections does not require a remote routing-data source.
 
 Source checks and updates are distinct from connection checks. Updating routing
 data retains applied user settings and leaves pending settings pending; it does
