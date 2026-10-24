@@ -1,11 +1,12 @@
-# Privacy notice — 1.0 publication draft
+# Privacy notice — version 1.0
 
 For Runet Censorship Bypass in
 [aVitomin/runet-censorship-bypass](https://github.com/aVitomin/runet-censorship-bypass).
-This describes development version `1.0.0`, not a released 1.0 product.
-Before store submission, approve this text against the exact submitted package
-and publish a stable, publicly accessible policy.
-The [published-release notice](../user/PRIVACY_AND_SECURITY.md) remains separate.
+Effective date: 24 October 2026. This notice describes version `1.0.0` for
+Firefox and Chromium, including locally installed packages. The availability
+of each distribution channel is recorded separately on the project's release
+page; this notice does not announce a store listing.
+The [earlier-release notice](../user/PRIVACY_AND_SECURITY.md) remains separate.
 
 ## Data used in your browser
 
