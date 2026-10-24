@@ -13,18 +13,23 @@ main SHA, browser QA, trusted-main run, artifact names and SHA-256 in the releas
 record. Published-release documentation identifies the latest available
 version separately for each browser.
 
-## Current channel status — 2026-10-24
+## Current channel status
+
+Last confirmed on 2026-10-25; this is not a live store-status feed.
 
 - Firefox 1.0: submitted to Mozilla and awaiting review. Both listing languages,
   source/build instructions, privacy notice, icon and five screenshots are saved.
   A signed 1.0 XPI and public listing have not been verified as available.
-- Chrome Web Store: package uploaded to a draft item; listing/privacy preparation
-  is in progress. No review submission or approval has been confirmed.
-  The PAC policy review below remains a separate requirement.
+- Chrome Web Store: the publisher confirmed submission and pending review.
+  Approval, public availability and automatic/deferred publication selection
+  have not been verified. The PAC policy determination remains open.
 - Local packages: Chromium 1.0 is [published on GitHub](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0).
   Use only the versions and links actually published in the
   [installation guide](../user/INSTALLATION.md). Unsigned Firefox candidates are
   excluded from ordinary installation instructions.
+
+The remaining checklists are procedures for a submission or future update;
+unchecked boxes are not a claim that the confirmed submissions did not occur.
 
 ## Before any upload
 

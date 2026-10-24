@@ -1,27 +1,23 @@
-# 1.0 distribution and store materials
+# Материалы для магазинов и проверяющих — 1.0
 
-Publication materials for version `1.0.0`: Firefox Add-ons, Chrome Web Store
-and local desktop packages. Check copy against the exact release artifact.
-Current download availability is recorded in the [installation guide](../user/INSTALLATION.md).
-Firefox 1.0 was submitted to Mozilla on 2026-10-24 and is awaiting review;
-its submission is not a claim that a signed package or public listing is available.
+Этот раздел предназначен сопровождающим. Пользователям:
+[скачивание и установка](../user/INSTALLATION.md), [помощь](../../SUPPORT.md).
 
-Firefox Add-ons and locally installed desktop packages are independent release
-channels. Chrome Web Store preparation proceeds in parallel and does not block them.
+Версии 1.0 отправлены на проверку в Mozilla Add-ons и Chrome Web Store.
+Одобрение и публичные ссылки пока не подтверждены. Локальная сборка Chromium
+доступна независимо от магазинов. Последний подтверждённый статус каналов:
+[чек-лист публикации](STORE_PUBLICATION_CHECKLIST.md).
 
-- [Feature inventory and implementation evidence](FEATURE_INVENTORY_1_0.md)
-- [Firefox title, summary, description and listing fields](FIREFOX_AMO_LISTING_1_0.md)
-- [Firefox AMO reviewer notes](../development/FIREFOX_AMO_REVIEW.md)
-- [Chrome short/long description, features and dashboard preparation](CHROME_WEB_STORE_LISTING_1_0.md)
-- [Chrome reviewer notes and PAC policy review item](CHROME_REVIEWER_NOTES_1_0.md)
-- [Every manifest permission and privacy alignment](PERMISSIONS_AND_PRIVACY_1_0.md)
-- [Privacy notice](PRIVACY_1_0.md)
-- [Publication checklist and channel status](STORE_PUBLICATION_CHECKLIST.md)
-- [Public-link audit](LINK_AUDIT_1_0.md)
-- [Current 1.0 screenshots, including native browser popups](../assets/releases/1.0/README.md)
-- [Historical visual preparation](../assets/store/README.md)
+| Материал | Назначение |
+| --- | --- |
+| [Описание Chrome](CHROME_WEB_STORE_LISTING_1_0.md), [Firefox](FIREFOX_AMO_LISTING_1_0.md) | Название, краткое и полное описание на русском и английском |
+| [Проверяющим Chrome](CHROME_REVIEWER_NOTES_1_0.md), [Firefox](../development/FIREFOX_AMO_REVIEW.md) | Сценарии проверки, сборка и ограничения |
+| [Функции и подтверждения](FEATURE_INVENTORY_1_0.md) | Сопоставление заявлений с реализацией |
+| [Разрешения и обработка данных](PERMISSIONS_AND_PRIVACY_1_0.md) | Обоснования для форм магазинов |
+| [Приватность](PRIVACY_1_0.md) | Политика версии 1.0 |
+| [Снимки интерфейса](../assets/releases/1.0/README.md) | Изображения и их происхождение |
+| [Проверка ссылок](LINK_AUDIT_1_0.md) | Датированная проверка адресов |
 
-Firefox listing prose and captions are saved in English and Russian. Chrome
-copy remains preparation until its live dashboard is completed. The
-[release process](../development/RELEASE_PROCESS.md) remains authoritative for
-future builds, trusted artifacts, signing boundaries and release evidence.
+Сокращённые описания в репозитории подготовлены для будущего обновления карточек.
+Они не заменяют тексты уже отправленных заявок. Изменения кода, пакетов,
+подписей и выпусков выполняются по [процессу выпуска](../development/RELEASE_PROCESS.md).
