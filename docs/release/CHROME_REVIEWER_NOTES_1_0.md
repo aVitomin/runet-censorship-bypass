@@ -1,6 +1,6 @@
-# Chrome reviewer notes — optional 1.0 submission draft
+# Chrome reviewer notes — 1.0 submission preparation
 
-Reviewer procedure for development version `1.0.0`.
+Reviewer procedure for version `1.0.0`.
 Attach the exact validated candidate version/SHA/checksums when submitting.
 These instructions do not establish that a release or reviewer test run has
 been completed for that candidate.

@@ -1,8 +1,9 @@
-# Chrome Web Store materials — optional 1.0 draft
+# Chrome Web Store materials — 1.0 submission preparation
 
-English preparation for development version `1.0.0`; verify the copy against
-the exact candidate before submission. No store upload or approval is implied.
-Firefox Add-ons remains the primary publication target.
+English preparation for version `1.0.0`; verify the copy against the exact
+canonical package before submission. Chrome Web Store preparation proceeds
+independently of Firefox Add-ons and local installation. No Chrome upload,
+review submission or approval has been completed for this version.
 Resolve the PAC policy review in the [Chrome reviewer notes](CHROME_REVIEWER_NOTES_1_0.md)
 before deciding to submit.
 
@@ -13,8 +14,11 @@ Control website routing with Auto, Proxy and Direct rules, configurable PAC sour
 This proposed copy is below the
 [132-character manifest description limit](https://developer.chrome.com/docs/extensions/reference/manifest/description).
 Chrome takes the short description from packaged/localized manifest metadata;
-this document does not change it. Reconcile the eventual approved English and
-Russian package descriptions in a separately authorized release change.
+this document does not change it. The canonical package currently uses
+`Bypass Runet censorship with configurable routing rules.` (English) and
+`Обход блокировок Рунета с помощью настраиваемых правил маршрутизации.` (Russian).
+Use those package-derived descriptions for this unchanged package; a future
+description change requires a new validated artifact.
 
 ## Long description — copy from here
 
@@ -135,11 +139,13 @@ Privacy-practices preparation:
 The [privacy dashboard guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy/)
 and [User Data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq/)
 require accurate permission/data disclosures, including locally handled data.
-Checked on 2026-09-26; reconfirm the live form before submission.
+Checked on 2026-10-24; reconfirm the live form before submission. The FAQ
+separately discusses user-specified protocol servers and same-computer native
+programs; those distinctions do not establish approval of this exact package.
 
 ## Images and submission scope
 
-Use the five [Chromium store screenshots](../assets/store/README.md#store-inventory),
+Use the five [current Chromium store screenshots](../assets/releases/1.0/README.md),
 the 440x280 promotional PNG and the verified packaged icon. Native popup images
 are genuine documentation workflow captures, not padded 1280x800 store shots.
 Follow the [current listing guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-listing/)

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "9de66def0db68b3573dec1680b387940611cef17",
+  "sourceRun": "https://github.com/aVitomin/runet-censorship-bypass/actions/runs/40080389722",
+  "artifacts": {
+    "chromium": {
+      "filename": "runet-censorship-bypass-mv3-1.0.0-9de66de.zip",
+      "sha256": "0faa3e0208c9d8295d2216066184930ece89eddeae20d1d37e9ede0c2a1a48bb"
+    },
+    "firefox": {
+      "filename": "runet-censorship-bypass-firefox-1.0.0.xpi",
+      "sha256": "e4b779be649f1012c2f267b716587a250c2cc1f69b27f47dedcdd2ed9486373e",
+      "distribution": "unsigned review candidate; Mozilla review pending"
+    }
+  },
+  "privacyReview": {
+    "everyImageInspected": true,
+    "sensitiveMaterialFound": false,
+    "syntheticDataOnly": true
+  },
+  "unmodifiedPackage": true,
+  "retouched": false,
+  "assets": [
+    {
+      "path": "chromium/01-overview-active.png",
+      "target": "chromium",
+      "version": "1.0.0",
+      "browser": "Google Chrome 156.0.8078.47",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Manual routing active; saved and applied settings agree.",
+      "sha256": "ad05df2b745032271742e9c61cc4a54be49cb2435d734ccea8bfffad09825a31"
+    },
+    {
+      "path": "chromium/02-site-rule-saved-pending.png",
+      "target": "chromium",
+      "version": "1.0.0",
+      "browser": "Google Chrome 156.0.8078.47",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Synthetic news.example exact-host Direct rule saved but not applied.",
+      "sha256": "f0a1dff7dc30b2fd5f008dfdcbd30c03cdf8059ba266f3ea506842e01a6d63d1"
+    },
+    {
+      "path": "chromium/03-routing-source.png",
+      "target": "chromium",
+      "version": "1.0.0",
+      "browser": "Google Chrome 156.0.8078.47",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Manual source selected; available source choices; pending settings remain unapplied.",
+      "sha256": "559c73c694a7ec07a79ba6b553026c8cfabb0f184e25f1f0f4c08b3604665718"
+    },
+    {
+      "path": "chromium/04-import-preview.png",
+      "target": "chromium",
+      "version": "1.0.0",
+      "browser": "Google Chrome 156.0.8078.47",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Unconfirmed preview of a synthetic settings import.",
+      "sha256": "5d0420a4eb705e18de1c789f569f7350cddb93d7de707347ce769362e2309804"
+    },
+    {
+      "path": "chromium/05-own-proxy-connections.png",
+      "target": "chromium",
+      "version": "1.0.0",
+      "browser": "Google Chrome 156.0.8078.47",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Disabled loopback SOCKS5 example without credentials.",
+      "sha256": "de8161a6dbb0cca8e95571cb8d5460949c952b91ab4cd2f1b91c9283f7617337"
+    },
+    {
+      "path": "chromium/06-native-popup.png",
+      "target": "chromium",
+      "version": "1.0.0",
+      "browser": "Google Chrome 156.0.8078.47",
+      "locale": "en",
+      "surface": "native-toolbar-popup",
+      "width": 407,
+      "height": 480,
+      "state": "Genuine toolbar popup: active explicit Direct for news.example.",
+      "sha256": "3522696ef86fa52aa94d5d0c86ffcad9bdfa976dcf1762fc16eb87000c081345"
+    },
+    {
+      "path": "firefox/01-overview-manual-active.png",
+      "target": "firefox",
+      "version": "1.0.0",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Manual routing active; saved and applied settings agree.",
+      "sha256": "571306f3d0239f06a2146540630d5cd3331b10a99cc2e3064314fd295f73dedb"
+    },
+    {
+      "path": "firefox/02-site-rule-saved-pending.png",
+      "target": "firefox",
+      "version": "1.0.0",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Synthetic news.example Direct rule saved but not applied.",
+      "sha256": "dba2de604af2da2da4546ba9de7422b0ff3f9d1c8010eec726daea4ebd3ac986"
+    },
+    {
+      "path": "firefox/03-manual-routing-source.png",
+      "target": "firefox",
+      "version": "1.0.0",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Only my rules and connections selected.",
+      "sha256": "7ee293fd96e7b5131cd4807ffbbd97a5dbd6e4667f9f1a87bbf975e0c3d0205f"
+    },
+    {
+      "path": "firefox/04-routing-data-status.png",
+      "target": "firefox",
+      "version": "1.0.0",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en",
+      "surface": "options-document",
+      "width": 1280,
+      "height": 800,
+      "state": "Installed dataset status and source-update controls; not a freshness or connection claim.",
+      "sha256": "92fc4411214bfc555790f60f21a772c8bffe43c61d65a6d8eaf436715fdf6d36"
+    },
+    {
+      "path": "firefox/05-native-popup-direct.png",
+      "target": "firefox",
+      "version": "1.0.0",
+      "browser": "Mozilla Firefox 156.0.1",
+      "locale": "en",
+      "surface": "native-toolbar-popup",
+      "width": 392,
+      "height": 600,
+      "state": "Genuine toolbar popup: active explicit Direct for news.example.",
+      "sha256": "67c98e0b60e682ae642a0881de21ad8c20beceeee2e5ed1bf2fd5f03607cd92d"
+    }
+  ]
+}

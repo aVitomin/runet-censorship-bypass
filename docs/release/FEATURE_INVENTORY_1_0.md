@@ -1,9 +1,10 @@
 # 1.0 publication feature inventory
 
-This inventory describes implemented development behavior for version `1.0.0`.
-It does not declare that 1.0 is released or submitted to a store. Recheck the
-claims against the exact release artifact. Published-release documentation
-continues to describe `0.0.4.0` until a new release is published.
+This inventory describes implemented behavior for version `1.0.0`.
+Recheck claims against the exact release artifact. Actual version availability
+differs by browser/channel and is recorded in the
+[installation guide](../user/INSTALLATION.md); store acceptance is separate
+from code or local-package availability.
 
 ## Claims supported by the current implementation
 
@@ -70,7 +71,7 @@ leak-prevention claim.
   Chromium worker `runAutomaticProxyHealthCheck`, `getProxyHealthRelevance`,
   `runProxyHealthCheckInternal`, and
   [Chromium action status](../../extension/src/chromium/background/action-status.js).
-- User workflows: [unreleased guide](../development/UPCOMING_1_0_USER_GUIDE.md).
+- User workflows: [version 1.0 guide](../user/USER_GUIDE_1_0.md).
 
 ## Documentation alignment findings
 

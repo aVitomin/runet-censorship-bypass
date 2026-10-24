@@ -1,15 +1,15 @@
-# Подготовка пользовательского руководства 1.0
+# Подробные сценарии интерфейса 1.0
 
-Это материал для ещё не выпущенной версии `1.0.0`, основанный на реализованных
-сценариях текущей разработки. Он не объявляет 1.0 опубликованной и не обещает
-состав или дату выпуска. Для установленного `0.0.4.0` используйте
-[руководство опубликованного выпуска](../user/USER_GUIDE.md) и
-[его инструкцию установки](../user/INSTALLATION.md).
+Подробный справочник реализованных сценариев `1.0.0`.
+Начните с [краткого пользовательского руководства](../user/USER_GUIDE_1_0.md)
+и [доступных версий для установки](../user/INSTALLATION.md).
+Chromium 1.0 опубликован для ручной установки; Firefox 1.0 ожидает проверки
+Mozilla. Для установленного Firefox `0.0.4.0` используйте
+[руководство этой версии](../user/USER_GUIDE.md).
 
-Перед публикацией 1.0 нужно сверить названия кнопок, поддерживаемые версии
-браузеров и эти шаги с выбранной сборкой выпуска. После этого соответствующий
-текст можно перенести в пользовательские руководства. Старые ссылки на
-скачивание и снимки `0.0.4.0` не являются инструкцией установки или проверкой 1.0.
+Перед применением справочника к новому выпуску сверяйте названия кнопок и
+поддерживаемые версии браузеров с его сборкой. Старые снимки `0.0.4.0`
+не являются проверкой интерфейса 1.0.
 
 ## Первый запуск и разрешения
 
@@ -358,10 +358,11 @@ PAC и отключённые правила Chromium не поддержива�
 соединение, если оно не проверено. Перед публикацией проверьте читаемость
 снимков и подписей в Markdown при обычной и узкой ширине.
 
-## English summary — unreleased 1.0 preparation
+## English summary — 1.0 workflows
 
-These workflows are implemented in development, not available in the published
-`0.0.4.0` packages. Both browsers allow editing while protection is active.
+These version 1.0 workflows differ from the older `0.0.4.0` packages.
+Check [available versions](../user/INSTALLATION.md) before installation.
+Both browsers allow editing while protection is active.
 **Save settings** records changes only; **Apply** activates the saved values you
 reviewed. Save or discard local edits before Apply. **Discard edits** restores
 saved values, not the previous active configuration. Conflicts preserve local

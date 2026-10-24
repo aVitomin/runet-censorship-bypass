@@ -1,4 +1,4 @@
-# Руководство пользователя
+# Руководство пользователя версии 0.0.4.0
 
 Runet Censorship Bypass выбирает маршрут сайта, но не предоставляет собственный
 VPN или прокси. Панель у значка нужна для повседневного выбора режима текущего
@@ -7,8 +7,8 @@ VPN или прокси. Панель у значка нужна для повс
 Опубликованный [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0) —
 первый общий выпуск Chromium и Firefox. Это руководство относится только к
 нему. Общие понятия одинаковы, но сохранение и применение настроек в двух
-браузерах различаются. Ещё не выпущенные сценарии описаны в
-[подготовке руководства 1.0](../development/UPCOMING_1_0_USER_GUIDE.md).
+браузерах различаются. Новые сценарии описаны в
+[руководстве 1.0](USER_GUIDE_1_0.md).
 
 Запомните четыре разных шага:
 
@@ -299,14 +299,14 @@ DNS-утечек, маршрут всех запросов или успешну
 ## 8. О программе
 
 Раздел показывает версию расширения, ссылки текущего репозитория, лицензию и
-атрибуцию исходного проекта. Текущий опубликованный выпуск — `v0.0.4.0` для
-Chromium и Firefox. Для проверки опубликованного файла используйте
+атрибуцию исходного проекта. Эта инструкция относится к `v0.0.4.0` для
+Chromium и Firefox. Для доступных версий и проверки файлов используйте
 [инструкцию по установке](INSTALLATION.md).
 
-## Руководство для ещё не выпущенной версии
+## Руководство версии 1.0
 
 Описание новых пользовательских сценариев, включая ручной перенос настроек,
-перенесено в [подготовку руководства 1.0](../development/UPCOMING_1_0_USER_GUIDE.md).
+перенесено в [руководство 1.0](USER_GUIDE_1_0.md).
 Оно не относится к скачиваемому выше `0.0.4.0`.
 
 ## Если что-то не работает
@@ -324,7 +324,7 @@ and follows automatic rules; it does not mean Direct or guaranteed access.
 **Proxy** requires an enabled configured connection, and **Direct** bypasses the
 extension proxy for the selected exact
 host or domain scope. Firefox `0.0.4.0` has the older OFF-only editing limitation
-described above; do not use instructions for an unreleased build with this version.
+described above; version 1.0 uses a different workflow documented separately.
 Firefox uses verified Anticensority routing rules; compatible local
 Anticensority/Tor services still need to be available, and the extension does
 not start them.

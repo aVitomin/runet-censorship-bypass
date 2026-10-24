@@ -1,5 +1,9 @@
 # 1.0 visual preparation
 
+For current version 1.0 screenshots and the genuine Firefox native popup, see
+the [current gallery](../releases/1.0/README.md). The captures below are retained
+as historical preparation evidence and are not the current store assets.
+
 These historical preparation captures show unmodified builds from
 `624e06908b6da2bde8a36f4ef3760c5cc9835c3f`, including PRs #88, #89 and #90,
 whose manifest version was `0.0.4.0`. They are not screenshots or validation of

@@ -163,15 +163,26 @@ highlights, browser QA, CI, manual installation, отсутствие store auto
 
 ## 8. Обновить current-release документацию
 
-README описывает последний **опубликованный** release, а не произвольную версию
-на `main`. После публикации:
+README описывает последние **опубликованные и доступные для установки** версии
+для каждого браузера, а не произвольную версию на `main`. Chromium ZIP и
+подписанный Firefox XPI могут выходить независимо. После публикации:
 
 1. обновите `docs/release-current.json` точными публичными metadata;
 2. обновите README current-release block, status, browser QA и installation;
 3. проверьте release, ZIP и checksum links и опубликованный SHA-256;
-4. убедитесь, что прежний release нигде не назван текущим;
+4. укажите доступную версию каждого target отдельно: Firefox, ожидающий AMO
+   review или подписи, не заменяет последний подписанный пользовательский XPI;
 5. выполните `node .\scripts\verify-docs.mjs` и дождитесь нового успешного CI.
 
 Обычный unreleased tooling commit не требует изменения публичной версии README.
+В `docs/release-current.json` основные поля описывают опубликованный Chromium
+release. Если подписанный Firefox относится к другому выпуску, укажите вместе
+`firefoxVersionName`, `firefoxTag` и `firefoxReleaseUrl`; существующие Firefox
+asset/hash/size поля должны описывать именно этот подписанный файл. Без трёх
+дополнительных полей verifier использует общий release для обоих targets.
+Старый Firefox asset остаётся по исходной ссылке, не переименовывается под новый
+release. Статус ожидающей проверки версии показывается отдельно и не создаёт
+ссылку на unsigned XPI как на обычную установку. Заполните `publishedAt` и
+публичные asset metadata только после подтверждённой публикации.
 Commit, tag, upload и GitHub Release — отдельные внешние действия и выполняются
 только с явным разрешением сопровождающего.

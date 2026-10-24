@@ -1,8 +1,8 @@
-# Решение проблем
+# Решение проблем версии 0.0.4.0
 
-Эти действия относятся к опубликованному `0.0.4.0`. Если вы проверяете новую
-сборку, используйте [сценарии подготовки 1.0](../development/UPCOMING_1_0_USER_GUIDE.md):
-не переносите ограничения старого выпуска на ещё не выпущенный интерфейс.
+Эти действия относятся к ранее опубликованному `0.0.4.0`.
+Для версии 1.0 начните с [актуального руководства](USER_GUIDE_1_0.md#если-возникла-проблема):
+не переносите ограничения старого выпуска на новый интерфейс.
 
 Начинайте с разделов **Обзор** и **Обслуживание**. Запишите
 браузер и его версию, версию расширения, глобальное состояние, режим текущего
@@ -251,7 +251,7 @@ For published `0.0.4.0`, start with Overview and Maintenance, note the
 browser/version, extension state, site mode, rule scope, and sanitized error
 code. Do not clear browser storage as
 a first step. See the guide's explicitly versioned Firefox editing limitation;
-the [unreleased workflow](../development/UPCOMING_1_0_USER_GUIDE.md) is documented separately.
+the [1.0 workflow](USER_GUIDE_1_0.md) is documented separately.
 Firefox's packaged Auto policy requires compatible
 local Anticensority/Tor services.
 If an unpacked Chromium update appears as a second extension or has no settings,

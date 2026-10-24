@@ -477,12 +477,33 @@ if (fs.existsSync(readmePath)) {
       if (release.releaseUrl !== expectedReleaseUrl) {
         addError(releaseMetadataPath, 1, release.releaseUrl, `releaseUrl must be ${expectedReleaseUrl}`);
       }
+      const firefoxReleaseFields = ['firefoxVersionName', 'firefoxTag', 'firefoxReleaseUrl'];
+      const hasFirefoxRelease = firefoxReleaseFields.some((field) => Object.hasOwn(release, field));
+      if (hasFirefoxRelease) {
+        for (const field of firefoxReleaseFields) {
+          if (typeof release[field] !== 'string' || !release[field]) {
+            addError(releaseMetadataPath, 1, field, 'all Firefox release fields are required when one is supplied');
+          }
+        }
+      }
+      // The latest installable signed Firefox package can belong to an older release.
+      const firefoxVersionName = hasFirefoxRelease ? release.firefoxVersionName : release.versionName;
+      const firefoxTag = hasFirefoxRelease ? release.firefoxTag : release.tag;
+      const firefoxReleaseUrl = hasFirefoxRelease ? release.firefoxReleaseUrl : release.releaseUrl;
+      if (firefoxTag !== `v${firefoxVersionName}`) {
+        addError(releaseMetadataPath, 1, firefoxTag, 'Firefox tag must equal v + firefoxVersionName');
+      }
+      const expectedFirefoxReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass/releases/tag/${firefoxTag}`;
+      if (firefoxReleaseUrl !== expectedFirefoxReleaseUrl) {
+        addError(releaseMetadataPath, 1, firefoxReleaseUrl, `firefoxReleaseUrl must be ${expectedFirefoxReleaseUrl}`);
+      }
       const expectedAssetBase = `https://github.com/aVitomin/runet-censorship-bypass/releases/download/${release.tag}`;
+      const expectedFirefoxAssetBase = `https://github.com/aVitomin/runet-censorship-bypass/releases/download/${firefoxTag}`;
       for (const assetUrl of [
         `${expectedAssetBase}/${release.zipFilename}`,
         `${expectedAssetBase}/${release.checksumFilename}`,
-        `${expectedAssetBase}/${release.firefoxXpiFilename}`,
-        `${expectedAssetBase}/${release.firefoxChecksumFilename}`,
+        `${expectedFirefoxAssetBase}/${release.firefoxXpiFilename}`,
+        `${expectedFirefoxAssetBase}/${release.firefoxChecksumFilename}`,
       ]) {
         if (!readme.includes(`](${assetUrl})`)) {
           addError('README.md', 1, assetUrl, 'README current-release asset link is missing or inconsistent');
@@ -494,6 +515,9 @@ if (fs.existsSync(readmePath)) {
         ['zipFilename', release.zipFilename],
         ['zipSha256', release.zipSha256],
         ['checksumFilename', release.checksumFilename],
+        ['firefoxVersionName', firefoxVersionName],
+        ['firefoxTag', firefoxTag],
+        ['firefoxReleaseUrl', firefoxReleaseUrl],
         ['firefoxXpiFilename', release.firefoxXpiFilename],
         ['firefoxXpiSha256', release.firefoxXpiSha256],
         ['firefoxChecksumFilename', release.firefoxChecksumFilename],
