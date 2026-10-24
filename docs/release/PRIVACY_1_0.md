@@ -117,6 +117,26 @@ If permission is revoked, routing may be blocked until you turn the extension's
 proxy control off or restore access. Restricted-site access is separate, and
 privileged browser pages are outside ordinary site routing.
 
+## Limited use of user data
+
+In line with the Limited Use requirements of the
+[Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/limited-use),
+user data is used only to provide the disclosed website-routing,
+proxy-authentication, source-update and connection-check features.
+The developer does not sell user data,
+use or transfer it for advertising, unrelated profiling, creditworthiness or
+lending, or provide a service for human access to browsing activity or credentials.
+Transfers to selected sources, proxies and connection-check destinations are
+limited to the functions described above. If you deliberately share information
+for support, recipients can review the information you choose to provide; do not
+send credentials or private configuration.
+
+For the Chrome Web Store disclosure, authentication information covers configured
+proxy credentials; web history covers destinations used for routing; user activity
+covers network-request lifecycle/error metadata used for authentication and
+connection handling. The last category does not mean tracking mouse movement,
+keystrokes or page interaction. Local processing is included in these disclosures.
+
 ## Retention, controls and limitations
 
 Edit or remove saved settings and Apply when you want active routing to change.

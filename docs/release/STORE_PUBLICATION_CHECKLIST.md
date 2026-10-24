@@ -18,7 +18,8 @@ version separately for each browser.
 - Firefox 1.0: submitted to Mozilla and awaiting review. Both listing languages,
   source/build instructions, privacy notice, icon and five screenshots are saved.
   A signed 1.0 XPI and public listing have not been verified as available.
-- Chrome Web Store: preparation in progress; no package submitted to the store.
+- Chrome Web Store: package uploaded to a draft item; listing/privacy preparation
+  is in progress. No review submission or approval has been confirmed.
   The PAC policy review below remains a separate requirement.
 - Local packages: Chromium 1.0 is [published on GitHub](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0).
   Use only the versions and links actually published in the

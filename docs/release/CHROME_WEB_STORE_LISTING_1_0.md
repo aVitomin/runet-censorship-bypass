@@ -2,8 +2,9 @@
 
 English preparation for version `1.0.0`; verify the copy against the exact
 canonical package before submission. Chrome Web Store preparation proceeds
-independently of Firefox Add-ons and local installation. No Chrome upload,
-review submission or approval has been completed for this version.
+independently of Firefox Add-ons and local installation. The Chromium package
+has been uploaded to a draft store item; listing/privacy preparation is in
+progress. No review submission or approval has been confirmed for this version.
 Resolve the PAC policy review in the [Chrome reviewer notes](CHROME_REVIEWER_NOTES_1_0.md)
 before deciding to submit.
 
@@ -121,8 +122,12 @@ Privacy-practices preparation:
 
 - Declare **Authentication information** for configured proxy credentials and
   **Web history** for destination/request information handled for routing, even
-  though there is no developer browsing-history upload. Review any other live
-  dashboard category against the exact package and routed-data disclosures.
+  though there is no developer browsing-history upload. Also declare **User
+  activity** for request lifecycle/error handling and connection checks: the
+  current form includes network monitoring in this category. This is a mapping
+  of the observed form to the package's network processing, not a claim of
+  mouse/keyboard tracking. Review any other live dashboard category against the
+  exact package and routed-data disclosures.
 - Explain local storage, source retrieval, proxy transmission, and limited
   connection checks using the [privacy notice](PRIVACY_1_0.md). Do not certify
   “no user data handled” on the basis of local processing alone.
