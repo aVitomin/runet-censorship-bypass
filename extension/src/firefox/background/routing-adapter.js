@@ -23,6 +23,7 @@
   });
   const MAX_AUTHORIZATIONS = 256;
   const MAX_CALLBACK_BUDGET = 256;
+  const MAX_ORIGIN_AUTH_RETRIES = 2;
   const AUTH_REF_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
   const ALLOW = Object.freeze({cancel: false});
   const CANCEL = Object.freeze({cancel: true});
@@ -83,6 +84,20 @@
       normalizedPort >= 1 && normalizedPort <= 65535 ?
       `${normalizedHost}:${normalizedPort}` :
       null;
+
+  }
+
+  function requestOrigin(details) {
+
+    try {
+      const url = new URL(details && details.url);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return null;
+      }
+      return url.origin;
+    } catch (_error) {
+      return null;
+    }
 
   }
 
@@ -247,7 +262,8 @@
 
     }
 
-    function authorize(requestId, callbackBudget, authCandidates, resolver) {
+    function authorize(requestId, callbackBudget, authCandidates, resolver,
+        origin) {
 
       if (!isRequestId(requestId) ||
           !Number.isSafeInteger(callbackBudget) || callbackBudget < 1 ||
@@ -263,11 +279,17 @@
           return false;
         }
         authorizations.set(requestId, callbackBudget);
-        if (authCandidates.length) {
+        if (authCandidates.length || origin) {
           requestAuthContexts.set(requestId, {
             candidates: authCandidates,
             selected: null,
             resolver,
+            originAuthentication: origin ? {
+              origin,
+              authorizedRoute: null,
+              retries: 0,
+              pending: false,
+            } : null,
           });
         }
         return authorizations.size <= MAX_AUTHORIZATIONS &&
@@ -299,6 +321,7 @@
             converted.callbackBudget,
             converted.authCandidates,
             credentialResolverForRequest ? credentialResolverForRequest() : null,
+            requestOrigin(details),
         )) {
           clearAuthorization(requestId);
           return DEFAULT_ROUTE;
@@ -311,12 +334,13 @@
 
     }
 
-    function observeSelectedProxy(details) {
+    function routeForRequest(context, details) {
 
-      const requestId = details && details.requestId;
-      const context = requestAuthContexts.get(requestId);
       if (!context) {
-        return;
+        return null;
+      }
+      if (context.candidates.length === 0) {
+        return !details.proxyInfo ? DEFAULT_ROUTE : null;
       }
       const proxyInfo = details && details.proxyInfo;
       const key = endpointKey(
@@ -324,7 +348,7 @@
           proxyInfo && proxyInfo.port,
       );
       const type = normalizeProxyType(proxyInfo && proxyInfo.type);
-      context.selected = key && type ?
+      return key && type ?
         context.candidates.find((candidate) =>
           candidate.endpointKey === key && candidate.type === type,
         ) || null :
@@ -343,7 +367,17 @@
           return CANCEL;
         }
         const requestId = details.requestId;
-        observeSelectedProxy(details);
+        const context = requestAuthContexts.get(requestId);
+        const selectedRoute = routeForRequest(context, details);
+        if (context) context.selected = selectedRoute;
+        const originAuth = context && context.originAuthentication;
+        const origin = originAuth && requestOrigin(details);
+        if (originAuth && originAuth.pending && (!origin ||
+            origin !== originAuth.origin ||
+            !selectedRoute || selectedRoute !== originAuth.authorizedRoute)) {
+          clearAuthorization(requestId);
+          return CANCEL;
+        }
         const remaining = authorizations.get(requestId);
         if (!Number.isSafeInteger(remaining) || remaining < 1 ||
             remaining > MAX_CALLBACK_BUDGET) {
@@ -354,6 +388,11 @@
           authorizations.delete(requestId);
         } else {
           authorizations.set(requestId, remaining - 1);
+        }
+        if (originAuth) {
+          originAuth.authorizedRoute = origin &&
+            origin === originAuth.origin ? selectedRoute : null;
+          originAuth.pending = false;
         }
         return ALLOW;
       } catch (_error) {
@@ -428,6 +467,49 @@
 
     }
 
+    function onHeadersReceived(details) {
+
+      try {
+        if (currentRuntimeState() !== STATES.READY ||
+            !details || details.statusCode !== 401 ||
+            !isRequestId(details.requestId) ||
+            !Array.isArray(details.responseHeaders) ||
+            !details.responseHeaders.some((header) => header &&
+              typeof header.name === 'string' &&
+              header.name.toLowerCase() === 'www-authenticate')) {
+          return undefined;
+        }
+        const context = requestAuthContexts.get(details.requestId);
+        const originAuth = context && context.originAuthentication;
+        const origin = requestOrigin(details);
+        if (!originAuth || !originAuth.authorizedRoute || originAuth.pending ||
+            !origin || origin !== originAuth.origin ||
+            routeForRequest(context, details) !== originAuth.authorizedRoute ||
+            !Number.isSafeInteger(originAuth.retries) || originAuth.retries < 0 ||
+            originAuth.retries >= MAX_ORIGIN_AUTH_RETRIES) {
+          return undefined;
+        }
+        const current = authorizations.get(details.requestId);
+        const remaining = current === undefined ? 0 : current;
+        if (!Number.isSafeInteger(remaining) || remaining < 0 ||
+            remaining >= MAX_CALLBACK_BUDGET) {
+          resetEphemeralState();
+          return undefined;
+        }
+        // Firefox repeats onBeforeRequest when the browser supplies a site's
+        // credentials, possibly without onAuthRequired. Observe only the 401
+        // challenge header's name; keep no response headers or credentials.
+        // Permit only this request's same-origin, same-route retry.
+        authorizations.set(details.requestId, remaining + 1);
+        originAuth.retries += 1;
+        originAuth.pending = true;
+      } catch (_error) {
+        resetEphemeralState();
+      }
+      return undefined;
+
+    }
+
     function onRequestTerminal(details) {
 
       clearAuthorization(details && details.requestId);
@@ -464,6 +546,7 @@
       clearAllAuthorizations,
       currentRuntimeState,
       onBeforeRequest,
+      onHeadersReceived,
       onProxyRequest,
       onRequestTerminal,
       resolveCredentialsForChallenge,
@@ -482,6 +565,7 @@
     DEGRADATION_CODES,
     MAX_AUTHORIZATIONS,
     MAX_CALLBACK_BUDGET,
+    MAX_ORIGIN_AUTH_RETRIES,
     STATES,
     candidateToProxyInfo,
     convertDecision,

@@ -25,23 +25,40 @@ The [committed envelope](../../extension/src/firefox/provider/anticensority-host
 records the source revisions, input PAC hash and generated artifact identity.
 See [provider provenance and generation](../development/FIREFOX_PROVIDER_DATASET.md)
 for the source chain, exact hashes and deterministic extraction procedure.
-This statement describes the bundled snapshot, not a freshly downloaded or
-independently licensed replacement dataset.
+These immutable references describe the bundled snapshot. A runtime refresh
+has its own source hash/date and normalized artifact hash; it does not acquire
+the pinned commit's identity merely because it comes from the same project.
+
+## Runtime Anticensority source refresh
+
+Firefox can refresh routing data from the fixed
+[GitHub Pages source](https://anticensority.github.io/generated-pac-scripts/anticensority.pac)
+and [raw GitHub fallback](https://raw.githubusercontent.com/anticensority/generated-pac-scripts/master/anticensority.pac).
+The runtime extracts the same bounded static hostname format without executing
+downloaded JavaScript. HTTPS provenance, source-date checks and locally computed
+hashes are distinct from an author signature; the separate signed update channel
+remains unconfigured. The source may contain unchanged older data, and refreshing
+it does not verify proxy availability. See the
+[update contract](../development/FIREFOX_PROVIDER_DATASET.md#fixed-https-source-updates)
+for validation, rollback protection and installation behavior.
+
+Upstream attribution remains applicable to refreshed source data. Runtime
+availability, successful validation and HTTPS delivery do not supply a license
+grant or resolve the licensing distinction below.
 
 ## Licensing scope
 
-Reviewed on 2026-09-27 against repository commit
-`11cd6e911ee855c7a0d87ec18cfcb69e6fad1c57` and the upstream revisions above.
+The following distinction concerns the pinned upstream revisions above.
 The [pinned generated-data repository](https://github.com/anticensority/generated-pac-scripts/tree/0448d748585ce0ed31434097d83b2b18236acbfb)
 contains a README and PAC file, with no separate dataset license file or grant
 in its README. The upstream generator has an
 [Unlicense notice for its software](https://github.com/anticensority/pac-script-generator/blob/869aad85dce20ace9d44d3a9d694b6ac84baea6a/LICENSE);
 that is not treated as a license for the generated dataset or all input registries.
 
-This document provides attribution and provenance only. It makes no dataset
-license, unrestricted-redistribution or legal-compliance guarantee. Upstream
-permission or a supported data-licensing determination remains a maintainer
-release-review item; attribution alone does not resolve it.
+This document records attribution and provenance. It does not reproduce a
+dataset-specific license grant for the pinned snapshot or treat the generator's
+software license as one. Upstream permission and license notices belong with
+distribution records separately from these reproducibility hashes and commits.
 
 The existing Firefox distribution attribution is in
 [THIRD_PARTY_NOTICES/NOTICE.txt](../../extension/assets/notices/firefox.txt)

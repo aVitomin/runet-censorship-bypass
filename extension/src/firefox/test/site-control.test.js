@@ -176,6 +176,26 @@ describe('Firefox current-site settings control', function() {
 
   });
 
+  it('projects a verified snapshot only for that read, including unsupported targets', async function() {
+    const settingsController = createSettingsController();
+    const controller = SiteControl.createController({settingsController});
+    const settings = Settings.createDefaultSettings();
+    settings.rules.direct = ['sub.example.com'];
+    const verified = {revision: 5, settings};
+    const result = await controller.get('https://sub.example.com/private?synthetic=1', verified);
+    Assert.strictEqual(result.revision, 5);
+    Assert.strictEqual(result.route.mode, 'DIRECT');
+    Assert.strictEqual(JSON.stringify(result).includes('synthetic'), false);
+    const unsupported = await controller.get('about:config', verified);
+    Assert.strictEqual(unsupported.revision, 5);
+    Assert.strictEqual(unsupported.target.controllable, false);
+    Assert.strictEqual(settingsController.calls.length, 0);
+    const fresh = await controller.get('https://sub.example.com/');
+    Assert.strictEqual(fresh.revision, 0);
+    Assert.strictEqual(fresh.route.mode, 'AUTO');
+    Assert.deepStrictEqual(settingsController.calls, [{kind: 'get'}]);
+  });
+
   it('persists an exact-host route through the settings controller',
       async function() {
 

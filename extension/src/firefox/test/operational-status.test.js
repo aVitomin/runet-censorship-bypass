@@ -64,6 +64,10 @@ function harness(overrides = {}) {
   let fetchCalls = 0;
   const fetchInits = [];
   let settingsWrites = 0;
+  let settingsReads = 0;
+  let siteReads = 0;
+  let tabReads = 0;
+  let controlReads = 0;
   let routingWrites = 0;
   const actionApi = {};
   for (const method of [
@@ -102,11 +106,15 @@ function harness(overrides = {}) {
     tabsApi: {
       async query() {
 
+        tabReads += 1;
+        if (overrides.tabQuery) return overrides.tabQuery();
         return [{id: 7, active: true, url: 'https://proxy.example/private'}];
 
       },
       async get(tabId) {
 
+        tabReads += 1;
+        if (overrides.tabGet) return overrides.tabGet(tabId);
         return {id: tabId, active: true, url: 'https://proxy.example/path'};
 
       },
@@ -127,6 +135,8 @@ function harness(overrides = {}) {
     proxySettings: {
       async get() {
 
+        controlReads += 1;
+        if (overrides.controlRead) return overrides.controlRead();
         return {levelOfControl: overrides.controlLevel ||
           'controlled_by_this_extension'};
 
@@ -135,6 +145,7 @@ function harness(overrides = {}) {
     settingsController: {
       async get() {
 
+        settingsReads += 1;
         return {revision: 3, settings: settings()};
 
       },
@@ -147,6 +158,8 @@ function harness(overrides = {}) {
     siteController: {
       async get(tabUrl) {
 
+        siteReads += 1;
+        if (overrides.siteGet) return overrides.siteGet(tabUrl);
         return {
           target: {controllable: true, host: new URL(tabUrl).hostname},
           route: {mode: overrides.siteMode || 'PROXY'},
@@ -195,9 +208,21 @@ function harness(overrides = {}) {
 
     },
     settingsWrites: () => settingsWrites,
+    settingsReads: () => settingsReads,
+    siteReads: () => siteReads,
+    tabReads: () => tabReads,
+    controlReads: () => controlReads,
     stored,
   };
 
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => {
+    resolve = done;
+  });
+  return {promise, resolve};
 }
 
 describe('Firefox operational status', function() {
@@ -412,6 +437,18 @@ describe('Firefox operational status', function() {
 
   });
 
+  it('uses a supplied verified snapshot only for that diagnostics call', async function() {
+    const test = harness();
+    const verified = {revision: 2, settings: settings()};
+    verified.settings.ownProxies = [];
+    const bundled = await test.controller.publicStatus(verified);
+    Assert.strictEqual(test.settingsReads(), 0);
+    const fresh = await test.controller.publicStatus();
+    Assert.strictEqual(test.settingsReads(), 1);
+    Assert.strictEqual(fresh.diagnostics.configuredProxyCount,
+        bundled.diagnostics.configuredProxyCount + 1);
+  });
+
   it('maps an unknown internal recovery status to a fixed failure state',
       async function() {
 
@@ -439,6 +476,220 @@ describe('Firefox operational status', function() {
         (await second.controller.publicStatus()).health.status, 'ERROR',
     );
 
+  });
+
+  it('skips unused site reads but still checks live control', async function() {
+    for (const [activation, health, badge] of [
+      [{runtimeState: 'OFF'}, 'UNKNOWN', 'OFF'],
+      [{runtimeState: 'INITIALIZING'}, 'UNKNOWN', '…'],
+      [{runtimeState: 'FAILED'}, 'UNKNOWN', '!'],
+      [{runtimeState: 'READY', recoveryStatus: 'BLOCKED_PRIVATE_ACCESS'}, 'UNKNOWN', '!'],
+      [{runtimeState: 'READY', failureCode: 'CONTROL_LOSS'}, 'UNKNOWN', 'EXT'],
+      [{runtimeState: 'READY'}, 'ERROR', '!'],
+    ]) {
+      const test = harness({activation, stored: {[Operational.STORAGE_KEY]: {
+        schemaVersion: 1, health: {status: health},
+      }}});
+      await test.controller.refreshToolbar();
+      Assert.strictEqual(test.siteReads(), 0);
+      Assert.strictEqual(test.controlReads(), 1);
+      Assert.strictEqual(test.actionCalls.find((call) =>
+        call.method === 'setBadgeText').params.text, badge);
+    }
+    const external = harness({activation: {runtimeState: 'OFF'},
+      controlLevel: 'controlled_by_other_extensions'});
+    await external.controller.refreshToolbar();
+    Assert.strictEqual(external.siteReads(), 0);
+    Assert.strictEqual(external.actionCalls.find((call) =>
+      call.method === 'setBadgeText').params.text, 'EXT');
+  });
+
+  it('skips route reads while busy and rereads after the operation', async function() {
+    for (const kind of ['APPLY', 'CLEAR', 'HEALTH']) {
+      const test = harness();
+      const operation = test.controller.beginOperation(kind);
+      await test.controller.restoreToolbar();
+      Assert.strictEqual(test.siteReads(), 0);
+      Assert.strictEqual(test.actionCalls.filter((call) =>
+        call.method === 'setBadgeText').at(-1).params.text, '…');
+      await test.controller.endOperation(operation);
+      Assert.strictEqual(test.siteReads(), 1);
+      Assert.strictEqual(test.actionCalls.filter((call) =>
+        call.method === 'setBadgeText').at(-1).params.text, 'P');
+    }
+  });
+
+  it('reads only the latest simultaneous refresh and rereads on later events', async function() {
+    const options = {siteMode: 'PROXY'};
+    const test = harness(options);
+    const results = await Promise.all(Array.from({length: 12}, (_, index) =>
+      test.controller.refreshToolbar({tabId: index + 1})));
+    Assert.ok(results.slice(0, -1).every((result) => result.status === 'SUPERSEDED'));
+    Assert.strictEqual(results.at(-1).status, 'UPDATED');
+    Assert.strictEqual(test.tabReads(), 1);
+    Assert.strictEqual(test.siteReads(), 1);
+    Assert.strictEqual(test.controlReads(), 1);
+    Assert.strictEqual(test.actionCalls.length, 5);
+    Assert.ok(test.actionCalls.every((call) => call.params.tabId === 12));
+    options.siteMode = 'DIRECT';
+    await test.controller.refreshToolbar({tabId: 12});
+    Assert.strictEqual(test.siteReads(), 2);
+    Assert.strictEqual(test.actionCalls.filter((call) =>
+      call.method === 'setBadgeText').at(-1).params.text, 'D');
+  });
+
+  it('abandons a superseded tab lookup before reading site settings', async function() {
+    const entered = deferred();
+    const release = deferred();
+    const test = harness({tabGet: async (id) => {
+      if (id === 1) {
+        entered.resolve();
+        await release.promise;
+      }
+      return {id, url: 'https://proxy.example/'};
+    }});
+    const first = test.controller.refreshToolbar({tabId: 1});
+    await entered.promise;
+    await test.controller.refreshToolbar({tabId: 2});
+    release.resolve();
+    Assert.strictEqual((await first).status, 'SUPERSEDED');
+    Assert.strictEqual(test.siteReads(), 1);
+    Assert.strictEqual(test.controlReads(), 1);
+    Assert.ok(test.actionCalls.every((call) => call.params.tabId === 2));
+  });
+
+  it('discards an in-flight site result after a newer tab refresh', async function() {
+    const entered = deferred();
+    const release = deferred();
+    const test = harness({siteGet: async (url) => {
+      if (url.endsWith('/old')) {
+        entered.resolve();
+        await release.promise;
+      }
+      return {target: {controllable: true}, route: {mode: 'DIRECT'}};
+    }});
+    const first = test.controller.refreshToolbar({tab: {id: 1, url: 'https://proxy.example/old'}});
+    await entered.promise;
+    const second = test.controller.refreshToolbar({
+      tab: {id: 2, url: 'https://proxy.example/new'},
+    });
+    release.resolve();
+    await second;
+    Assert.strictEqual((await first).status, 'SUPERSEDED');
+    Assert.strictEqual(test.siteReads(), 2);
+    Assert.strictEqual(test.controlReads(), 1);
+    Assert.ok(test.actionCalls.every((call) => call.params.tabId === 2));
+  });
+
+  it('uses activation changes that arrive during the final live-control read', async function() {
+    const entered = deferred();
+    const release = deferred();
+    const test = harness({controlRead: async () => {
+      entered.resolve();
+      await release.promise;
+      return {levelOfControl: 'controlled_by_this_extension'};
+    }});
+    const pending = test.controller.refreshToolbar();
+    await entered.promise;
+    test.setActivation({runtimeState: 'FAILED', recoveryStatus: 'BLOCKED_PRIVATE_ACCESS'});
+    release.resolve();
+    await pending;
+    Assert.strictEqual(test.siteReads(), 1);
+    Assert.strictEqual(test.actionCalls.find((call) =>
+      call.method === 'setBadgeText').params.text, '!');
+  });
+
+  for (const fails of [false, true]) {
+    it(`reads only the latest queued tab after a slow read (failure=${fails})`, async function() {
+      const entered = deferred();
+      const release = deferred();
+      const urls = [];
+      const test = harness({siteGet: async (url) => {
+        urls.push(url);
+        entered.resolve();
+        await release.promise;
+        if (fails && url.endsWith('/0')) throw new Error('fixture failure');
+        return {target: {controllable: true}, route: {mode: 'DIRECT'}};
+      }});
+      const pending = [test.controller.refreshToolbar({
+        tab: {id: 0, url: 'https://proxy.example/0'},
+      })];
+      await entered.promise;
+      for (let id = 1; id < 12; id += 1) {
+        pending.push(test.controller.refreshToolbar({
+          tab: {id, url: `https://proxy.example/${id}`},
+        }));
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      const readsWhilePending = test.siteReads();
+      release.resolve();
+      const results = await Promise.all(pending);
+      Assert.strictEqual(readsWhilePending, 1);
+      Assert.deepStrictEqual(urls, ['https://proxy.example/0', 'https://proxy.example/11']);
+      Assert.ok(results.slice(0, -1).every((result) => result.status === 'SUPERSEDED'));
+      Assert.strictEqual(results.at(-1).status, 'UPDATED');
+      Assert.ok(test.actionCalls.every((call) => call.params.tabId === 11));
+      Assert.strictEqual(test.controlReads(), 1);
+      await test.controller.refreshToolbar({tab: {id: 11, url: 'https://proxy.example/11'}});
+      Assert.strictEqual(test.siteReads(), 3);
+    });
+  }
+
+  it('publishes OFF and busy without waiting for a pending site read', async function() {
+    const entered = deferred();
+    const release = deferred();
+    const test = harness({siteGet: async () => {
+      entered.resolve();
+      await release.promise;
+      return {target: {controllable: true}, route: {mode: 'PROXY'}};
+    }});
+    const first = test.controller.refreshToolbar();
+    await entered.promise;
+    const waiting = test.controller.refreshToolbar();
+    await new Promise((resolve) => setImmediate(resolve));
+    try {
+      test.setActivation({runtimeState: 'OFF'});
+      await test.controller.refreshToolbar();
+      Assert.strictEqual(test.actionCalls.filter((call) =>
+        call.method === 'setBadgeText').at(-1).params.text, 'OFF');
+      test.setActivation({runtimeState: 'READY'});
+      const operation = test.controller.beginOperation('HEALTH');
+      await test.controller.restoreToolbar();
+      Assert.strictEqual(test.actionCalls.filter((call) =>
+        call.method === 'setBadgeText').at(-1).params.text, '…');
+      Assert.strictEqual(test.siteReads(), 1);
+      release.resolve();
+      const results = await Promise.all([first, waiting]);
+      Assert.ok(results.every((result) => result.status === 'SUPERSEDED'));
+      await test.controller.endOperation(operation);
+      Assert.strictEqual(test.siteReads(), 2);
+      Assert.strictEqual(test.actionCalls.filter((call) =>
+        call.method === 'setBadgeText').at(-1).params.text, 'P');
+    } finally {
+      release.resolve();
+      await Promise.all([first, waiting]);
+    }
+  });
+
+  it('rechecks activation before reading a site after waiting', async function() {
+    const entered = deferred();
+    const release = deferred();
+    const test = harness({siteGet: async () => {
+      entered.resolve();
+      await release.promise;
+      return {target: {controllable: true}, route: {mode: 'PROXY'}};
+    }});
+    const first = test.controller.refreshToolbar();
+    await entered.promise;
+    const latest = test.controller.refreshToolbar();
+    await new Promise((resolve) => setImmediate(resolve));
+    test.setActivation({runtimeState: 'FAILED', recoveryStatus: 'BLOCKED_PRIVATE_ACCESS'});
+    release.resolve();
+    await Promise.all([first, latest]);
+    Assert.strictEqual(test.siteReads(), 1);
+    Assert.strictEqual(test.controlReads(), 1);
+    Assert.strictEqual(test.actionCalls.find((call) =>
+      call.method === 'setBadgeText').params.text, '!');
   });
 
   it('replaces the global loading fallback before restoring the active tab',

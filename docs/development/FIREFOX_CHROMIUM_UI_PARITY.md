@@ -1,20 +1,19 @@
 # Chromium / Firefox: матрица пользовательского интерфейса
 
-Эта матрица фиксирует состояние milestone `0.0.4.0`. Она сравнивает только
-пользовательские функции поддерживаемых Chromium и Firefox targets.
-`PARITY` означает одинаковый workflow, `EQUIVALENT` — одинаковый результат при
-разной browser-specific реализации, `INTENTIONAL_PLATFORM_DIFFERENCE` — явно
-принятое безопасное отличие, а `MISSING` — оставшаяся работа. Последняя
-категория не считается parity.
+Матрица описывает реализованные пользовательские контракты development `1.0.0`.
+`PARITY` означает одинаковый workflow, `EQUIVALENT` — сопоставимый результат
+при разной реализации, `IMPLEMENTATION_DIFFERENCE` — текущий выбор UI или
+реализации, а не ограничение browser API, `INTENTIONAL_ROUTING_DIFFERENCE` —
+явно выбранная routing policy,
+а `MISSING` — функция, пока отсутствующая в production target.
+Эти обозначения не заменяют browser QA выбранной release-сборки.
 
-Это исторический baseline, а не доказательство текущей parity. В текущей рабочей
-версии Unified Apply уже заменяет OFF-only редактирование: Draft → Save → exact
-Apply. Firefox Site rules теперь представлены единым структурированным списком,
-без переноса настроек между профилями. Проверенный dataset можно устанавливать
-при Active из Effective settings, не применяя pending Saved. Production update
-trust по-прежнему не настроен. Текущие контракты и recovery описаны в
-[Firefox architecture](FIREFOX_ARCHITECTURE.md); приведённый ниже старый visual
-gate не проверяет эти новые изменения.
+Draft → Save → exact Apply сохраняет pending Saved отдельно от Effective.
+Firefox поддерживает Anticensority и ручной источник; сетевое обновление
+фиксированных HTTPS данных работает отдельно от ещё не настроенного signed
+канала. Текущие transaction/recovery контракты описаны в
+[Firefox architecture](FIREFOX_ARCHITECTURE.md).
+Исторический visual gate `0.0.4.0` в конце страницы не проверяет новые изменения.
 
 ## Popup и управление
 
@@ -22,64 +21,75 @@ gate не проверяет эти новые изменения.
 | --- | --- | --- | --- |
 | Состояния Off / Active / busy / error | Off / Active / Recovered / Initializing / blocked | PARITY | Active показывается только после `READY`; recovery виден отдельно. |
 | Текущий hostname | Нормализованный hostname текущей HTTP(S)-вкладки | PARITY | Полный URL, path и query не возвращаются из background RPC. |
-| Auto / Proxy / Direct | Auto / Proxy / Direct | PARITY | Используется существующий browser-neutral settings/routing contract. |
+| Auto / Proxy / Direct | Auto / Proxy / Direct | PARITY | Auto снимает применимые overrides; дальнейший маршрут зависит от источника и общих правил. |
 | Exact host | Exact host | PARITY | Plain hostname. |
 | Domain + subdomains | Domain + subdomains | PARITY | Оба target используют `tldts` с private suffixes; правило имеет вид `*.example.com`. |
-| Pending / not applied | Локальный draft и `Not applied` до Apply | PARITY | Apply сначала сохраняет правило по exact revision, затем включает routing. |
-| Apply | Production `firefox.activation.apply` | EQUIVALENT | Firefox приобретает fail-closed floor и публикует READY session. |
-| Clear / Turn off | Production exact-ownership Clear | EQUIVALENT | Firefox восстанавливает предыдущий proxy layer. |
+| Pending / not applied | Отдельные Draft, Saved и Effective | PARITY | Options Save не применяет настройки; popup предупреждает перед включением других pending Saved изменений. |
+| Apply | Production `firefox.activation.apply` | EQUIVALENT | Firefox приобретает floor при включении; active replacement сохраняет его и заменяет exact generation без OFF. |
+| Clear / Turn off | Production exact-ownership Clear | EQUIVALENT | Firefox освобождает только принадлежащий расширению proxy layer. |
 | Settings | Options page и deep link к Proxy connections | PARITY | Только локальные extension pages. |
 | Browser/extension pages unavailable | Явное uncontrollable state без route controls | PARITY | Поддерживаются только HTTP(S) tabs. |
 | Proxy candidate unavailable | Apply заблокирован, ссылка на Proxy connections | PARITY | Background также отклоняет Proxy rule без кандидата. |
 | External proxy control | Отдельное external/control-loss state | EQUIVALENT | Firefox синхронно withdraw-ит session и не перезаписывает внешний setting. |
-| PAC freshness / last download | Signed dataset version, check и staged-update status | EQUIVALENT | Firefox не исполняет PAC: он проверяет Ed25519 manifest и declarative dataset, затем отдельно устанавливает staged update. Release trust URL/key ещё должны быть предоставлены до включения. |
-| Proxy health summary/check | Ручная проверка текущего explicit Proxy origin | EQUIVALENT | Как Chromium, не меняет routing; Firefox не запускает automatic health и не использует отдельный telemetry endpoint. |
-| Toolbar A/P/D/OFF/EXT badge и state icons | A/P/D/OFF/EXT, busy/loading/error icons и title | PARITY | Значение строится из authoritative activation, proxy-control и current-site state и восстанавливается после event-page recreation. |
+| PAC freshness / last download | Source-data date, check time, channel и staged-update status | EQUIVALENT | Firefox проверяет статические HTTPS данные без исполнения PAC и без author signature; источник может остаться неизменным. Signed channel отдельный и unconfigured. |
+| Proxy health summary/check | Ручная проверка текущего explicit Proxy origin | EQUIVALENT | Не меняет routing; Firefox не запускает automatic health и не использует telemetry endpoint. |
+| Toolbar A/P/D/OFF/EXT badge и state icons | A/P/D/OFF/EXT, busy/loading/error icons и title | PARITY | Строятся из authoritative activation, proxy-control и current-site state после event-page recreation. |
 
 ## Options
 
 | Функция Chromium | Firefox | Статус | Примечание |
 | --- | --- | --- | --- |
-| Overview | Overview с protection/dataset/private-access state | PARITY | Та же card/status-pill визуальная модель. |
-| Routing sources | Automatic routing | EQUIVALENT | Anticensority представлен как проверенный packaged declarative dataset. |
-| Provider selector и custom PAC URL | Нет | INTENTIONAL_PLATFORM_DIFFERENCE | Chromium поддерживает дополнительные расширенные PAC-источники; Firefox использует проверенные декларативные данные. |
-| Site rules | Direct / Proxy / whitelist editors | PARITY | Background остаётся авторитетным validator. |
-| Own proxy candidates и порядок | Own proxy candidates и порядок | PARITY | HTTP/HTTPS/SOCKS4/SOCKS5, timeout и proxy DNS. |
-| Proxy credentials | KEEP / SET / NONE | PARITY | Password никогда не читается обратно в page state. |
-| Local Tor / Tor Browser / WARP | Явные scoped controls | EQUIVALENT | Firefox показывает lossless runtime fields без Chromium-only master toggle. |
-| Safe routing defaults | Те же четыре browser-neutral defaults | PARITY | Provider=true, own-sites-only=true, replace-Direct=false, noDirect=false. |
-| Maintenance section | Packaged/current dataset, signed check, staged install | EQUIVALENT | Проверка не меняет active routing. Проверенные данные можно установить при Active; pending Saved остаётся неприменённым. |
-| Manual/periodic provider refresh | No-input manual check и 12-hour alarm | EQUIVALENT | Оба stage-ят проверенные данные. Firefox никогда не promote-ит автоматически и требует release-pinned URL/key; эти внешние значения пока отсутствуют. |
-| Proxy health и diagnostics | Maintenance check и redacted report/export | EQUIVALENT | Отчёт содержит только версии, состояния, public dataset version и proxy type/count; URL, endpoints, authRef, hashes, floor и credentials исключены. |
-| Advanced Direct policy | replaceDirectWithProxy / noDirect | PARITY | Общий routing contract остаётся авторитетным. |
-| Notifications | Критические control-loss/recovery/health alerts | EQUIVALENT | Фиксированный локализованный текст, cooldown и переход в Maintenance; обычные background events не создают уведомления. |
-| About/version | About с package version и local-code statement | PARITY | Никаких remote assets. |
+| Overview | Protection/source/private-access state | PARITY | Состояние маршрутизации и доступность данных показаны отдельно. |
+| Routing sources | Anticensority или Only my rules and connections | EQUIVALENT | Ручной режим не требует provider dataset; Save source не меняет Effective до Apply. |
+| Дополнительные PAC providers и custom PAC URL | Не представлены в production Firefox UI | MISSING | Firefox имеет native PAC API, но текущий runtime использует фиксированные declarative data. Это граница реализации, не утверждение невозможности browser API. |
+| Site rules | Единый список Direct / Proxy / whitelist | PARITY | Background остаётся авторитетным validator; порядок и пересечения сохраняются. |
+| Own proxy candidates и порядок | Own proxy candidates и порядок | EQUIVALENT | HTTP/HTTPS/SOCKS4/SOCKS5 и общий порядок; отдельные Firefox DNS/timeout options дают предупреждение при переносе в Chromium. |
+| Proxy credentials | KEEP / SET / NONE | PARITY | Stored password не читается обратно в page state; request auth остаётся связан с Effective. |
+| Local Tor / Tor Browser / WARP | Явные scoped controls | EQUIVALENT | Три Tor scope и два WARP scope переносятся независимо, включая использование только для замены Direct; Chromium сохраняет master enabled. Для WARP scope общие на весь список: mixed per-entry scopes остаются ограничением переноса. |
+| Safe routing defaults | Те же browser-neutral defaults | PARITY | Provider=true, own-sites-only=true, replace-Direct=false, noDirect=false. В новой configuration Tor использует только onion: localhost:9050 → localhost:9150; старые сохранённые значения не заменяются. |
+| Import / Export | Portable Saved + отдельный support export | EQUIVALENT | Anticensority/manual source переносится; неподдерживаемые custom/Antizapret source и browser-specific options показываются до импорта. Import не применяет и не включает routing. |
+| Maintenance section | Current/source date, HTTPS refresh, deferred install | EQUIVALENT | Проверенные данные устанавливаются при допустимом OFF/READY; Effective user settings сохраняются, pending Saved не применяются. |
+| Manual/periodic provider refresh | No-input refresh и 12-hour alarm | EQUIVALENT | Check и допустимый promotion выполняются одной serialized операцией. OFF остаётся OFF; blocked/manual Saved или Effective оставляет candidate staged. Source checks продолжаются и в manual mode. |
+| Proxy health и diagnostics | Maintenance check и redacted report/export | EQUIVALENT | URL, endpoints, authRef, hashes, floor и credentials исключены из публичной status проекции. |
+| Advanced Direct policy | replaceDirectWithProxy / noDirect | PARITY | Общий routing contract применяется и в manual mode. |
+| Notifications | Control-loss/recovery/health alerts | EQUIVALENT | Фиксированный локализованный текст, cooldown и переход в Maintenance; обычные background events не создают уведомления. |
+| About/version | About с package version и local-code statement | PARITY | Никаких remote executable assets. |
 | EN/RU | Firefox browser i18n EN/RU | PARITY | Firefox следует выбранной locale браузера. |
-| Встроенный language selector | Нет | INTENTIONAL_PLATFORM_DIFFERENCE | Отдельная language preference не хранится. |
+| Встроенный language selector | Нет | IMPLEMENTATION_DIFFERENCE | Текущий UI следует browser locale и не хранит отдельную preference. Собственный выбор языка технически возможен, но пока не реализован. |
 
 ## Routing differences, видимые пользователю
 
-- Успешный provider proxy и proxy failover совпадают. Chromium terminal
-  `PROXY + DIRECT` fallback в Firefox намеренно удаляется: если все proxy
-  кандидаты исчерпаны, Firefox закрывает запрос. Это
-  `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытая parity.
-- В обоих браузерах Draft, Saved и Effective разделены: сохранение не применяет
-  изменения, а Apply не требует выключать защиту. Firefox сохраняет свои
-  private-window и fail-closed ограничения при блокировке.
-- Firefox требует private-window access до Apply, чтобы отзыв разрешения не
-  создавал обход protected routing. Chromium не имеет эквивалентного условия.
+- Общий порядок собственных кандидатов — own proxies → local Tor → Tor Browser
+  → WARP. Участие Tor в Proxy, onion и Direct replacement независимо; WARP
+  разделяет Proxy и Direct replacement. Быстрые Chromium Proxy switches
+  сохраняют действующие другие scope и не включают
+  скрытые неактивные presets.
+- В текущем Firefox runtime terminal `PROXY + DIRECT` fallback намеренно
+  удаляется: при исчерпании provider proxy chain запрос завершается отказом.
+  Это `INTENTIONAL_ROUTING_DIFFERENCE` текущей реализации, а не доказательство,
+  что Firefox native PAC не может вернуть Direct.
+- Исчерпание proxy-auth retry budget в Firefox завершает запрос вместо перехода
+  к следующему proxy candidate. Успешный обычный failover не доказывает полную
+  auth/fallback parity. Website 401 остаётся browser-owned в обоих targets и
+  никогда не получает сохранённые proxy credentials как website credentials.
+- Save не применяет изменения, Apply не требует выключать защиту. Firefox
+  требует private-window access и сохраняет exact owned floor при замене
+  generation; Chromium имеет другую browser PAC/ownership модель.
+- Firefox blocking floor допускает столкновение с локальной службой и не является
+  защитой от hostile local software. Chromium `mandatory:false` также не обещает
+  browser-level fail-closed.
 
-## Оставшаяся работа milestone
+## Границы реализации и evidence
 
-В этой матрице больше нет `MISSING` user-visible классов. До release остаётся
-внешний blocker включения update flow: fixed HTTPS manifest endpoint и pinned
-raw Ed25519 public key/stable keyId. Произвольный PAC, browser-driven locale и
-fail-closed terminal proxy exhaustion остаются явно
-зафиксированными `INTENTIONAL_PLATFORM_DIFFERENCE`, а не скрытыми parity.
+Дополнительные PAC/custom sources остаются отсутствующей пользовательской
+функцией Firefox. Browser-driven locale, private-window prerequisite и текущие
+fallback/auth различия описаны выше без заявления полной parity.
+Ненастроенный signed-manifest URL/key не блокирует работающий фиксированный
+HTTPS source channel и не превращает его проверки в author authentication.
 
-Cross-browser visual gate дополнительно проверил все popup states и семь
-Options sections на EN/RU при 100%, 125% и 150%. Структурных расхождений,
-clipping, overflow или unusable controls не найдено; Firefox намеренно выше и
-менее плотный, но сохраняет ту же информационную иерархию. Фактическая
-browser/version matrix и остающиеся release-environment gaps записаны в
-[0.0.4.0 cross-browser UX gate](qa/CROSS_BROWSER_0.0.4_UX.md).
+Исторический cross-browser visual gate проверял popup states и семь Options
+sections на EN/RU при 100%, 125% и 150% для `0.0.4.0`. Его browser/version matrix
+и gaps записаны в [0.0.4.0 cross-browser UX gate](qa/CROSS_BROWSER_0.0.4_UX.md).
+Для `1.0.0` эта запись не подтверждает новые source controls, Tor scopes,
+origin authentication или update/recovery behavior; release QA относится к
+точному выбранному пакету.

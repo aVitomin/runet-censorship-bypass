@@ -2,6 +2,7 @@
 
 Checked 2026-09-26. Scope: the public project, documentation, support, privacy,
 security and official store-guidance links used by this publication set.
+This dated record does not establish current URL availability.
 Historical/upstream attribution in `docs/legacy/` is not rewritten.
 
 ## Fork-owned public destinations
@@ -23,13 +24,12 @@ The publisher should check the signed-in forms before publication.
 
 ## New privacy/documentation URLs
 
-The [new privacy draft](PRIVACY_1_0.md) and other documents in this directory
-are validated repository-relative targets in this PR. Their future main URLs
-do not exist until merge. Do not give stores a draft-branch URL or claim that
-a not-yet-published policy is live. After merge and final policy approval,
-verify the canonical URL specified in the
-[publication checklist](STORE_PUBLICATION_CHECKLIST.md) without authentication.
-The currently published privacy page is not a substitute for that review.
+Before submission, verify that the [privacy notice](PRIVACY_1_0.md) and other
+required documents are available at their canonical main URLs without
+authentication. Use the URL in the
+[publication checklist](STORE_PUBLICATION_CHECKLIST.md), not a draft-branch URL.
+Repository-relative validation and this historical link record do not prove
+that the final published policy is reachable or covers the selected release.
 
 No 1.0 release, AMO listing or Chrome listing URL is invented in these drafts.
 Record actual public listing URLs only after authorized publication.
@@ -40,7 +40,6 @@ The Mozilla listing/consent/submission pages and Chrome listing/privacy,
 description-limit, proxy-API and MV3-policy pages linked from these drafts were
 retrieved over HTTPS. They are external requirements, not publisher identities.
 Store rules and dashboard fields may change; recheck them before submission.
-The search service was unavailable, so official pages were read directly.
 
 All project/support/privacy/security hyperlinks in the new publication copy
 use the current fork. Literal upstream PAC host permissions in the

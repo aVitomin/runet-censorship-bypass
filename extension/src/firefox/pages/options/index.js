@@ -18,7 +18,7 @@
 })(typeof globalThis === 'object' ? globalThis : this, function(Ui) {
 
   const SETTINGS_KEYS = Object.freeze([
-    'flags', 'localTor', 'ownProxies', 'rules', 'schemaVersion',
+    'flags', 'localTor', 'ownProxies', 'rules', 'schemaVersion', 'source',
     'torBrowser', 'warp',
   ]);
   const RULE_KEYS = Object.freeze(['direct', 'proxy', 'whitelist']);
@@ -64,10 +64,13 @@
     'lastCheckStatus',
     'lastSuccessfulCheckAt',
     'schemaVersion',
+    'sourceUpdatedAt',
     'stagedDatasetVersion',
     'status',
     'trustConfigured',
     'updateAvailable',
+    'updateChannel',
+    'updateConfigured',
   ]);
   const UPDATE_STATUSES = Object.freeze([
     'CHECK_FAILED', 'CHECKING', 'IDLE', 'NOT_CONFIGURED', 'UPDATED',
@@ -100,6 +103,7 @@
 
     if (!Ui.hasExactKeys(value, SETTINGS_KEYS) ||
         value.schemaVersion !== 1 ||
+        !['anticensority', 'manual'].includes(value.source) ||
         !Ui.hasExactKeys(value.rules, RULE_KEYS) ||
         RULE_KEYS.some((key) => !Array.isArray(value.rules[key]) ||
           value.rules[key].some((rule) => typeof rule !== 'string')) ||
@@ -169,9 +173,15 @@
     if (!Ui.hasExactKeys(value, UPDATE_STATUS_KEYS) ||
         value.schemaVersion !== 1 ||
         typeof value.trustConfigured !== 'boolean' ||
+        typeof value.updateConfigured !== 'boolean' ||
+        !['NONE', 'HTTPS', 'SIGNED'].includes(value.updateChannel) ||
+        value.trustConfigured !== (value.updateChannel === 'SIGNED') ||
+        value.updateConfigured !== (value.updateChannel !== 'NONE') ||
         typeof value.automaticChecksEnabled !== 'boolean' ||
         !UPDATE_STATUSES.includes(value.status) ||
         typeof value.updateAvailable !== 'boolean' ||
+        (value.sourceUpdatedAt !== null &&
+          (!Number.isSafeInteger(value.sourceUpdatedAt) || value.sourceUpdatedAt < 1)) ||
         (value.currentDatasetVersion !== null &&
           (typeof value.currentDatasetVersion !== 'string' ||
             !PUBLIC_DATASET_VERSION_PATTERN.test(
@@ -336,24 +346,22 @@
     async function loadNow() {
 
       const started = invalidation;
-      const results = await Promise.all([
-        rpc.call({type: 'firefox.capabilities.get'}),
-        rpc.call({type: 'firefox.settings.get'}),
-        rpc.call({type: 'firefox.operational.get'}),
-        rpc.call({type: 'firefox.provider.update.get'}),
-        rpc.call({type: 'firefox.configuration.get'}),
-      ]);
-      // An event invalidated this bundle while one of its RPCs was in flight.
+      const result = await rpc.call({type: 'firefox.options.get'});
+      // An event invalidated this bundle while its RPC was in flight.
       // Do not render that older snapshot; the coalesced trailing read wins.
       if (started !== invalidation) return;
-      const capabilities = Ui.validateCapabilities(results[0]);
-      const settings = validateSettingsResult(results[1]);
-      const operational = Ui.validateOperationalStatus(results[2]);
+      if (!Ui.hasExactKeys(result, ['capabilities', 'settings', 'operational',
+        'providerUpdate', 'configuration'])) throw Ui.rpcError('UI_RPC_FAILED');
+      const capabilities = Ui.validateCapabilities(result.capabilities);
+      const settings = validateSettingsResult(result.settings);
+      const operational = Ui.validateOperationalStatus(result.operational);
+      const providerUpdate = validateProviderUpdateStatus(result.providerUpdate);
+      const configuration = Ui.validateConfiguration(result.configuration);
       state.capabilities = capabilities;
       state.editable = editableFromCapabilities(capabilities);
       state.operational = operational;
-      state.providerUpdate = validateProviderUpdateStatus(results[3]);
-      state.configuration = Ui.validateConfiguration(results[4]);
+      state.providerUpdate = providerUpdate;
+      state.configuration = configuration;
       if (state.dirty) {
         state.stale = state.revision !== settings.revision;
       } else {
@@ -547,9 +555,10 @@
       state.notice = null;
       emit();
       try {
-        await rpc.call({type});
+        const result = await rpc.call({type});
         await loadNow();
-        state.notice = notice;
+        state.notice = result && result.status === 'DEFERRED' ? 'UPDATE_CHECKED' :
+          result && result.status === 'INSTALLED' ? 'UPDATE_INSTALLED' : notice;
         return true;
       } catch (error) {
         state.providerOperationFailed = true;
@@ -580,7 +589,7 @@
 
     function installProviderUpdate() {
 
-      if (!state.editable || !state.providerUpdate || !state.providerUpdate.trustConfigured) {
+      if (!state.editable || !state.providerUpdate || !state.providerUpdate.updateConfigured) {
         state.providerOperationFailed = false;
         state.errorCode = 'SETTINGS_READ_ONLY';
         emit();
@@ -625,7 +634,7 @@
     const update = state.providerUpdate;
     const view = {label: 'providerLifecycleUnknown', help: 'providerLifecycleUnknownHelp'};
     if (!update) return view;
-    if (!update.trustConfigured) {
+    if (!update.updateConfigured) {
       return {label: 'providerUpdateStatusUnavailable', help: 'providerUpdateError_TRUST_NOT_CONFIGURED'};
     }
     if (state.providerOperation) {
@@ -1090,6 +1099,7 @@
     function collect(form) {
 
       const next = Ui.clone(draft);
+      next.source = form.elements.source.value;
       ruleRows = Array.from(form.querySelectorAll('[data-rule]')).map((row) => ({
         host: row.querySelector('[name="ruleHost"]').value,
         scope: row.querySelector('[name="ruleScope"]').value,
@@ -1310,7 +1320,19 @@
           automatic, 'p', t('optionsAutomaticSourceHelp'), 'muted',
       );
       const sourceCard = Ui.append(automatic, 'div', 'source-card');
-      Ui.appendText(sourceCard, 'strong', t('optionsAnticensoritySource'));
+      const sourceLabel = Ui.append(sourceCard, 'label', 'field');
+      Ui.appendText(sourceLabel, 'span', t('optionsSourceLabel'));
+      const sourceSelect = Ui.append(sourceLabel, 'select');
+      sourceSelect.name = 'source';
+      for (const [value, label] of [
+        ['anticensority', 'optionsAnticensoritySource'], ['manual', 'optionsManualSource'],
+      ]) {
+        const option = Ui.append(sourceSelect, 'option');
+        option.value = value;
+        option.textContent = t(label);
+      }
+      sourceSelect.value = draft.source;
+      Ui.appendText(sourceCard, 'p', t('optionsManualSourceHelp'), 'muted');
       const sourceAvailability = Ui.appendText(
           sourceCard, 'span',
           state.capabilities.providerDatasetAvailable ?
@@ -1384,6 +1406,7 @@
         );
         const updateFacts = Ui.append(updateCard, 'dl', 'overview-facts');
         definition(updateFacts, 'providerLifecycleName', 'Anticensority');
+        definition(updateFacts, 'providerUpdateChannel', t(`providerUpdateChannel_${update.updateChannel}`));
         definition(
             updateFacts,
             'providerUpdateCurrentVersion',
@@ -1393,6 +1416,11 @@
             updateFacts,
             'providerUpdateAvailableVersion',
             update.stagedDatasetVersion || t('providerLifecycleUnknown'),
+        );
+        definition(
+            updateFacts,
+            'providerUpdateSourceDate',
+            update.sourceUpdatedAt ? formatTime(update.sourceUpdatedAt) : t('providerLifecycleUnknown'),
         );
         definition(
             updateFacts,
@@ -1418,14 +1446,14 @@
         checkUpdate.type = 'button';
         checkUpdate.dataset.operational = 'true';
         checkUpdate.textContent = t('providerUpdateCheck');
-        checkUpdate.disabled = state.pending || !update.trustConfigured;
+        checkUpdate.disabled = state.pending || !update.updateConfigured;
         checkUpdate.addEventListener('click', () =>
           controller.checkProviderUpdate());
         installUpdate = Ui.append(updateActions, 'button');
         installUpdate.type = 'button';
         installUpdate.dataset.operational = 'true';
         installUpdate.textContent = t('providerUpdateInstall');
-        installUpdate.disabled = state.pending || !state.editable || !update.trustConfigured ||
+        installUpdate.disabled = state.pending || !state.editable || !update.updateConfigured ||
           !update.updateAvailable;
         installUpdate.addEventListener('click', () =>
           controller.installProviderUpdate());
@@ -1681,9 +1709,9 @@
         }
         healthButton.disabled = state.pending ||
           state.capabilities.runtimeState !== 'READY';
-        checkUpdate.disabled = state.pending || !update.trustConfigured;
+        checkUpdate.disabled = state.pending || !update.updateConfigured;
         installUpdate.disabled = state.pending || !state.editable ||
-          !update.trustConfigured || !update.updateAvailable;
+          !update.updateConfigured || !update.updateAvailable;
         apply.disabled = disabled || state.capabilities.privateWindowAccess !== 'GRANTED' ||
           !state.capabilities.activationSupported || !state.capabilities.providerDatasetAvailable;
         download.disabled = state.pending;

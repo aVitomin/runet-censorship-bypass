@@ -2,10 +2,9 @@
 
 ## Installable inventory
 
-The baseline Chromium ZIP and Firefox XPI from trusted-main commit
-`4c274ee521571471d044157bbe7ac7f211d32ada` each contain 71 files.
-This notice-only packaging change adds five files to Chromium and three to
-Firefox; the existing files must remain byte-identical.
+The inventory below describes the maintained distribution notices for both
+browser targets. Actual package contents are defined by Gulp copy rules and
+the browser package verifiers; counts and hashes belong to the exact build.
 
 | Material / packaged location | Browser | Source and license | Required distribution notice |
 | --- | --- | --- | --- |
@@ -15,7 +14,7 @@ Firefox; the existing files must remain byte-identical.
 | Public Suffix List data compiled into tldts | Both | [Pinned PSL source](https://raw.githubusercontent.com/publicsuffix/list/b9a86cf0cd115f1e60b5815533f3fcfd2f9e8f4b/public_suffix_list.dat); MPL-2.0 | `THIRD_PARTY_NOTICES/MPL-2.0.txt`, Exhibit A notice and source-form URL in target attribution |
 | `pages/lib/fonts/emoji.woff` | Chromium | [Emoji icon font](https://github.com/jslegers/emoji-icon-font); MIT, John Slegers (2014) | `THIRD_PARTY_NOTICES/EMOJI-MIT.txt` and source attribution |
 | `pages/lib/chrome-style/index.css`, `check.png` | Chromium | Chromium-derived stylesheet and image; BSD-3-Clause | `THIRD_PARTY_NOTICES/CHROMIUM-BSD-3-CLAUSE.txt`; retain stylesheet header and source attribution |
-| `provider/anticensority-hosts-v1.data` and envelope | Firefox | Generated hostname data; [documented provenance](../../docs/development/FIREFOX_PROVIDER_DATASET.md) | Attribution and pinned input source in target notice; separate data-license determination remains open (below) |
+| `provider/anticensority-hosts-v1.data` and envelope | Firefox | Generated hostname data; [documented provenance](../../docs/development/FIREFOX_PROVIDER_DATASET.md) | Attribution and pinned input source in target notice; pinned-source licensing scope is documented below |
 
 The packaged attribution file is `THIRD_PARTY_NOTICES/NOTICE.txt`, selected
 from the [Chromium notice](notices/chromium.txt) or
@@ -67,7 +66,7 @@ source form for the data compiled into the library.
 The MIT license for tldts/tldts-core continues to come from the installed,
 lockfile-pinned package, with one copy per browser distribution.
 
-## Dataset licensing decision remains open
+## Dataset attribution and licensing scope
 
 The concise [dataset attribution statement](../../docs/legal/DATA_SOURCES.md)
 records the bundled source, purpose and limits of the licensing evidence.
@@ -75,14 +74,13 @@ records the bundled source, purpose and limits of the licensing evidence.
 The [pinned generated-data repository](https://github.com/anticensority/generated-pac-scripts/tree/0448d748585ce0ed31434097d83b2b18236acbfb)
 contains the PAC input and README but no explicit data license.
 The [generator's Unlicense](https://github.com/anticensority/pac-script-generator/blob/869aad85dce20ace9d44d3a9d694b6ac84baea6a/LICENSE)
-covers that generator's code; this change does not assume it grants rights
-to every input dataset. Neither generator code nor PAC JavaScript is included
-in the Firefox XPI.
+covers that generator's code; it is not treated as a license for every input
+dataset. Neither generator code nor PAC JavaScript is included in the Firefox XPI.
 
-This change records the dataset's provenance, not a new license grant.
-Before claiming full release-compliance clearance, the maintainer must record
-upstream permission or a supported data-licensing determination. No provider,
-dataset bytes or trust behavior is changed here.
+This inventory records attribution and the pinned snapshot's licensing scope
+separately from the generator's software license. Retain upstream permission
+and license notices with distribution records; hashes and commits establish
+provenance, not an additional license grant.
 
 ## Packaging and verification
 
@@ -98,5 +96,5 @@ package-gate tests prove the checks are integrated into both builds.
 
 From the repository root, run `npm --prefix ./extension run verify`,
 `node ./scripts/verify-docs.mjs` and `git diff --check`. Compare both package
-trees against the trusted baseline: only the explicitly listed license and
-attribution files may be added; no existing packaged bytes may change.
+trees against the validated baseline and account for every changed file.
+For notice-only changes, unrelated packaged bytes must remain identical.

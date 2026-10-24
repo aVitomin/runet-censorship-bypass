@@ -1,10 +1,10 @@
 # Manifest permissions and privacy audit — 1.0
 
-Audited 2026-09-26 at `8361608fa4ac52cc118cf5e6d32b3feb8772d167`.
+Permission mapping for development version `1.0.0`.
 Sources: [Firefox manifest](../../extension/src/firefox/manifest.json) and
 [Chromium manifest template](../../extension/src/chromium/manifest.tmpl.json).
-No permission or manifest was changed. Repeat this exact comparison on the
-final built manifests before submission; this is not approval of future grants.
+Compare these declarations with the final built manifests before submission;
+this document does not authorize future grants or a store submission.
 
 “Not collected” below describes product behavior, not what a broad browser
 permission could theoretically expose. No listed permission is used for
@@ -18,9 +18,9 @@ Proxy/destination transmission still occurs as explained in the
 | --- | --- | --- | --- | --- |
 | `proxy` | Both | Apply or release the extension's browser routing configuration; Firefox also chooses per-request routes and guards inactive/unready routing. | Browser proxy ownership/settings; configured endpoints; Firefox destination/request information. | Does not supply a VPN service, read page bodies or upload browsing history to the developer. |
 | `storage` | Both | Keep settings, credentials, routing artifacts/references and restart/recovery state. | Local rules, proxy/source settings, credential records and operational metadata; Chromium also uses session request/auth bookkeeping. | No product cloud sync, website-cookie database access or developer backup upload. Not a claim of encrypted secret storage. |
-| `alarms` | Both | Restore scheduling after background restarts. Chromium refreshes PAC data and supervises relevant connection checks. Firefox has a provider-check scheduler gated by release trust. | Schedule times, last-check/status records and an established Chromium health target. | No general activity timer or telemetry schedule. Firefox's unconfigured remote channel does not make update requests. |
+| `alarms` | Both | Restore scheduling after background restarts. Chromium refreshes PAC data and supervises relevant connection checks. Firefox checks its fixed HTTPS routing-data sources every 12 hours and can install validated changes when OFF or READY. | Schedule times, last-check/status records and an established Chromium health target. | No general activity timer or telemetry schedule. Data refresh does not enable routing or apply pending user settings. |
 | `notifications` | Both | Show localized attention/status notices and let the user open Options. | Fixed status/error categories and notification bookkeeping. | No advertising notifications, page-content collection or credential-bearing notification text. |
-| `webRequest` | Both | Bind request lifetimes to applied routing/auth settings, handle proxy challenges and clear retries/errors. | Browser request IDs, URLs/metadata, proxy challenger host/port, completion/error events. | No requested `requestBody`, `requestHeaders` or `responseHeaders` capture; no content scraping or history database. Metadata access is still data handling. |
+| `webRequest` | Both | Bind request lifetimes to applied routing/auth settings, handle proxy challenges and clear retries/errors. | Browser request IDs, URLs/metadata, proxy challenger host/port and completion/error events. Firefox also requests response headers to recognize status 401 plus the `WWW-Authenticate` header name for bounded website-auth retries. | No request-body or request-header capture, page-content scraping or history database. The Firefox guard does not read or retain response-header values. Metadata access is still data handling. |
 | `webRequestBlocking` | Firefox only | Synchronously authorize/cancel requests and answer bounded matching proxy-auth challenges. | Request authorization, selected proxy and matching configured credentials. | Does not send stored proxy passwords to website-auth challenges or arbitrary unrelated challengers. |
 | `webRequestAuthProvider` | Chromium only | Answer supported HTTP/HTTPS proxy authentication challenges using the request's applied configuration. | Proxy challenge endpoint, configured username/password, bounded retry state. | Does not create website accounts, collect website passwords or promote newly saved credentials without Apply. |
 | `activeTab` | Chromium only | Identify the site when the user opens the action popup and selects Auto/Proxy/Direct. | Current tab URL, reduced to a normalized host for site controls. | No bookmark/history collection or injected page scripts. This is not the only host grant: broad host permissions below also exist. |
@@ -51,7 +51,18 @@ publisher identities.
 | `https://raw.githubusercontent.com/*` | Chromium | Built-in Anticensority PAC fallback on GitHub's raw-content host. | Same source-fetch data as above. | No repository-account access or upload of local rule/password records. |
 
 Source mapping: [Chromium providers](../../extension/src/chromium/background/pac-providers.js).
-Custom inputs allow HTTPS or loopback HTTP only, reject URL userinfo and
+Firefox uses its existing `<all_urls>` grant to fetch the two fixed
+[Anticensority HTTPS source URLs](../../extension/src/firefox/background/provider-source-updater.js)
+on `anticensority.github.io` and `raw.githubusercontent.com`; these are not
+additional literal Firefox manifest grants. Its downloader omits website
+credentials/referrer and permits at most three redirects only between those two
+exact URLs; the final URL must also be approved and match the validated request.
+It rejects URL userinfo/query/fragment and extracts static data without executing
+downloaded PAC JavaScript.
+Locally computed hashes and source-date checks do not verify an author signature.
+The separate signed-manifest channel remains unconfigured.
+
+Chromium custom inputs allow HTTPS or loopback HTTP only, reject URL userinfo and
 validate the final response URL. Do not describe this as authenticating every
 custom source, preventing every intermediary contact, or trusting arbitrary
 PAC content. Source selection remains the user's trust decision.
@@ -85,8 +96,10 @@ the final submission still needs maintainer review against the exact package.
 - Import itself performs no network activity. It does not imply that an already
   active browser stops its independent routing, source refresh or health checks.
 - Source servers and health-check targets receive ordinary network metadata.
-  Firefox remote updates are disabled by current trust configuration; Chromium
-  PAC refresh and relevant automatic health checks exist now.
+  Firefox manually and periodically fetches its fixed HTTPS data sources;
+  Chromium refreshes PAC sources and runs relevant automatic health checks.
+  Firefox's unconfigured signed channel is separate from its enabled HTTPS
+  data channel.
 - Website cookies/credentials are omitted from connection-check fetches. Proxy
   authentication can still occur; Chromium redirects can contact other origins.
 - Local operational origins/endpoints exist; “no browsing-history service” is
@@ -96,5 +109,5 @@ the final submission still needs maintainer review against the exact package.
   [User Data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq/).
 
 The [feature inventory](FEATURE_INVENTORY_1_0.md#implementation-evidence) lists
-the implementation paths inspected. No authentication, provider trust,
-permissions, persistence or export behavior was changed by this audit.
+the implementation paths supporting these disclosures. Verify the final package
+and user-facing consent text together before submission.

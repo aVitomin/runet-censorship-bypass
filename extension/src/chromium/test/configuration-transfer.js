@@ -104,9 +104,19 @@ describe('Portable configuration boundary', function() {
     Assert.ok(imported.ownProxies.every((value) => value.credentials.mode === 'MISSING'));
   });
 
+  it('round-trips manual-only source between Firefox and Chromium', function() {
+    const settings = FirefoxSettings.createDefaultSettings();
+    settings.source = 'manual';
+    const config = Firefox.fromSettings(settings);
+    Assert.deepEqual(config.source, {kind: 'builtin', id: 'manual'});
+    const result = Firefox.toSettings(config);
+    Assert.equal(result.settings.source, 'manual');
+    Assert.deepEqual(result.unsupported, []);
+  });
+
   it('reports unsupported source/language/disabled rules instead of pretending source parity', function() {
     const config = portable();
-    config.source = {kind: 'builtin', id: 'manual'};
+    config.source = {kind: 'builtin', id: 'antizapret'};
     config.ui = {language: 'ru'};
     config.routes.push({host: 'example.com', scope: 'host', mode: 'proxy', enabled: false});
     const result = Firefox.toSettings(config);

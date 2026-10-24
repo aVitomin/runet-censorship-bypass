@@ -201,16 +201,17 @@
       } catch (_error) {
         // An unreadable privileged tab is represented as uncontrollable.
       }
-      const results = await Promise.all([
-        rpc.call({type: 'firefox.capabilities.get'}),
-        rpc.call({type: 'firefox.site.get', tabUrl}),
-        rpc.call({type: 'firefox.operational.get'}),
-        rpc.call({type: 'firefox.configuration.get'}),
-      ]);
-      state.capabilities = Ui.validateCapabilities(results[0]);
-      state.site = validateSiteState(results[1]);
-      state.operational = Ui.validateOperationalStatus(results[2]);
-      state.configuration = Ui.validateConfiguration(results[3]);
+      const result = await rpc.call({type: 'firefox.popup.get', tabUrl});
+      if (!Ui.hasExactKeys(result, ['capabilities', 'site', 'operational',
+        'configuration'])) throw Ui.rpcError('UI_RPC_FAILED');
+      const capabilities = Ui.validateCapabilities(result.capabilities);
+      const site = validateSiteState(result.site);
+      const operational = Ui.validateOperationalStatus(result.operational);
+      const configuration = Ui.validateConfiguration(result.configuration);
+      state.capabilities = capabilities;
+      state.site = site;
+      state.operational = operational;
+      state.configuration = configuration;
       state.tabUrl = tabUrl;
 
     }

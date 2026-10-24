@@ -24,6 +24,29 @@
   let productionDatasetStore = null;
   let datasetPromotionController = null;
   let providerUpdateController = null;
+  // Historical display metadata only: never a trust/availability/routing cache.
+  // Settings, activation and recovery still verify artifacts on every read.
+  const verifiedSourceDates = new Map();
+
+  function datasetMetadataKey(identity) {
+
+    return JSON.stringify([identity.providerKey, identity.datasetVersion, identity.artifactSha256]);
+
+  }
+
+  function rememberSourceDate(verification) {
+
+    const dataset = verification.dataset;
+    const timestamp = Date.parse(dataset.envelope.generatedAt);
+    const key = datasetMetadataKey(dataset.identity);
+    verifiedSourceDates.delete(key);
+    verifiedSourceDates.set(key,
+        Number.isSafeInteger(timestamp) && timestamp > 0 ? timestamp : null);
+    if (verifiedSourceDates.size > 3) {
+      verifiedSourceDates.delete(verifiedSourceDates.keys().next().value);
+    }
+
+  }
   let providerBootstrapState = Object.freeze({
     ok: false,
     status: 'INITIALIZING',
@@ -42,7 +65,16 @@
   function createProductionDatasetStore() {
 
     if (!productionDatasetStore) {
-      const backend = datasetStoreApi.createIndexedDbBackend(root.indexedDB);
+      // Construct the data backend only for an actual dataset operation. Manual
+      // routing must remain available when IndexedDB itself cannot be opened.
+      let indexedBackend;
+      const backend = Object.fromEntries(['readArtifact', 'readPointers', 'commit'].map((method) =>
+        [method, async (...args) => {
+          if (!indexedBackend) {
+            indexedBackend = datasetStoreApi.createIndexedDbBackend(root.indexedDB);
+          }
+          return indexedBackend[method](...args);
+        }]));
       productionDatasetStore = datasetStoreApi.createStore({backend, sha256});
     }
     return productionDatasetStore;
@@ -135,18 +167,33 @@
     storageArea: browser.storage.local,
     sha256,
     activationSnapshot: () => activationController.snapshot(),
+    async currentProviderDatasetIdentity() {
+
+      const loaded = await createProductionDatasetStore().loadVerifications(
+          productionProviderApi.PROVIDER_KEY, {firstUsableOnly: true},
+      );
+      const selected = [loaded.active, loaded.previousLkg, loaded.packagedBaseline]
+          .find((value) => value && value.ok);
+      return selected ? selected.dataset.identity : productionProviderApi.datasetIdentity();
+
+    },
     async datasetIdentityAvailable(identity) {
 
       const stored = await createProductionDatasetStore().loadVerifications(
           identity.providerKey,
       );
-      return [stored.active, stored.previousLkg, stored.packagedBaseline]
-          .some((verification) => verification && verification.ok === true &&
+      const matching = [stored.active, stored.previousLkg, stored.packagedBaseline]
+          .find((verification) => verification && verification.ok === true &&
             verification.dataset.identity.providerKey === identity.providerKey &&
             verification.dataset.identity.datasetVersion ===
               identity.datasetVersion &&
             verification.dataset.identity.artifactSha256 ===
               identity.artifactSha256);
+      if (matching) rememberSourceDate(matching);
+      providerBootstrapState = Object.assign({}, providerBootstrapState, {
+        datasetAvailable: Boolean(matching),
+      });
+      return Boolean(matching);
 
     },
   });
@@ -174,10 +221,11 @@
     fetch: root.fetch.bind(root),
     AbortController: root.AbortController,
     getMessage: (key) => browser.i18n.getMessage(key),
-    getDatasetInfo: () => ({
-      available: providerBootstrapState.datasetAvailable === true,
-      version: productionProviderApi.DATASET_VERSION,
-    }),
+    getDatasetInfo: async () => {
+      const identity = await readRoutingIdentity();
+      return {available: Boolean(identity && routingSourceAvailable(identity.providerKey)),
+        version: identity && identity.datasetVersion};
+    },
   });
   datasetPromotionController = datasetPromotionApi.createController({
     storageArea: browser.storage.local,
@@ -187,9 +235,11 @@
     providerKey: productionProviderApi.PROVIDER_KEY,
     replacePrepared: (prepared) => activationController.replacePrepared(prepared),
   });
-  async function readCurrentDatasetIdentity() {
+  async function readRoutingIdentity() {
 
-    const effective = await productConfigApi.readEffectiveRecords(browser.storage.local);
+    const activation = activationController.snapshot();
+    const effective = activation && activation.durableIntent === offState.ON ?
+      await productConfigApi.readEffectiveRecords(browser.storage.local) : null;
     if (effective) return effective[productConfigApi.CONFIG_STORAGE_KEY].datasetIdentity;
     const stored = await browser.storage.local.get(
         productConfigApi.CONFIG_STORAGE_KEY,
@@ -207,6 +257,35 @@
     return verified.config.datasetIdentity;
 
   }
+  function routingSourceAvailable(providerKey) {
+
+    return providerKey === 'manual' || providerKey === productionProviderApi.PROVIDER_KEY &&
+      providerBootstrapState.datasetAvailable === true;
+
+  }
+  async function readCurrentDatasetIdentity() {
+
+    const identity = await readRoutingIdentity();
+    return identity && identity.providerKey === productionProviderApi.PROVIDER_KEY ?
+      identity : null;
+
+  }
+  async function readCurrentDatasetInfo() {
+
+    const identity = await readCurrentDatasetIdentity();
+    if (!identity) return {identity: null, sourceUpdatedAt: null};
+    const key = datasetMetadataKey(identity);
+    if (verifiedSourceDates.has(key)) {
+      return {identity, sourceUpdatedAt: verifiedSourceDates.get(key)};
+    }
+    const loaded = await createProductionDatasetStore().loadVerifications(identity.providerKey);
+    const verified = [loaded.active, loaded.previousLkg, loaded.packagedBaseline].find((value) =>
+      value && value.ok && value.dataset.identity.artifactSha256 === identity.artifactSha256 &&
+      value.dataset.identity.datasetVersion === identity.datasetVersion);
+    if (verified) rememberSourceDate(verified);
+    return {identity, sourceUpdatedAt: verifiedSourceDates.get(key) || null};
+
+  }
   providerUpdateController = providerUpdateControlApi.createController({
     storageArea: browser.storage.local,
     datasetStore: createProductionDatasetStore(),
@@ -217,7 +296,9 @@
     sha256,
     providerKey: productionProviderApi.PROVIDER_KEY,
     trustConfiguration: productionProviderApi.UPDATE_TRUST_CONFIGURATION,
+    sourceUpdateEnabled: productionProviderApi.SOURCE_UPDATE_ENABLED,
     readCurrentDatasetIdentity,
+    readCurrentDatasetInfo,
   });
   const bootId = root.crypto && typeof root.crypto.randomUUID === 'function' ?
     root.crypto.randomUUID() :
@@ -300,10 +381,10 @@
 
   }
 
-  function exactSiteGetRequest(message) {
+  function exactTabStateRequest(message, type) {
 
     return Boolean(message) && typeof message === 'object' &&
-      !Array.isArray(message) && message.type === 'firefox.site.get' &&
+      !Array.isArray(message) && message.type === type &&
       Object.keys(message).length === 2 &&
       Object.prototype.hasOwnProperty.call(message, 'tabUrl') &&
       typeof message.tabUrl === 'string';
@@ -371,12 +452,50 @@
 
   }
 
-  async function configurationStatus() {
+  async function capabilitiesStatus(saved = null) {
 
-    const saved = await settingsController.get();
+    const manifest = browser.runtime.getManifest();
     const activation = activationController.snapshot();
-    const records = await productConfigApi.readEffectiveRecords(browser.storage.local);
-    const effective = records ? await settingsController.getEffective() : null;
+    let manual = saved && saved.settings.source === 'manual';
+    if (!saved) {
+      const stored = await browser.storage.local.get(productConfigApi.CONFIG_STORAGE_KEY);
+      try {
+        const verified = await productConfigApi.verifyProductConfig(
+            stored[productConfigApi.CONFIG_STORAGE_KEY], sha256,
+        );
+        manual = verified.config.providerKey === 'manual';
+      } catch (_error) {
+        // Unproven config never makes a source available.
+      }
+    }
+    return {
+      apiVersion: 2,
+      browser: 'FIREFOX',
+      manifestVersion: manifest.manifest_version,
+      runtimeModel: 'BACKGROUND_EVENT_PAGE',
+      runtimeState: activation.runtimeState,
+      durableIntent: activation.durableIntent,
+      recoveryStatus: activation.recoveryStatus,
+      recoveryFailureCode: activation.failureCode,
+      privateWindowAccess: await readPrivateWindowAccess(),
+      routingImplemented: true,
+      activationSupported: true,
+      providerDatasetImplemented: true,
+      providerDatasetAvailable: manual || providerBootstrapState.datasetAvailable === true,
+      providerUpdateImplemented: true,
+      providerUpdateConfigured: providerUpdateController.updateConfigured(),
+    };
+
+  }
+
+  async function configurationStatus(snapshot = null) {
+
+    const saved = snapshot ? snapshot.saved : await settingsController.get();
+    const activation = activationController.snapshot();
+    const records = snapshot ? snapshot.records :
+      await productConfigApi.readEffectiveRecords(browser.storage.local);
+    const effective = snapshot ? snapshot.effective :
+      records ? await settingsController.getEffective() : null;
     const live = await browser.proxy.settings.get({});
     const privateAccess = await readPrivateWindowAccess();
     const active = activation.active && activation.runtimeState === 'READY' &&
@@ -402,7 +521,7 @@
           JSON.stringify(pendingCredentialEntries(records))) {
         categories.push('proxyConnections');
       }
-      if (!categories.length ||
+      if (!categories.length || saved.settings.source !== effective.settings.source ||
           JSON.stringify(saved.settings.flags) !== JSON.stringify(effective.settings.flags)) {
         categories.push('routingSettings');
       }
@@ -412,6 +531,58 @@
       reason: blocked ? privateAccess !== 'GRANTED' ? 'PRIVATE_ACCESS_REQUIRED' :
         activation.active && live.levelOfControl !== 'controlled_by_this_extension' ? 'CONTROL_LOSS' :
         activation.failureCode || activation.recoveryStatus : null};
+
+  }
+
+  async function verifiedConfigurationSnapshot() {
+
+    // Reuse only this operation's verified snapshots. A subsequent request
+    // rereads and verifies durable state, including its dataset identity.
+    const saved = await settingsController.get();
+    const records = await productConfigApi.readEffectiveRecords(browser.storage.local);
+    const effective = records ? await settingsController.getEffective() : null;
+    return {saved, records, effective};
+
+  }
+
+  async function getOptionsState() {
+
+    try {
+      const snapshot = await verifiedConfigurationSnapshot();
+      const {saved, effective} = snapshot;
+      const [capabilities, operational, providerUpdate, configuration] = await Promise.all([
+        capabilitiesStatus(saved),
+        operationalController.publicStatus(effective || saved),
+        providerUpdateController.publicStatus(),
+        configurationStatus(snapshot),
+      ]);
+      // Only existing public projections cross the RPC boundary. In particular,
+      // diagnostics describe Effective while the editor displays Saved.
+      return {ok: true, result: {capabilities, settings: saved,
+        operational, providerUpdate, configuration}};
+    } catch (_error) {
+      return errorResponse('SETTINGS_STATE_UNAVAILABLE');
+    }
+
+  }
+
+  async function getPopupState(message) {
+
+    try {
+      const snapshot = await verifiedConfigurationSnapshot();
+      const routingSettings = snapshot.effective || snapshot.saved;
+      const [capabilities, site, operational, configuration] = await Promise.all([
+        capabilitiesStatus(snapshot.saved),
+        siteController.get(message.tabUrl, routingSettings),
+        operationalController.publicStatus(routingSettings),
+        configurationStatus(snapshot),
+      ]);
+      // Site controls and diagnostics describe Effective. Only the pending
+      // summary exposes Saved; no settings, credentials or raw URL are returned.
+      return {ok: true, result: {capabilities, site, operational, configuration}};
+    } catch (_error) {
+      return errorResponse('SETTINGS_STATE_UNAVAILABLE');
+    }
 
   }
 
@@ -557,13 +728,15 @@
 
   async function installStagedProviderDataset() {
 
-    if (!providerUpdateController.trustConfigured()) {
+    if (!providerUpdateController.updateConfigured()) {
       return errorResponse(providerUpdateControlApi.ERRORS.TRUST_NOT_CONFIGURED);
     }
+    configurationApplying = true;
+    invalidateOptionsStatus();
     try {
       const installed = await datasetPromotionController.install();
       try {
-        await providerUpdateController.markInstalled();
+        if (installed.status === 'INSTALLED') await providerUpdateController.markInstalled();
       } catch (_error) {
         // Promotion is authoritative even if optional UI status persistence
         // fails after the crash-safe transaction has committed.
@@ -575,11 +748,26 @@
         await activationController.requireRecovery();
       }
       return errorResponse(code);
+    } finally {
+      configurationApplying = false;
+      invalidateOptionsStatus();
+      operationalController.refreshToolbar().catch(() => undefined);
     }
 
   }
 
   async function checkForProviderUpdate() {
+
+    try {
+      return await checkForProviderUpdateNow();
+    } finally {
+      // Alarm checks must refresh open Options even if installation was deferred.
+      invalidateOptionsStatus();
+    }
+
+  }
+
+  async function checkForProviderUpdateNow() {
 
     let checked;
     try {
@@ -590,12 +778,41 @@
     if (!checked || checked.ok !== true) {
       return errorResponse(safeProviderUpdateErrorCode(checked));
     }
+    let update;
+    try {
+      update = await providerUpdateController.publicStatus();
+    } catch (_error) {
+      return errorResponse(providerUpdateControlApi.ERRORS.STATE_UNAVAILABLE);
+    }
+    // Check and promotion share the RPC control queue with Save/Apply/Clear.
+    // A blocked runtime or external owner may retain a candidate for later.
+    let resultStatus = checked.status;
+    if ((checked.status === 'STAGED' || update.updateAvailable) &&
+        providerUpdateController.updateConfigured()) {
+      const current = activationController.snapshot();
+      const canInstall = current && (
+        current.active === true && current.runtimeState === 'READY' && current.durableIntent === 'ON' ||
+        current.active === false && current.runtimeState === 'OFF' && current.durableIntent === 'OFF');
+      let live;
+      try {
+        live = await browser.proxy.settings.get({});
+      } catch (_error) {
+        live = null;
+      }
+      const allowedLevels = current && current.active ? ['controlled_by_this_extension'] :
+        ['controlled_by_this_extension', 'controllable_by_this_extension'];
+      if (canInstall && live && allowedLevels.includes(live.levelOfControl)) {
+        const installed = await installStagedProviderDataset();
+        if (!installed.ok) return installed;
+        resultStatus = installed.result.status;
+      }
+    }
     try {
       return {
         ok: true,
         result: {
-          status: checked.status,
-          update: await providerUpdateController.publicStatus(),
+          status: resultStatus,
+          update: resultStatus === 'INSTALLED' ? await providerUpdateController.publicStatus() : update,
         },
       };
     } catch (_error) {
@@ -639,7 +856,9 @@
     if (['firefox.transfer.export', 'firefox.transfer.preview', 'firefox.transfer.import'].includes(type)) {
       return enqueueRpcControlOperation(async () => {
         try {
-          const saved = await settingsController.get();
+          const snapshot = type === 'firefox.transfer.export' && message.support === true ?
+            await verifiedConfigurationSnapshot() : null;
+          const saved = snapshot ? snapshot.saved : await settingsController.get();
           if (type === 'firefox.transfer.export') {
             const info = await browser.runtime.getBrowserInfo();
             const platform = await browser.runtime.getPlatformInfo();
@@ -647,11 +866,12 @@
               browser: {family: 'firefox', version: info.version},
               extensionVersion: browser.runtime.getManifest().version,
               locale: browser.i18n.getUILanguage(), platform: platform.os};
-            const status = message.support === true ? await configurationStatus() : null;
+            const status = snapshot ? await configurationStatus(snapshot) : null;
+            const sourceSettings = status && status.active && snapshot.effective || saved;
             return {ok: true, result: transfer.create(message.support === true ? null :
               transferAdapter.fromSettings(saved.settings), metadata,
             status ? Object.assign({}, status,
-                {sourceAvailable: providerBootstrapState.datasetAvailable === true}) : null)};
+                {sourceAvailable: routingSourceAvailable(sourceSettings.settings.source)}) : null)};
           }
           const parsed = transfer.parse(message.text);
           if (!parsed.configuration) transfer.fail('TRANSFER_NO_CONFIGURATION');
@@ -674,30 +894,15 @@
       });
     }
     if (type === 'firefox.capabilities.get') {
-      const manifest = browser.runtime.getManifest();
-      const activation = activationController.snapshot();
-      return {
-        ok: true,
-        result: {
-          apiVersion: 2,
-          browser: 'FIREFOX',
-          manifestVersion: manifest.manifest_version,
-          runtimeModel: 'BACKGROUND_EVENT_PAGE',
-          runtimeState: activation.runtimeState,
-          durableIntent: activation.durableIntent,
-          recoveryStatus: activation.recoveryStatus,
-          recoveryFailureCode: activation.failureCode,
-          privateWindowAccess: await readPrivateWindowAccess(),
-          routingImplemented: true,
-          activationSupported: true,
-          providerDatasetImplemented: true,
-          providerDatasetAvailable:
-            providerBootstrapState.datasetAvailable === true,
-          providerUpdateImplemented: true,
-          providerUpdateConfigured:
-            providerUpdateController.trustConfigured(),
-        },
-      };
+      return {ok: true, result: await capabilitiesStatus()};
+    }
+    if (type === 'firefox.options.get') {
+      if (!exactRpcRequest(message, type)) return errorResponse('INVALID_RPC_REQUEST');
+      return enqueueRpcControlOperation(getOptionsState);
+    }
+    if (type === 'firefox.popup.get') {
+      if (!exactTabStateRequest(message, type)) return errorResponse('INVALID_RPC_REQUEST');
+      return enqueueRpcControlOperation(() => getPopupState(message));
     }
     if (type === 'firefox.activation.apply') {
       const revisionRequest = message && Object.keys(message).length === 2 &&
@@ -763,7 +968,7 @@
       return enqueueRpcControlOperation(() => replaceProductSettings(message));
     }
     if (type === 'firefox.site.get') {
-      if (!exactSiteGetRequest(message)) {
+      if (!exactTabStateRequest(message, type)) {
         return errorResponse('INVALID_RPC_REQUEST');
       }
       return enqueueRpcControlOperation(() => getSiteSettings(message));
@@ -845,6 +1050,11 @@
       {urls: ['<all_urls>']},
       ['blocking'],
   );
+  browser.webRequest.onHeadersReceived.addListener(
+      routingAdapter.onHeadersReceived,
+      {urls: ['<all_urls>']},
+      ['blocking', 'responseHeaders'],
+  );
   function onRequestTerminal(details) {
 
     routingAdapter.onRequestTerminal(details);
@@ -863,8 +1073,9 @@
   if (browser.alarms && browser.alarms.onAlarm) {
     browser.alarms.onAlarm.addListener((alarm) => {
 
+      if (!alarm || alarm.name !== providerUpdateControlApi.ALARM_NAME) return;
       initialization.then(() => enqueueRpcControlOperation(() =>
-        providerUpdateController.handleAlarm(alarm),
+        providerUpdateController.updateConfigured() ? checkForProviderUpdate() : undefined,
       )).catch(() => undefined);
 
     });

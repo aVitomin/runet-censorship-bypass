@@ -109,7 +109,7 @@ describe('Firefox request-scoped proxy authentication', function() {
 
   });
 
-  it('cancels every challenge while INITIALIZING or FAILED', function() {
+  it('cancels proxy challenges while INITIALIZING or FAILED', function() {
 
     for (const state of [Adapter.STATES.INITIALIZING, Adapter.STATES.FAILED]) {
       const current = fixture({state});
@@ -121,27 +121,82 @@ describe('Firefox request-scoped proxy authentication', function() {
 
   });
 
-  it('never answers an origin authentication challenge while active',
+  it('leaves origin authentication to the browser in every runtime state',
       function() {
 
         let resolverCalls = 0;
-        const current = fixture({
-          resolveCredentials() {
+        for (const state of Object.values(Adapter.STATES)) {
+          const current = fixture({
+            state,
+            resolveCredentials() {
 
-            resolverCalls += 1;
-            return FIXTURE_CREDENTIALS;
+              resolverCalls += 1;
+              return FIXTURE_CREDENTIALS;
 
-          },
-        });
-        select(current);
+            },
+          });
+          if (state === Adapter.STATES.READY) select(current);
 
-        Assert.deepStrictEqual(current.proxyAuth.onAuthRequired(challenge(
-            'request',
-            'origin.test',
-            80,
-            {isProxy: false},
-        )), {cancel: true});
+          // Even an origin sharing the configured proxy endpoint must not get
+          // proxy credentials, consume an attempt, or authorize a proxy retry.
+          for (const host of ['origin.test', 'proxy.test']) {
+            Assert.strictEqual(current.proxyAuth.onAuthRequired(challenge(
+                'request', host, 8080, {isProxy: false},
+            )), undefined);
+          }
+          Assert.strictEqual(current.proxyAuth.attemptCount(), 0);
+          Assert.strictEqual(current.routingAdapter.authorizationCount(), 0);
+        }
         Assert.strictEqual(resolverCalls, 0);
+
+      });
+
+  it('does not consume or reset proxy attempts for an origin challenge',
+      function() {
+
+        const current = fixture();
+        select(current);
+        current.proxyAuth.onAuthRequired(challenge());
+        Assert.strictEqual(current.proxyAuth.attemptCount(), 1);
+        Assert.strictEqual(current.routingAdapter.authorizationCount(), 1);
+        Assert.strictEqual(current.proxyAuth.onAuthRequired(challenge(
+            'request', 'origin.test', 80, {isProxy: false},
+        )), undefined);
+        Assert.strictEqual(current.proxyAuth.attemptCount(), 1);
+        Assert.strictEqual(current.routingAdapter.authorizationCount(), 1);
+
+      });
+
+  it('permits the browser origin retry without resolving proxy credentials',
+      function() {
+
+        let resolverCalls = 0;
+        const current = fixture({resolveCredentials() {
+
+          resolverCalls += 1;
+          return FIXTURE_CREDENTIALS;
+
+        }});
+        const request = {requestId: 'request', url: 'http://origin.test/private',
+          proxyInfo: {type: 'http', host: 'proxy.test', port: 8080}};
+        current.routingAdapter.onProxyRequest(request);
+        current.routingAdapter.onBeforeRequest(request);
+        current.routingAdapter.onHeadersReceived(Object.assign({}, request, {
+          statusCode: 401, responseHeaders: [{name: 'WWW-Authenticate'}],
+        }));
+        const originChallenge = Object.assign({}, request, {
+          isProxy: false, challenger: {host: 'origin.test', port: 80},
+        });
+        Assert.strictEqual(current.proxyAuth.onAuthRequired(originChallenge), undefined);
+        Assert.deepStrictEqual(current.routingAdapter.onBeforeRequest(request), {cancel: false});
+        Assert.strictEqual(resolverCalls, 0);
+        Assert.strictEqual(current.proxyAuth.attemptCount(), 0);
+        Assert.strictEqual(current.routingAdapter.authorizationCount(), 0);
+        // Origin handling must leave a later real proxy challenge usable.
+        Assert.deepStrictEqual(current.proxyAuth.onAuthRequired(challenge()), {
+          authCredentials: FIXTURE_CREDENTIALS,
+        });
+        Assert.strictEqual(resolverCalls, 1);
 
       });
 

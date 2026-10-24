@@ -380,7 +380,7 @@ Mocha.describe('Chromium startup proxy-ownership recovery', function() {
         Chai.expect(health).to.include({
           status: 'unknown',
           candidateType: 'torBrowser',
-          candidateEndpoint: '127.0.0.1:9150',
+          candidateEndpoint: 'localhost:9150',
           targetOrigin: 'https://audit.example',
         });
         Chai.expect(health.nextCheckAt).to.be.a('number');

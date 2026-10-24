@@ -69,6 +69,21 @@ function copy(value) {
 
 }
 
+function httpsArtifact(options = {}) {
+
+  const sourceSha256 = options.sourceSha256 || sha256(Buffer.from('synthetic public source'));
+  const result = artifact(Object.assign({}, options, {providerKey: 'anticensority',
+    trust: Dataset.TRUST.REMOTE_HTTPS_VALIDATED,
+    envelopeOverrides: Object.assign({
+      generatedAt: '2026-09-02T00:00:00.000Z',
+      sourceRevisions: [{sourceId: 'anticensority-pac', revision: `sha256=${sourceSha256}`}],
+    }, options.envelopeOverrides)}));
+  result.source = {sourceId: 'anticensority-pac', sourceSha256,
+    updatedAt: result.envelope.generatedAt};
+  return result;
+
+}
+
 function memoryBackend() {
 
   const artifacts = new Map();
@@ -108,6 +123,7 @@ module.exports = Object.freeze({
   Dataset,
   PROVIDER_KEY,
   artifact,
+  httpsArtifact,
   memoryBackend,
   payload,
   sha256,

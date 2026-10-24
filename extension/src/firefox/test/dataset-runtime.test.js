@@ -73,6 +73,63 @@ function adapterForRuntime(runtime) {
 
 describe('Firefox declarative dataset runtime', function() {
 
+  it('runs the exact built-in manual policy without opening or indexing any dataset', async function() {
+    const Settings = require('../background/settings-control');
+    const settings = Settings.createDefaultSettings();
+    settings.source = 'manual';
+    settings.rules = {direct: ['direct.test'], proxy: ['proxy.test'], whitelist: []};
+    settings.localTor.useForProxyRules = true;
+    const base = Settings.buildRoutingSnapshot(settings).routingConfig;
+    const runtime = Runtime.createRuntime({protectionIntended: true,
+      providerKey: 'manual', datasetIdentity: Runtime.MANUAL_IDENTITY,
+      store: {loadVerifications() {
+        throw new Error('manual must not load datasets');
+      }},
+      buildLookup() {
+        throw new Error('manual must not index datasets');
+      },
+      baseInputForRequest: () => base});
+    Assert.strictEqual((await runtime.initialize()).state, 'READY');
+    const decide = (host) => Routing.decideRoute(runtime.routingInputForRequest({url: `https://${host}/`}));
+    Assert.strictEqual(decide('direct.test').kind, 'DIRECT');
+    Assert.strictEqual(decide('unlisted.test').kind, 'DIRECT');
+    Assert.deepStrictEqual(decide('proxy.test').candidates.map((value) => value.port), [9050]);
+    Assert.strictEqual(decide('proxy.test').fallback, 'FAIL_CLOSED');
+    Assert.deepStrictEqual(decide('service.onion').candidates.map((value) => value.port), [9050, 9150]);
+  });
+
+  it('keeps manual noDirect, explicit Direct, whitelist and missing-candidate protections', async function() {
+    const Settings = require('../background/settings-control');
+    const settings = Settings.createDefaultSettings();
+    settings.source = 'manual';
+    settings.flags.noDirect = true;
+    settings.rules = {direct: ['direct.test'], proxy: ['proxy.test'], whitelist: ['allowed.test']};
+    let base = Settings.buildRoutingSnapshot(settings).routingConfig;
+    const runtime = Runtime.createRuntime({protectionIntended: true, providerKey: 'manual',
+      datasetIdentity: Runtime.MANUAL_IDENTITY, baseInputForRequest: () => base});
+    await runtime.initialize();
+    const decide = (host) => Routing.decideRoute(runtime.routingInputForRequest({url: `https://${host}/`}));
+    Assert.strictEqual(decide('direct.test').kind, 'DIRECT');
+    Assert.strictEqual(decide('unlisted.test').kind, 'DIRECT');
+    Assert.strictEqual(decide('allowed.test').kind, 'FAIL_CLOSED');
+    Assert.strictEqual(decide('proxy.test').code, 'PROXY_RULE_NO_CANDIDATE');
+    settings.localTor.useForProxyRules = true;
+    settings.flags.ownProxiesOnlyForOwnSites = false;
+    base = Settings.buildRoutingSnapshot(settings).routingConfig;
+    Assert.deepStrictEqual(decide('allowed.test').candidates.map((value) => value.port), [9050]);
+    Assert.strictEqual(decide('allowed.test').fallback, 'FAIL_CLOSED');
+  });
+
+  it('rejects absent, altered or extra manual identity fields rather than silently enabling Direct', async function() {
+    for (const identity of [undefined, Object.assign({}, Runtime.MANUAL_IDENTITY, {artifactSha256: '0'.repeat(64)}),
+      Object.assign({}, Runtime.MANUAL_IDENTITY, {extra: true})]) {
+      const runtime = Runtime.createRuntime({protectionIntended: true, providerKey: 'manual',
+        datasetIdentity: identity, baseInputForRequest: () => ({})});
+      Assert.strictEqual((await runtime.initialize()).state, 'FAILED');
+      Assert.throws(() => runtime.routingInputForRequest({url: 'https://example.test/'}));
+    }
+  });
+
   it('does not read dataset storage while durable protection is OFF',
       async function() {
 

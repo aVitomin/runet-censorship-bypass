@@ -1,9 +1,9 @@
 # 1.0 store publication preparation
 
-Documentation-only drafts for Firefox Add-ons (primary) and Chrome Web Store
-(optional), audited against `8361608fa4ac52cc118cf5e6d32b3feb8772d167`.
-No runtime, manifest, permission or version changes; no signing, store upload,
-tag or release action. These materials do not announce 1.0 as available.
+Draft publication materials for development version `1.0.0`: Firefox Add-ons
+(primary) and Chrome Web Store (optional). Check these descriptions against the
+exact release artifact and record its validation separately. These materials
+do not announce 1.0 as available or establish signing, upload or release evidence.
 
 - [Feature inventory and implementation evidence](FEATURE_INVENTORY_1_0.md)
 - [Firefox title, summary, description and listing fields](FIREFOX_AMO_LISTING_1_0.md)

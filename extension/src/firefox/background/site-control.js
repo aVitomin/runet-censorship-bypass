@@ -214,10 +214,10 @@
 
     }
 
-    async function getUnchecked(tabUrl) {
+    async function getUnchecked(tabUrl, verifiedSettings = null) {
 
       const target = targetFromUrl(tabUrl);
-      const current = await settingsController.get();
+      const current = verifiedSettings || await settingsController.get();
       if (!target.controllable) {
         return Object.freeze({
           schemaVersion: SCHEMA_VERSION,
@@ -266,7 +266,7 @@
     }
 
     return Object.freeze({
-      get: (tabUrl) => enqueue(() => getUnchecked(tabUrl)),
+      get: (tabUrl, verifiedSettings) => enqueue(() => getUnchecked(tabUrl, verifiedSettings)),
       replace: (request) => enqueue(() => replaceUnchecked(request)),
     });
 

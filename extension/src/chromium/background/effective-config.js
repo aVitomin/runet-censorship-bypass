@@ -138,9 +138,9 @@
 
   }
 
-  async function collect(store) {
+  async function collect(store, persistedBindings = null) {
 
-    const bindings = await readBindings();
+    const bindings = persistedBindings || await readBindings();
     const needed = new Set(bindings.entries.map((entry) => entry.generationId));
     needed.add(store.effectiveId);
     if (store.transaction) {
@@ -410,7 +410,9 @@
       const store = await read();
       if (store) {
         const count = store.records.length;
-        await collect(store);
+        // This queue owns the bindings just saved above; no later request can
+        // change them before collection. Other callers still read from storage.
+        await collect(store, bindings);
         if (store.records.length !== count) await write(store);
       }
     });

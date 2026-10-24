@@ -191,6 +191,49 @@ describe('Chromium Saved and Effective generations', function() {
 
   });
 
+  it('collects completed request generations using the bindings just persisted in the queue', async function() {
+
+    const h = await active();
+    const api = h.context.mv3Effective;
+    const old = await effective(h);
+    await api.bindRequest({requestId: 'old-first'});
+    await api.bindRequest({requestId: 'old-last'});
+    await save(h);
+    Assert.equal((await h.audit.applyCookedPacAndPersist({})).ok, true);
+    const current = await effective(h);
+    await api.bindRequest({requestId: 'current'});
+    h.resetCounts();
+
+    await api.releaseRequest({requestId: 'old-first'});
+    Assert.equal(h.counts.storageGets, 2);
+    Assert.equal(h.counts.storageSets, 1);
+    Assert.ok(h.getLocalStorage()[api.STORAGE_KEY].records.some((record) => record.id === old.id));
+    Assert.equal((await challenge(h, 'old-last')).authCredentials.password, 'synthetic-A');
+    await api.releaseRequest({requestId: 'old-last'});
+    Assert.deepEqual(h.getLocalStorage()[api.STORAGE_KEY].records.map((record) => record.id),
+        [current.id]);
+    Assert.equal((await challenge(h, 'current')).authCredentials.password, 'synthetic-B');
+
+  });
+
+  it('keeps retained generations when persisting completed request bindings fails', async function() {
+
+    const h = await active();
+    const api = h.context.mv3Effective;
+    const old = await effective(h);
+    await api.bindRequest({requestId: 'old-last'});
+    await save(h);
+    Assert.equal((await h.audit.applyCookedPacAndPersist({})).ok, true);
+    h.failNextSessionStorageSet('Synthetic completion storage failure');
+
+    await Assert.rejects(api.releaseRequest({requestId: 'old-last'}));
+    Assert.ok(h.getLocalStorage()[api.STORAGE_KEY].records.some((record) => record.id === old.id));
+    Assert.equal((await challenge(h, 'old-last')).authCredentials.password, 'synthetic-A');
+    await api.releaseRequest({requestId: 'old-last'});
+    Assert.ok(!h.getLocalStorage()[api.STORAGE_KEY].records.some((record) => record.id === old.id));
+
+  });
+
   it('promotes password-only changes with an identical PAC and a distinct generation', async function() {
 
     const h = await active();

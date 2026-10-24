@@ -986,6 +986,91 @@ Mocha.describe('Chromium active-tab action status refresh', function() {
 
       });
 
+  Mocha.it('restores a navigation presentation superseded during status loading',
+      async function() {
+
+        let releaseStatus;
+        let holdStatus = false;
+        const pendingStatus = new Promise((resolve) => {
+          releaseStatus = resolve;
+        });
+        const harness = createHarness({
+          async createStatus(url, snapshot, fallback) {
+
+            if (holdStatus) {
+              holdStatus = false;
+              await pendingStatus;
+            }
+            return fallback(url, snapshot);
+
+          },
+        });
+        await harness.start();
+        harness.calls.length = 0;
+        holdStatus = true;
+        harness.updateTab(1, {status: 'complete'});
+        await waitForRefresh();
+
+        await harness.coordinator.requestRefresh({state: harness.setState({})});
+        releaseStatus();
+        await waitForRefresh();
+
+        Chai.expect(harness.calls).to.have.length(5);
+        Chai.expect(harness.calls.every((call) => call.params.tabId === 1)).to.equal(true);
+        harness.calls.length = 0;
+        await harness.coordinator.requestRefresh({});
+        Chai.expect(harness.calls).to.have.length(0);
+
+      });
+
+  Mocha.it('keeps a superseded navigation invalidation on its own tab',
+      async function() {
+
+        const harness = createHarness();
+        await harness.start();
+        harness.activate(2);
+        await waitForRefresh();
+        harness.activate(1);
+        await waitForRefresh();
+        harness.calls.length = 0;
+
+        harness.updateTab(1, {status: 'complete'});
+        harness.activate(2);
+        await waitForRefresh();
+        Chai.expect(harness.calls).to.have.length(0);
+
+        harness.activate(1);
+        await waitForRefresh();
+        Chai.expect(harness.calls).to.have.length(5);
+        Chai.expect(harness.calls.every((call) => call.params.tabId === 1)).to.equal(true);
+
+      });
+
+  Mocha.it('does not let in-flight Action callbacks restore an invalidated cache',
+      async function() {
+
+        const harness = createHarness();
+        await harness.start();
+        harness.calls.length = 0;
+        harness.holdActionCallbacks();
+        harness.updateTab(1, {status: 'complete'});
+        await waitForRefresh();
+        Chai.expect(harness.calls).to.have.length(5);
+
+        harness.updateTab(1, {status: 'complete'});
+        await waitForRefresh();
+        const latest = harness.coordinator.requestRefresh({state: harness.setState({})});
+        await waitForRefresh();
+        harness.releaseActionCallbacks();
+        await latest;
+
+        Chai.expect(harness.calls).to.have.length(10);
+        harness.calls.length = 0;
+        await harness.coordinator.requestRefresh({});
+        Chai.expect(harness.calls).to.have.length(0);
+
+      });
+
   Mocha.it('lets external ownership supersede an older pending lookup',
       async function() {
 

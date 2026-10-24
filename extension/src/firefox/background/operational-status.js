@@ -383,6 +383,7 @@
     let operationQueue = Promise.resolve();
     let toolbarRequest = 0;
     let toolbarFingerprint = null;
+    let toolbarSiteRead = null;
     let activeOperation = null;
     let operationSequence = 0;
 
@@ -485,14 +486,14 @@
 
     }
 
-    async function publicStatus() {
+    async function publicStatus(verifiedSettings = null) {
 
       await initialize();
       const manifest = runtimeApi.getManifest();
       const activation = activationSnapshot() || {};
       const [settingsResult, level, access, browser, dataset] =
         await Promise.all([
-          settingsController.get(),
+          verifiedSettings || settingsController.get(),
           controlLevel(),
           privateAccess(),
           browserInfo(),
@@ -585,6 +586,33 @@
 
     }
 
+    function toolbarNeedsSite() {
+
+      return deriveToolbarPresentation({
+        activation: activationSnapshot(),
+        health: state.health,
+        operation: activeOperation && activeOperation.kind,
+      }, message).kind === 'UNAVAILABLE';
+
+    }
+
+    async function readToolbarSite(tabUrl, requestId) {
+
+      // Wait for the one in-flight read, then only the latest request may
+      // start a fresh read. Never reuse the previous tab's verified snapshot.
+      if (toolbarSiteRead) await toolbarSiteRead;
+      if (requestId !== toolbarRequest || !toolbarNeedsSite()) return null;
+      const pending = Promise.resolve().then(() => siteController.get(tabUrl))
+          .catch(() => null);
+      toolbarSiteRead = pending;
+      try {
+        return await pending;
+      } finally {
+        if (toolbarSiteRead === pending) toolbarSiteRead = null;
+      }
+
+    }
+
     async function refreshToolbar(params = {}) {
 
       const requestId = ++toolbarRequest;
@@ -592,6 +620,9 @@
         await initialize();
       } catch (_error) {
         // A storage failure is represented by the blocked presentation below.
+      }
+      if (requestId !== toolbarRequest) {
+        return {ok: false, status: 'SUPERSEDED'};
       }
       let tab = params.tab || null;
       if (!tab && Number.isInteger(params.tabId) && tabsApi &&
@@ -605,17 +636,23 @@
       if (!tab) {
         tab = await activeTab();
       }
-      let site = null;
-      if (tab && typeof tab.url === 'string') {
-        try {
-          site = await siteController.get(tab.url);
-        } catch (_error) {
-          site = null;
-        }
+      if (requestId !== toolbarRequest) {
+        return {ok: false, status: 'SUPERSEDED'};
       }
+      // Only an active route presentation depends on site settings. OFF,
+      // loading, busy and error indicators must not load a dataset just to
+      // discard it. Live control is still read below before publishing.
+      let site = null;
+      if (toolbarNeedsSite() && tab && typeof tab.url === 'string') {
+        site = await readToolbarSite(tab.url, requestId);
+      }
+      if (requestId !== toolbarRequest) {
+        return {ok: false, status: 'SUPERSEDED'};
+      }
+      const level = await controlLevel();
       const value = deriveToolbarPresentation({
         activation: activationSnapshot(),
-        controlLevel: await controlLevel(),
+        controlLevel: level,
         health: state.health,
         operation: activeOperation && activeOperation.kind,
         site,

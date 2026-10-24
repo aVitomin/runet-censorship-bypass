@@ -98,6 +98,9 @@ function providerUpdateResult(overrides = {}) {
   return Object.assign({
     schemaVersion: 1,
     trustConfigured: false,
+    updateConfigured: overrides.trustConfigured === true,
+    updateChannel: overrides.trustConfigured === true ? 'SIGNED' : 'NONE',
+    sourceUpdatedAt: null,
     automaticChecksEnabled: false,
     status: 'NOT_CONFIGURED',
     currentDatasetVersion: 'public-v1',
@@ -115,7 +118,28 @@ function configurationRpc(rpc) {
 
   let revision = 0;
   let active = false;
-  return {async call(message) {
+  const adapter = {async call(message) {
+
+    if (message.type === 'firefox.popup.get') {
+      const [capabilities, site, operational] = await Promise.all([
+        adapter.call({type: 'firefox.capabilities.get'}),
+        adapter.call({type: 'firefox.site.get', tabUrl: message.tabUrl}),
+        adapter.call({type: 'firefox.operational.get'}),
+      ]);
+      return {capabilities, site, operational,
+        configuration: await adapter.call({type: 'firefox.configuration.get'})};
+    }
+
+    if (message.type === 'firefox.options.get') {
+      const [capabilities, settings, operational, providerUpdate] = await Promise.all([
+        adapter.call({type: 'firefox.capabilities.get'}),
+        adapter.call({type: 'firefox.settings.get'}),
+        adapter.call({type: 'firefox.operational.get'}),
+        adapter.call({type: 'firefox.provider.update.get'}),
+      ]);
+      return {capabilities, settings, operational, providerUpdate,
+        configuration: await adapter.call({type: 'firefox.configuration.get'})};
+    }
 
     if (message.type === 'firefox.configuration.get') {
       return {
@@ -130,6 +154,7 @@ function configurationRpc(rpc) {
     return result;
 
   }};
+  return adapter;
 
 }
 
@@ -176,13 +201,14 @@ describe('Firefox Options external status synchronization', function() {
     const rendered = [];
     const controller = Options.createController({changed: (state) => rendered.push(state), rpc: {
       async call(message) {
-        const value = message.type === 'firefox.configuration.get' ? Object.assign({}, status) :
-          message.type === 'firefox.capabilities.get' ? capabilities({
+        Assert.strictEqual(message.type, 'firefox.options.get');
+        const value = {configuration: Object.assign({}, status),
+          capabilities: capabilities({
             runtimeState: status.active ? 'READY' : status.blocked ? 'FAILED' : 'OFF',
             privateWindowAccess: status.reason === 'PRIVATE_ACCESS_REQUIRED' ? 'DENIED' : 'GRANTED',
-          }) : message.type === 'firefox.settings.get' ? settingsResult(revision) :
-          message.type === 'firefox.operational.get' ? operationalResult() : providerUpdateResult();
-        if (message.type === 'firefox.configuration.get' && gate) {
+          }), settings: settingsResult(revision), operational: operationalResult(),
+          providerUpdate: providerUpdateResult()};
+        if (gate) {
           const waiting = gate;
           gate = null;
           await waiting.promise;
@@ -497,6 +523,11 @@ describe('Firefox production UI controllers', function() {
     const rpc = {async call(message) {
 
       calls.push(message);
+      if (message.type === 'firefox.options.get') {
+        return {configuration: configuration(), settings: structuredClone(saved),
+          capabilities: await rpc.call({type: 'firefox.capabilities.get'}),
+          operational: operationalResult(), providerUpdate: providerUpdateResult()};
+      }
       if (message.type === 'firefox.configuration.get') return configuration();
       if (message.type === 'firefox.capabilities.get') {
         return capabilities({
@@ -548,6 +579,39 @@ describe('Firefox production UI controllers', function() {
     Assert.strictEqual(test.configuration().effectiveId, 'generation-2');
     Assert.strictEqual(test.calls.filter((value) => value.type === 'firefox.activation.clear').length, 0);
 
+  });
+
+  it('saves manual source as pending and applies only the displayed Saved revision', async function() {
+    const test = unifiedUi();
+    await test.controller.load();
+    const draft = structuredClone(test.controller.snapshot().settings);
+    draft.source = 'manual';
+    test.controller.edit();
+    Assert.strictEqual(await test.controller.save(draft), true);
+    Assert.strictEqual(test.controller.snapshot().settings.source, 'manual');
+    Assert.strictEqual(test.configuration().effectiveId, 'generation-1');
+    Assert.strictEqual(test.calls.some((call) => call.type === 'firefox.activation.apply'), false);
+    Assert.strictEqual(await test.controller.applySaved(), true);
+    Assert.strictEqual(test.calls.find((call) => call.type === 'firefox.activation.apply').expectedRevision, 2);
+  });
+
+  it('keeps a deferred manual-source update prepared without an installed notice', async function() {
+    const test = unifiedUi();
+    const controller = Options.createController({rpc: {async call(message) {
+      if (message.type === 'firefox.provider.update.install') return {status: 'DEFERRED'};
+      const result = await test.rpc.call(message);
+      if (message.type === 'firefox.options.get') {
+        result.settings.settings.source = 'manual';
+        result.providerUpdate = providerUpdateResult({updateConfigured: true,
+          updateChannel: 'HTTPS', updateAvailable: true, status: 'UPDATE_AVAILABLE',
+          stagedDatasetVersion: 'staged-v1', lastCheckStatus: 'STAGED'});
+      }
+      return result;
+    }}});
+    await controller.load();
+    Assert.strictEqual(await controller.installProviderUpdate(), true);
+    Assert.strictEqual(controller.snapshot().notice, 'UPDATE_CHECKED');
+    Assert.strictEqual(Options.providerUpdateView(controller.snapshot()).label, 'providerLifecyclePrepared');
   });
 
   it('preserves a stale Draft through an external Save and discards only local edits', async function() {
@@ -651,6 +715,11 @@ describe('Firefox production UI controllers', function() {
       async call(message) {
 
         calls.push(message);
+        if (message.type === 'firefox.popup.get') {
+          const result = await test.rpc.call({type: 'firefox.options.get'});
+          return {capabilities: result.capabilities, site: siteState(),
+            operational: result.operational, configuration: result.configuration};
+        }
         if (message.type === 'firefox.site.get') return siteState();
         if (message.type === 'firefox.site.apply') {
           return {applied: false, saved: true,
@@ -855,6 +924,66 @@ describe('Firefox production UI controllers', function() {
         ]);
 
       });
+
+  it('loads a complete popup snapshot with one tab lookup and one RPC', async function() {
+    const calls = [];
+    let lookups = 0;
+    const result = {capabilities: capabilities(), site: siteState(),
+      operational: operationalResult(), configuration: unifiedUi().configuration()};
+    const controller = Popup.createController({
+      getActiveTabUrl: async () => {
+        lookups += 1; return 'https://sub.example.com/private?synthetic=1';
+      },
+      rpc: {async call(message) {
+        calls.push(message); return result;
+      }},
+    });
+    Assert.strictEqual(await controller.refresh(), true);
+    Assert.strictEqual(lookups, 1);
+    Assert.deepStrictEqual(calls, [{type: 'firefox.popup.get',
+      tabUrl: 'https://sub.example.com/private?synthetic=1'}]);
+    Assert.deepStrictEqual(controller.snapshot().site, result.site);
+    Assert.deepStrictEqual(controller.snapshot().configuration, result.configuration);
+  });
+
+  it('rejects malformed popup bundles without partially replacing a previous snapshot', async function() {
+    const complete = {capabilities: capabilities(), site: siteState(),
+      operational: operationalResult(), configuration: unifiedUi().configuration()};
+    const missing = Object.assign({}, complete);
+    delete missing.configuration;
+    for (const invalid of [null, missing, Object.assign({settings: {}}, complete),
+      Object.assign({}, complete, {configuration: {savedRevision: -1}})]) {
+      let response = complete;
+      const controller = Popup.createController({getActiveTabUrl: async () => '',
+        rpc: {call: async () => response}});
+      Assert.strictEqual(await controller.refresh(), true);
+      const before = controller.snapshot();
+      response = invalid;
+      Assert.strictEqual(await controller.refresh(), false);
+      const after = controller.snapshot();
+      Assert.strictEqual(after.errorCode, 'UI_RPC_FAILED');
+      for (const key of ['capabilities', 'site', 'operational', 'configuration']) {
+        Assert.strictEqual(after[key], before[key]);
+      }
+    }
+  });
+
+  it('loads an uncontrollable popup target when the active tab cannot be read', async function() {
+    const controller = Popup.createController({
+      getActiveTabUrl: async () => {
+        throw failure('PRIVATE_TAB');
+      },
+      rpc: {async call(message) {
+        Assert.deepStrictEqual(message, {type: 'firefox.popup.get', tabUrl: ''});
+        return {capabilities: capabilities(), operational: operationalResult(),
+          configuration: unifiedUi().configuration(),
+          site: siteState({target: {controllable: false, host: '', reasonCode: 'UNSUPPORTED_PAGE'},
+            route: null, patterns: null})};
+      }},
+    });
+    Assert.strictEqual(await controller.refresh(), true);
+    Assert.strictEqual(controller.snapshot().site.target.controllable, false);
+  });
 
   it('runs Apply then refreshes capabilities', async function() {
 
@@ -1161,22 +1290,39 @@ describe('Firefox production UI controllers', function() {
 
   });
 
-  it('loads capabilities, settings, and exact revision', async function() {
+  it('loads validated Options state and exact revision with one RPC', async function() {
 
+    const calls = [];
     const rpc = {async call(message) {
 
-      return message.type === 'firefox.capabilities.get' ?
-        capabilities() : message.type === 'firefox.settings.get' ?
-          settingsResult(7) : message.type === 'firefox.operational.get' ?
-            operationalResult() : providerUpdateResult();
+      calls.push(message);
+      return {capabilities: capabilities(), settings: settingsResult(7),
+        operational: operationalResult(), providerUpdate: providerUpdateResult(),
+        configuration: {savedRevision: 7, effectiveId: null, active: false,
+          pending: false, applying: false, blocked: false,
+          reason: null, pendingCategories: []}};
 
     }};
-    const controller = optionsController({rpc});
+    const controller = Options.createController({rpc});
 
     Assert.strictEqual(await controller.load(), true);
     Assert.strictEqual(controller.snapshot().revision, 7);
     Assert.strictEqual(controller.snapshot().editable, true);
+    Assert.deepStrictEqual(calls, [{type: 'firefox.options.get'}]);
 
+  });
+
+  it('rejects missing or unexpected fields in an Options bundle', async function() {
+    const complete = await unifiedUi().rpc.call({type: 'firefox.options.get'});
+    const missing = Object.assign({}, complete);
+    delete missing.configuration;
+    for (const response of [null, missing, Object.assign({records: {}}, complete),
+      Object.assign({}, complete, {settings: {revision: -1}})]) {
+      const controller = Options.createController({rpc: {call: async () => response}});
+      Assert.strictEqual(await controller.load(), false);
+      Assert.strictEqual(controller.snapshot().errorCode, 'UI_RPC_FAILED');
+      Assert.strictEqual(controller.snapshot().settings, null);
+    }
   });
 
   it('rechecks options private access without reloading settings',
@@ -1544,7 +1690,7 @@ describe('Firefox production UI controllers', function() {
 
       });
 
-  it('checks updates with no caller-controlled trust or dataset input',
+  it('updates HTTPS data with no caller trust input and reports automatic installation',
       async function() {
 
         const calls = [];
@@ -1564,23 +1710,26 @@ describe('Firefox production UI controllers', function() {
             }
             if (message.type === 'firefox.provider.update.get') {
               return providerUpdateResult(checked ? {
-                trustConfigured: true,
+                updateConfigured: true,
+                updateChannel: 'HTTPS',
                 automaticChecksEnabled: true,
-                status: 'UPDATE_AVAILABLE',
-                updateAvailable: true,
-                stagedDatasetVersion: 'public-v2',
-                lastCheckStatus: 'STAGED',
+                status: 'UPDATED',
+                updateAvailable: false,
+                currentDatasetVersion: 'public-v2',
+                sourceUpdatedAt: 700,
+                lastCheckStatus: 'INSTALLED',
                 lastCheckAt: 1000,
                 lastSuccessfulCheckAt: 1000,
               } : {
-                trustConfigured: true,
+                updateConfigured: true,
+                updateChannel: 'HTTPS',
                 automaticChecksEnabled: true,
                 status: 'IDLE',
               });
             }
             if (message.type === 'firefox.provider.update.check') {
               checked = true;
-              return {status: 'STAGED'};
+              return {status: 'INSTALLED'};
             }
             throw failure('UNEXPECTED_RPC');
 
@@ -1593,13 +1742,16 @@ describe('Firefox production UI controllers', function() {
           type: 'firefox.provider.update.check',
         });
         Assert.strictEqual(
-            controller.snapshot().providerUpdate.updateAvailable,
-            true,
+            controller.snapshot().providerUpdate.currentDatasetVersion,
+            'public-v2',
         );
+        Assert.strictEqual(controller.snapshot().notice, 'UPDATE_INSTALLED');
+        Assert.strictEqual(controller.snapshot().providerUpdate.sourceUpdatedAt, 700);
+        Assert.strictEqual(controller.snapshot().providerUpdate.lastCheckAt, 1000);
 
       });
 
-  it('installs a staged update while OFF without activating protection',
+  it('installs a deferred HTTPS update while OFF without claiming signed trust',
       async function() {
 
         const calls = [];
@@ -1619,7 +1771,8 @@ describe('Firefox production UI controllers', function() {
             }
             if (message.type === 'firefox.provider.update.get') {
               return providerUpdateResult({
-                trustConfigured: true,
+                updateConfigured: true,
+                updateChannel: 'HTTPS',
                 automaticChecksEnabled: true,
                 status: installed ? 'UPDATED' : 'UPDATE_AVAILABLE',
                 currentDatasetVersion: installed ? 'public-v2' : 'public-v1',
@@ -1702,6 +1855,9 @@ describe('Firefox production UI controllers', function() {
         status: 'CHECK_FAILED',
         errorCategory: 'https://updates.example/private',
       }),
+      providerUpdateResult({updateConfigured: true, updateChannel: 'HTTPS', trustConfigured: true}),
+      providerUpdateResult({updateChannel: 'https://caller.example/private'}),
+      providerUpdateResult({sourceUpdatedAt: '2026-10-01'}),
     ]) {
       Assert.throws(
           () => Options.validateProviderUpdateStatus(unsafe),
@@ -1716,6 +1872,11 @@ describe('Firefox production UI controllers', function() {
     const test = unifiedUi();
     const controller = Options.createController({rpc: {async call(message) {
 
+      if (message.type === 'firefox.options.get') {
+        const result = await test.rpc.call(message);
+        result.providerUpdate = await this.call({type: 'firefox.provider.update.get'});
+        return result;
+      }
       if (message.type === 'firefox.provider.update.get') {
         return providerUpdateResult({trustConfigured: true, status: 'UPDATE_AVAILABLE',
           updateAvailable: true, stagedDatasetVersion: 'public-v2'});
@@ -1799,6 +1960,10 @@ describe('Firefox production UI controllers', function() {
     Assert.match(catalogs[1].providerUpdateHelp.message, /включённой защите/i);
     Assert.doesNotMatch(catalogs[1].providerUpdateHelp.message, /выключенной защите/i);
     Assert.match(catalogs[1].providerUpdateActiveHelp.message, /ожидающими применения/i);
+    Assert.match(catalogs[0].providerUpdateChannel_HTTPS.message, /no author signature/i);
+    Assert.match(catalogs[1].providerUpdateChannel_HTTPS.message, /без подписи автора/i);
+    Assert.notStrictEqual(catalogs[0].providerUpdateSourceDate.message,
+        catalogs[0].providerUpdateLastCheck.message);
 
   });
 

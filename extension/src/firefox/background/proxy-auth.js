@@ -84,6 +84,11 @@
     function onAuthRequired(details) {
 
       try {
+        // Origin authentication belongs to the browser, even during recovery.
+        // The routing guard separately bounds retries after a site's 401.
+        if (details && details.isProxy === false) {
+          return undefined;
+        }
         const state = routingAdapter.currentRuntimeState();
         if (state === STATES.OFF) {
           return undefined;

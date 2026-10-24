@@ -10,7 +10,9 @@
     require('./product-config') : root.rucbFirefoxProductConfig;
   const offState = typeof module === 'object' && module.exports ?
     require('./off-state') : root.rucbFirefoxOffState;
-  const api = factory(dataset, productConfig, offState);
+  const datasetStore = typeof module === 'object' && module.exports ?
+    require('./dataset-store') : root.rucbFirefoxDatasetStore;
+  const api = factory(dataset, productConfig, offState, datasetStore);
   if (typeof module === 'object' && module.exports) {
     module.exports = api;
     return;
@@ -18,7 +20,7 @@
   root.rucbFirefoxDatasetPromotion = api;
 
 })(typeof globalThis === 'object' ? globalThis : this,
-    function(Dataset, ProductConfig, OffState) {
+    function(Dataset, ProductConfig, OffState, DatasetStore) {
 
       const JOURNAL_SCHEMA_VERSION = 1;
       const JOURNAL_STATUS = 'PREPARED';
@@ -93,9 +95,13 @@
 
       function canonicalJournal(value) {
 
-        const active = value && value.schemaVersion === 2;
-        if (!exactKeys(value, active ? [...JOURNAL_KEYS, 'effectiveRoutingDescriptor'] : JOURNAL_KEYS) ||
-            ![JOURNAL_SCHEMA_VERSION, 2].includes(value.schemaVersion) ||
+        const active = value && [2, 4].includes(value.schemaVersion);
+        const https = value && [3, 4].includes(value.schemaVersion);
+        const keys = [...JOURNAL_KEYS,
+          ...(active ? ['effectiveRoutingDescriptor'] : []),
+          ...(https ? ['channel', 'source'] : [])];
+        if (!exactKeys(value, keys) ||
+            ![JOURNAL_SCHEMA_VERSION, 2, 3, 4].includes(value.schemaVersion) ||
             value.status !== JOURNAL_STATUS ||
             typeof value.providerKey !== 'string' ||
             !Number.isSafeInteger(value.sequence) || value.sequence < 1 ||
@@ -106,6 +112,18 @@
             !(value.oldPreviousLkgArtifactSha256 === null ||
               SHA256_PATTERN.test(value.oldPreviousLkgArtifactSha256))) {
           throw promotionError(ERRORS.RECOVERY_REQUIRED);
+        }
+        if (https) {
+          try {
+            if (value.channel !== 'HTTPS' || value.providerKey !== 'anticensority') {
+              throw promotionError(ERRORS.RECOVERY_REQUIRED);
+            }
+            value = Object.assign({}, value, {
+              source: DatasetStore.canonicalHttpsSource(value.source),
+            });
+          } catch (_error) {
+            throw promotionError(ERRORS.RECOVERY_REQUIRED);
+          }
         }
         if (active && !OffState.canonicalizeRoutingDescriptor(value.effectiveRoutingDescriptor)) {
           throw promotionError(ERRORS.RECOVERY_REQUIRED);
@@ -127,6 +145,25 @@
           throw promotionError(ERRORS.RECOVERY_REQUIRED);
         }
         return Object.freeze(Object.assign({}, value, {oldConfig, newConfig}));
+
+      }
+
+      function stagedChannel(staged) {
+
+        return staged.channel || staged.verification &&
+          staged.verification.trust === Dataset.TRUST.REMOTE_AUTHENTICATED && 'SIGNED';
+
+      }
+
+      function matchesJournalVerification(verification, journal) {
+
+        const channel = journal.channel || 'SIGNED';
+        return Boolean(verification && verification.ok &&
+          verification.trust === DatasetStore.trustForChannel(channel) &&
+          (channel !== 'HTTPS' || verification.source &&
+            verification.source.sourceId === journal.source.sourceId &&
+            verification.source.sourceSha256 === journal.source.sourceSha256 &&
+            verification.source.updatedAt === journal.source.updatedAt));
 
       }
 
@@ -226,17 +263,18 @@
               verification.dataset.identity,
               journal.oldConfig.datasetIdentity,
           ));
-          const authenticatedStateMatches =
-            pointers.highestAuthenticatedSequence === journal.sequence &&
-            pointers.highestAuthenticatedArtifactSha256 ===
-              journal.stagedArtifactSha256;
+          const channel = journal.channel || 'SIGNED';
+          const candidateStateMatches = DatasetStore.matchesCandidateState(
+              pointers, channel, journal.sequence, journal.stagedArtifactSha256, journal.source,
+          );
           const oldPhase =
-            authenticatedStateMatches &&
+            candidateStateMatches &&
             pointers.activeArtifactSha256 === journal.oldActiveArtifactSha256 &&
             pointers.previousLkgArtifactSha256 ===
               journal.oldPreviousLkgArtifactSha256 &&
             staged.ok === true && staged.status === 'STAGED' &&
-            staged.verification.trust === Dataset.TRUST.REMOTE_AUTHENTICATED &&
+            stagedChannel(staged) === channel &&
+            matchesJournalVerification(staged.verification, journal) &&
             staged.sequence === journal.sequence &&
             staged.verification.dataset.identity.artifactSha256 ===
               journal.stagedArtifactSha256 &&
@@ -245,13 +283,12 @@
                 journal.newConfig.datasetIdentity,
             );
           const newPhase =
-            authenticatedStateMatches && oldDatasetAvailable &&
+            candidateStateMatches && oldDatasetAvailable &&
             pointers.activeArtifactSha256 === journal.stagedArtifactSha256 &&
             pointers.previousLkgArtifactSha256 ===
               journal.oldConfig.datasetIdentity.artifactSha256 &&
             staged.ok === true && staged.status === 'EMPTY' &&
-            verifications.active && verifications.active.ok === true &&
-            verifications.active.trust === Dataset.TRUST.REMOTE_AUTHENTICATED &&
+            matchesJournalVerification(verifications.active, journal) &&
             sameIdentity(
                 verifications.active.dataset.identity,
                 journal.newConfig.datasetIdentity,
@@ -288,7 +325,7 @@
             throw promotionError(ERRORS.PROVIDER_MISMATCH);
           }
           let phase = await pointerPhase(journal);
-          if (journal.schemaVersion === 2) {
+          if ([2, 4].includes(journal.schemaVersion)) {
             const state = stored[OffState.STORAGE_KEY];
             if (!OffState.isCanonicalOnState(state) || state.providerKey !== providerKey ||
                 !OffState.ROUTING_DESCRIPTOR_KEYS.every((key) =>
@@ -306,6 +343,7 @@
               const promoted = await datasetStore.promoteStagedExact({providerKey,
                 stagedArtifactSha256: journal.stagedArtifactSha256,
                 stagedSequence: journal.sequence,
+                channel: journal.channel || 'SIGNED', source: journal.source,
                 currentDatasetIdentity: journal.oldConfig.datasetIdentity});
               if (!promoted || !promoted.ok) {
                 throw promotionError(ERRORS.RECOVERY_REQUIRED);
@@ -359,6 +397,13 @@
           const oldConfig = verifiedConfig.config;
           const effectiveRecords = active ?
             await ProductConfig.readEffectiveRecords(storageArea) : null;
+          // Manual Saved or Effective must never be switched by a provider
+          // refresh. Keep the verified candidate cached until an explicit Apply
+          // selects this provider with no pending source change.
+          if (oldConfig.providerKey === 'manual' || effectiveRecords &&
+              effectiveRecords[ProductConfig.CONFIG_STORAGE_KEY].providerKey === 'manual') {
+            return Object.freeze({ok: true, status: 'DEFERRED'});
+          }
           if (active && (!effectiveRecords || !sameIdentity(
               effectiveRecords[ProductConfig.CONFIG_STORAGE_KEY].datasetIdentity,
               oldConfig.datasetIdentity))) {
@@ -375,18 +420,17 @@
           }
           if (!staged || staged.ok !== true || staged.status !== 'STAGED' ||
               !staged.verification || staged.verification.ok !== true ||
-              staged.verification.trust !==
-                Dataset.TRUST.REMOTE_AUTHENTICATED) {
+              !DatasetStore.trustForChannel(stagedChannel(staged)) ||
+              staged.verification.trust !== DatasetStore.trustForChannel(stagedChannel(staged))) {
             throw promotionError(ERRORS.NO_STAGED_CANDIDATE);
           }
           const identity = staged.verification.dataset.identity;
+          const channel = stagedChannel(staged);
           if (identity.providerKey !== providerKey) {
             throw promotionError(ERRORS.PROVIDER_MISMATCH);
           }
-          if (!Number.isSafeInteger(staged.sequence) || staged.sequence < 1 ||
-              staged.pointers.highestAuthenticatedSequence !== staged.sequence ||
-              staged.pointers.highestAuthenticatedArtifactSha256 !==
-                identity.artifactSha256) {
+          if (!DatasetStore.matchesCandidateState(staged.pointers, channel,
+              staged.sequence, identity.artifactSha256, staged.source)) {
             throw promotionError(ERRORS.SEQUENCE_INVALID);
           }
           if (sameIdentity(identity, oldConfig.datasetIdentity)) {
@@ -415,7 +459,7 @@
               sha256,
           )).config;
           const journal = canonicalJournal(Object.assign({
-            schemaVersion: active ? 2 : JOURNAL_SCHEMA_VERSION,
+            schemaVersion: channel === 'HTTPS' ? active ? 4 : 3 : active ? 2 : JOURNAL_SCHEMA_VERSION,
             status: JOURNAL_STATUS,
             providerKey,
             sequence: staged.sequence,
@@ -425,14 +469,15 @@
               staged.pointers.previousLkgArtifactSha256,
             oldConfig,
             newConfig,
-          }, active ? {effectiveRoutingDescriptor:
+          }, channel === 'HTTPS' ? {channel, source: staged.source} : {},
+          active ? {effectiveRoutingDescriptor:
             effectiveRecords[ProductConfig.CONFIG_STORAGE_KEY].routingDescriptor} : {}));
           let prepared;
           if (active) {
             const checkCandidate = async () => {
               if (await pointerPhase(journal) !== 'OLD') throw promotionError(ERRORS.POINTER_STATE_INVALID);
             };
-            // An exact authenticated staged view is used only for preparation;
+            // An exact channel-bound staged view is used only for preparation;
             // the serving runtime and durable dataset pointers remain untouched.
             const stagedView = {async loadVerifications() {
 
@@ -440,7 +485,8 @@
               const current = await datasetStore.loadStaged(providerKey);
               if (!current || !current.ok || !current.verification ||
                   !sameIdentity(current.verification.dataset.identity, identity) ||
-                  current.verification.trust !== Dataset.TRUST.REMOTE_AUTHENTICATED) {
+                  stagedChannel(current) !== channel ||
+                  !matchesJournalVerification(current.verification, journal)) {
                 throw promotionError(ERRORS.NO_STAGED_CANDIDATE);
               }
               return {active: current.verification, previousLkg: null, packagedBaseline: null};
@@ -460,7 +506,7 @@
             let replacement;
             try {
               replacement = await options.replacePrepared(prepared);
-              // The existing ON record is the commit decision for v2 recovery:
+              // The existing ON record is the active recovery commit decision:
               // OLD rolls back, NEW finalizes pointers and Saved dataset metadata.
               await recoverNow();
             } catch (_error) {
@@ -478,6 +524,7 @@
               providerKey,
               stagedArtifactSha256: identity.artifactSha256,
               stagedSequence: staged.sequence,
+              channel, source: staged.source,
               currentDatasetIdentity: oldConfig.datasetIdentity,
             });
           } catch (_error) {

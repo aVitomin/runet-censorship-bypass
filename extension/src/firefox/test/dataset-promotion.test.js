@@ -113,12 +113,13 @@ async function configFor(item) {
 
 async function system(options = {}) {
 
-  const providerKey = options.providerKey || Helpers.PROVIDER_KEY;
+  const providerKey = options.providerKey || (options.https ? 'anticensority' : Helpers.PROVIDER_KEY);
   const oldArtifact = options.oldArtifact || Helpers.artifact({
     providerKey,
     datasetVersion: 'old-v1',
   });
-  const nextArtifact = options.nextArtifact || Helpers.artifact({
+  const createArtifact = options.https ? Helpers.httpsArtifact : Helpers.artifact;
+  const nextArtifact = options.nextArtifact || createArtifact({
     providerKey,
     datasetVersion: 'new-v2',
     payload: Helpers.payload([{
@@ -132,10 +133,13 @@ async function system(options = {}) {
   const datasetStore = Store.createStore({backend, sha256});
   await datasetStore.commitPackagedBaseline(oldArtifact);
   if (options.stage !== false) {
-    const staged = await datasetStore.stageAuthenticatedCandidate({
+    const stage = options.https ? datasetStore.stageHttpsCandidate :
+      datasetStore.stageAuthenticatedCandidate;
+    const staged = await stage({
       envelope: nextArtifact.envelope,
       artifactBytes: nextArtifact.artifactBytes,
       sequence: options.sequence || 2,
+      source: nextArtifact.source,
     });
     Assert.strictEqual(staged.ok, true);
   }
@@ -192,6 +196,93 @@ async function rejectsCode(operation, code) {
   await Assert.rejects(operation, (error) => error && error.code === code);
 
 }
+
+describe('Firefox crash-safe HTTPS dataset promotion', function() {
+
+  it('installs the exact source candidate while OFF and preserves user settings and credentials', async function() {
+
+    const value = await system({https: true});
+    const credentials = structuredClone(value.storage.values[Config.CREDENTIALS_STORAGE_KEY]);
+    const settings = structuredClone(value.storage.values[Config.SETTINGS_COMMIT_STORAGE_KEY]);
+    Assert.deepStrictEqual(await value.controller.install(), {ok: true, status: 'INSTALLED'});
+    const loaded = await value.datasetStore.loadVerifications('anticensority');
+    Assert.strictEqual(loaded.active.trust, Helpers.Dataset.TRUST.REMOTE_HTTPS_VALIDATED);
+    Assert.strictEqual(loaded.active.dataset.identity.artifactSha256,
+        value.nextArtifact.envelope.artifactSha256);
+    Assert.strictEqual(loaded.pointers.highestAuthenticatedSequence, null);
+    Assert.deepStrictEqual(value.storage.values[Config.CREDENTIALS_STORAGE_KEY], credentials);
+    Assert.deepStrictEqual(value.storage.values[Config.SETTINGS_COMMIT_STORAGE_KEY], settings);
+    Assert.strictEqual(value.storage.values[Config.GENERATIONS_STORAGE_KEY], undefined);
+    Assert.strictEqual((await value.datasetStore.loadStaged('anticensority')).status, 'EMPTY');
+    const journal = value.storage.writes[0][Config.DATASET_PROMOTION_STORAGE_KEY];
+    Assert.strictEqual(journal.schemaVersion, 3);
+    Assert.strictEqual(journal.channel, 'HTTPS');
+    Assert.deepStrictEqual(journal.source, value.nextArtifact.source);
+
+  });
+
+  it('requires the exact HTTPS receipt and cannot promote through a signed default', async function() {
+
+    const value = await system({https: true});
+    const staged = await value.datasetStore.loadStaged('anticensority');
+    const input = {providerKey: 'anticensority', stagedSequence: staged.sequence,
+      stagedArtifactSha256: value.nextArtifact.envelope.artifactSha256,
+      currentDatasetIdentity: identity(value.oldArtifact)};
+    Assert.strictEqual((await value.datasetStore.promoteStagedExact(input)).ok, false);
+    Assert.strictEqual((await value.datasetStore.promoteStagedExact(Object.assign({}, input, {
+      channel: 'HTTPS', source: Object.assign({}, staged.source, {sourceSha256: 'f'.repeat(64)}),
+    }))).ok, false);
+    Assert.strictEqual((await value.datasetStore.loadVerifications('anticensority')).active, null);
+
+  });
+
+  it('recovers a source journal written before pointer commit by retaining the old selection', async function() {
+
+    const crashedStorage = storage({}, {failSetCall: 1, applyFailedSet: true});
+    const value = await system({https: true, storage: crashedStorage});
+    crashedStorage.values[Config.CONFIG_STORAGE_KEY] = value.oldConfig;
+    await rejectsCode(value.controller.install(), Promotion.ERRORS.STORAGE_FAILED);
+    const restarted = Promotion.createController({storageArea: crashedStorage.area,
+      datasetStore: Store.createStore({backend: value.backend, sha256}), sha256,
+      providerKey: 'anticensority',
+      activationSnapshot: () => ({active: false, durableIntent: 'OFF', runtimeState: 'OFF'})});
+    Assert.strictEqual((await restarted.initialize()).status, 'ROLLED_BACK');
+    Assert.deepStrictEqual(crashedStorage.values[Config.CONFIG_STORAGE_KEY], value.oldConfig);
+    Assert.strictEqual(crashedStorage.values[Config.DATASET_PROMOTION_STORAGE_KEY], undefined);
+
+  });
+
+  it('recovers source pointers committed before Saved metadata after event-page recreation', async function() {
+
+    const value = await system({https: true});
+    await value.controller.install();
+    const journal = value.storage.writes[0][Config.DATASET_PROMOTION_STORAGE_KEY];
+    const crashedStorage = storage({[Config.CONFIG_STORAGE_KEY]: journal.oldConfig,
+      [Config.DATASET_PROMOTION_STORAGE_KEY]: journal});
+    const restarted = Promotion.createController({storageArea: crashedStorage.area,
+      datasetStore: Store.createStore({backend: value.backend, sha256}), sha256,
+      providerKey: 'anticensority',
+      activationSnapshot: () => ({active: false, durableIntent: 'OFF', runtimeState: 'OFF'})});
+    Assert.strictEqual((await restarted.initialize()).status, 'ROLLED_FORWARD');
+    Assert.deepStrictEqual(crashedStorage.values[Config.CONFIG_STORAGE_KEY], journal.newConfig);
+
+  });
+
+  it('blocks a swapped source receipt during recovery instead of guessing a candidate', async function() {
+
+    const value = await system({https: true});
+    await value.controller.install();
+    const journal = structuredClone(value.storage.writes[0][Config.DATASET_PROMOTION_STORAGE_KEY]);
+    journal.source.sourceSha256 = 'e'.repeat(64);
+    value.storage.values[Config.DATASET_PROMOTION_STORAGE_KEY] = journal;
+    const result = await value.controller.initialize();
+    Assert.strictEqual(result.ok, false);
+    Assert.strictEqual(result.status, 'RECOVERY_REQUIRED');
+    Assert.ok(value.storage.values[Config.DATASET_PROMOTION_STORAGE_KEY]);
+
+  });
+
+});
 
 describe('Firefox crash-safe authenticated dataset promotion', function() {
 

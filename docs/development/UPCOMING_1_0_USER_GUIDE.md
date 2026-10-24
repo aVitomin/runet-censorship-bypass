@@ -1,6 +1,6 @@
 # Подготовка пользовательского руководства 1.0
 
-Это материал для ещё не выпущенной версии, основанный на реализованных
+Это материал для ещё не выпущенной версии `1.0.0`, основанный на реализованных
 сценариях текущей разработки. Он не объявляет 1.0 опубликованной и не обещает
 состав или дату выпуска. Для установленного `0.0.4.0` используйте
 [руководство опубликованного выпуска](../user/USER_GUIDE.md) и
@@ -26,9 +26,40 @@
   Для их прокси-маршрутов нужна подходящая запущенная локальная служба
   Anticensority, Tor Browser или Tor. Собственное подключение для явного
   режима Прокси настраивается отдельно. Расширение не запускает эти службы.
+  Для работы без базы Anticensority выберите **Только мои правила и подключения /
+  Only my rules and connections**, сохраните и отдельно примените настройки.
+  Правила сайтов и маршруты onion сохраняются; при стандартных параметрах
+  остальные сайты идут напрямую. Запрет Direct и его замена прокси продолжают
+  действовать, если вы их включили.
 
 После включения дождитесь **Защита включена**. Это означает, что расширение
 управляет маршрутизацией, а не что все прокси и все сайты проверены.
+
+### Области использования Tor и WARP
+
+Для Tor и Tor Browser участие в правилах Прокси, маршрутах `.onion` и замене
+Direct задаётся отдельно.
+В Chromium общий переключатель подключения также должен быть включён;
+Firefox показывает три области напрямую. Эти области можно переносить
+между браузерами, включая использование только для onion или только вместо Direct.
+Отдельные параметры DNS и времени ожидания могут потребовать проверки при импорте.
+
+При новой установке оба браузера используют Tor только для `.onion`:
+сначала локальный Tor (`localhost:9050`), затем Tor Browser (`localhost:9150`).
+Для правил Прокси и замены Direct их нужно выбрать отдельно. Это не запускает
+локальные службы и не включает защиту. Обновление сохраняет ранее заданные
+адреса и области использования.
+
+Быстрые переключатели Tor в панели Chromium меняют только доступность для
+правил Прокси. Уже действующие области onion и замены Direct сохраняются.
+Если подключение было полностью выключено, быстрое включение запускает его
+только для Прокси и не активирует прежние выключенные области скрытно.
+
+Для WARP правила Прокси и замена Direct также выбираются отдельно. Можно
+перенести настройки, использующие WARP только вместо Direct. Области действуют
+для всего списка WARP-подключений; файл с разными областями отдельных записей
+покажет предупреждение при импорте. Быстрый переключатель Прокси сохраняет
+уже действующую замену Direct, но не включает её выключенную настройку.
 
 ### Firefox: разрешить работу в приватных окнах
 
@@ -178,22 +209,33 @@
 - Ошибка проверки или подготовки не означает, что новые данные уже работают.
   Состояние **Не настроено** не исправляется многократными нажатиями.
 
-**Проверить обновления** получает, проверяет и подготавливает данные без
-изменения действующей маршрутизации. **Применить обновление** в Chromium
-повторно проверяет и подготавливает данные перед применением; это не обещание
-применить неизменившуюся копию из предыдущей проверки. Firefox применяет уже
-подготовленные проверенные данные. В обоих браузерах при обновлении действуют
-текущие применённые пользовательские настройки: другие сохранённые изменения
-остаются неприменёнными. Обновление не выключает включённую защиту и не
-включает выключенную. При выключенной защите новые данные ожидают отдельного
-применения настроек.
+В Chromium **Проверить обновления** получает, проверяет и подготавливает данные
+без изменения действующей маршрутизации. **Применить обновление** повторно
+проверяет и подготавливает данные перед применением; это не обещание применить
+неизменившуюся копию из предыдущей проверки.
 
-Firefox сейчас получает встроенные правила с самим расширением. Удалённый
-канал не настроен: ручные и фоновые сетевые проверки отключены, состояние
-**Не настроено** ожидаемо. Поддержка безопасного применения подготовленных
-данных не означает, что удалённые обновления уже доступны пользователям.
-Не подставляйте произвольный адрес или ключ. Chromium поддерживает дополнительные
-расширенные источники; это различие не делает Firefox неисправным.
+В Firefox **Обновить данные маршрутизации / Update routing data** проверяет
+фиксированные источники Anticensority по HTTPS и сразу применяет проверенные
+изменения, если защита включена и готова либо полностью выключена. Такая же
+проверка запускается автоматически каждые 12 часов. Если обновлению мешает
+текущее состояние защиты или другой владелец прокси-настройки, данные могут
+остаться **Готовы к применению**. Устраните показанную причину и используйте
+**Применить обновление**. Если ручной источник выбран в сохранённых или
+действующих настройках, обновления Anticensority тоже остаются подготовленными.
+Ручной режим не отключает фоновые проверки базы и не переключается из-за них:
+для возврата к Anticensority выберите источник, сохраните и явно примените его.
+
+Firefox проверяет формат, размер, дату и целостность данных, не выполняя
+загруженную программу PAC. Канал явно отмечен как HTTPS с проверкой данных
+**без подписи автора**. Дата данных и время последней проверки показаны
+отдельно: успешная проверка может найти ту же старую версию. Встроенные правила
+остаются доступны без сети. Произвольные источники PAC, доступные в Chromium,
+в этом Firefox-интерфейсе не настраиваются.
+
+В обоих браузерах обновление использует текущие применённые пользовательские
+настройки: другие сохранённые изменения остаются неприменёнными. Обновление
+не выключает включённую защиту и не включает выключенную. При выключенной
+защите новые данные будут использованы после отдельного применения настроек.
 
 Обновление данных и установка новой версии расширения — отдельные действия.
 Название, версия и дата показываются только при наличии сведений; отсутствие
@@ -235,10 +277,11 @@ Firefox сейчас получает встроенные правила с с�
 Неподдерживаемый формат, слишком большой или некорректный файл отклоняется.
 Не пытайтесь обойти ошибку формата изменением номера версии файла.
 
-Переносятся только поддерживаемые возможности. Например, Firefox сохраняет
-свой встроенный источник, а отключённые правила Chromium в Firefox не
-переносятся. Импорт не добавляет браузеру отсутствующие функции — прочитайте
-предупреждения до подтверждения.
+Переносятся только поддерживаемые возможности. Выбор Anticensority или ручного
+режима переносится между Chromium и Firefox. Источник Antizapret, произвольный
+PAC и отключённые правила Chromium не поддерживаются Firefox; предварительный
+просмотр сообщает об ограничениях. Импорт не добавляет браузеру отсутствующие
+функции — прочитайте предупреждения до подтверждения.
 
 Если профиль прокси требует учётных данных, введите их в настройках подключения
 и сохраните; старые пароли по совпавшему адресу не подбираются. Если авторизация
@@ -271,7 +314,9 @@ Firefox сейчас получает встроенные правила с с�
 Поддерживается настроенная авторизация HTTP/HTTPS-прокси. Возможность
 авторизации SOCKS зависит от браузера и реализации; не обещается поддержка
 любого прокси с паролем. Сохранённые пароли не возвращаются в панель, сводки,
-диагностику или экспорт. Подробные общие ограничения — в
+диагностику или экспорт. Обычная авторизация на сайте остаётся под управлением
+браузера: Firefox не отменяет её и не подставляет пароль прокси вместо пароля
+сайта. Подробные общие ограничения — в
 [приватности и безопасности](../user/PRIVACY_AND_SECURITY.md); расширение не
 является VPN и не гарантирует анонимность или отсутствие утечек DNS.
 
@@ -294,7 +339,7 @@ Firefox сейчас получает встроенные правила с с�
 
 ## Снимки перед выпуском 1.0
 
-В этой документационной задаче изображения не заменяются. Перед выпуском нужны:
+Перед выпуском нужно сверить изображения с финальной сборкой:
 
 - Chromium и Firefox: защита включена на обычной тестовой странице, текущий
   сайт и все три режима видны; настоящие панели, не выданные за них вкладки.
@@ -335,11 +380,33 @@ then return and choose **Check again**. The extension cannot grant this itself.
 Restricted-site access is separate, not an activation prerequisite or a detected
 permission; privileged `about:` pages are not ordinary routable sites.
 
-Routing-data checks and preparation do not change active routing. Updates use
-the currently applied user settings, leaving pending settings pending and
-inactive protection inactive. Firefox's remote channel remains unconfigured;
-built-in rules arrive with extension releases. Updated rules do not guarantee
-that configured services are reachable.
+Chromium separates checking routing data from applying the update. Firefox's
+**Update routing data** checks its fixed Anticensority HTTPS sources and applies
+validated changes when routing is ready or off; the same operation runs every
+12 hours. Blocked updates can remain prepared for later. The data is checked
+without executing downloaded PAC JavaScript and without an author signature.
+Source-data time is separate from check time, so an unchanged older dataset
+can be a valid result. Firefox's **Only my rules and connections** works
+without the provider database, using your site rules, onion routes and routing
+flags. Under default flags, other sites use Direct. Source checks continue;
+provider updates stay prepared whenever Saved or applied settings select manual.
+Changing the source still requires Save and Apply. Tor's Proxy, onion and Direct-replacement
+scopes transfer independently between browsers. Chromium keeps its overall
+connection switch; its popup quick switches change Proxy availability only,
+preserving active other scopes without activating previously disabled presets.
+Fresh installations in both browsers use Tor for onion only: local Tor at
+`localhost:9050`, followed by Tor Browser at `localhost:9150`. Proxy rules and
+Direct replacement require separate selection. This neither starts the local
+services nor activates routing; updates preserve existing saved choices.
+WARP also separates Proxy rules from Direct replacement, including portable
+Direct-replacement-only settings. Its scopes apply to the entire candidate
+list; mixed per-entry scopes still produce an import warning. Quick Proxy
+switches preserve active Direct replacement without enabling inactive presets.
+
+Updates use the currently applied user settings, leaving pending settings
+pending and inactive protection inactive. Updated rules do not guarantee that
+configured services are reachable. Firefox leaves website authentication to
+the browser and never supplies stored proxy credentials as website credentials.
 
 **Export settings** is manual transfer of saved portable fields, not cloud sync
 or a full backup. It omits usernames, passwords, tokens, custom-source URLs and

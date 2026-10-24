@@ -23,6 +23,7 @@
       const DATABASE_VERSION = 1;
       const LEGACY_POINTER_SCHEMA_VERSION = 1;
       const POINTER_SCHEMA_VERSION = 2;
+      const HTTPS_POINTER_SCHEMA_VERSION = 3;
       const ARTIFACT_STORE = 'artifacts';
       const POINTER_STORE = 'providerPointers';
       const SHA256_PATTERN = /^[a-f0-9]{64}$/;
@@ -59,6 +60,65 @@
         'providerKey',
         'trust',
       ]);
+      const HTTPS_POINTER_FIELDS = Object.freeze([
+        'stagedChannel', 'httpsState', 'httpsFloor',
+      ]);
+
+      function exactKeys(value, keys) {
+
+        return Boolean(value) && typeof value === 'object' &&
+          !Array.isArray(value) && Object.keys(value).length === keys.length &&
+          Object.keys(value).every((key) => keys.includes(key));
+
+      }
+
+      function isTimestamp(value) {
+
+        return typeof value === 'string' && Number.isFinite(Date.parse(value)) &&
+          new Date(Date.parse(value)).toISOString() === value;
+
+      }
+
+      function canonicalHttpsSource(value) {
+
+        if (!exactKeys(value, ['sourceId', 'sourceSha256', 'updatedAt']) ||
+            value.sourceId !== 'anticensority-pac' ||
+            !isSha256(value.sourceSha256) || !isTimestamp(value.updatedAt)) {
+          throw storeError('INVALID_HTTPS_SOURCE');
+        }
+        return Object.freeze({sourceId: value.sourceId,
+          sourceSha256: value.sourceSha256, updatedAt: value.updatedAt});
+
+      }
+
+      function sameSource(left, right) {
+
+        return Boolean(left && right && left.sourceId === right.sourceId &&
+          left.sourceSha256 === right.sourceSha256 && left.updatedAt === right.updatedAt);
+
+      }
+
+      function trustForChannel(channel) {
+
+        return channel === 'SIGNED' ? Dataset.TRUST.REMOTE_AUTHENTICATED :
+          channel === 'HTTPS' ? Dataset.TRUST.REMOTE_HTTPS_VALIDATED : null;
+
+      }
+
+      function matchesCandidateState(pointers, channel, sequence, artifactSha256, source) {
+
+        if (!pointers || !Number.isSafeInteger(sequence) || sequence < 1 ||
+            !isSha256(artifactSha256)) return false;
+        if (channel === 'SIGNED') {
+          return pointers.highestAuthenticatedSequence === sequence &&
+            pointers.highestAuthenticatedArtifactSha256 === artifactSha256;
+        }
+        const state = pointers.httpsState;
+        return channel === 'HTTPS' && Boolean(state) &&
+          state.sequence === sequence && state.artifactSha256 === artifactSha256 &&
+          sameSource(state.source, source);
+
+      }
 
       function storeError(code) {
 
@@ -125,16 +185,21 @@
           value.providerKey === providerKey &&
           keys.length === LEGACY_POINTER_RECORD_FIELDS.length &&
           keys.every((key) => LEGACY_POINTER_RECORD_FIELDS.includes(key));
-        const isCurrent =
+        const isSigned =
           value.schemaVersion === POINTER_SCHEMA_VERSION &&
           value.providerKey === providerKey &&
           keys.length === POINTER_RECORD_FIELDS.length &&
           keys.every((key) => POINTER_RECORD_FIELDS.includes(key));
-        if (!isLegacy && !isCurrent) {
+        const httpsFields = [...POINTER_RECORD_FIELDS, ...HTTPS_POINTER_FIELDS];
+        const isHttps = value.schemaVersion === HTTPS_POINTER_SCHEMA_VERSION &&
+          value.providerKey === providerKey && keys.length === httpsFields.length &&
+          keys.every((key) => httpsFields.includes(key));
+        if (!isLegacy && !isSigned && !isHttps) {
           POINTER_FIELDS.forEach((field) => {
             corruptions[field] = true;
           });
           corruptions.authenticatedSequenceState = true;
+          corruptions.httpsState = true;
           return {pointers: normalized, corruptions};
         }
         for (const field of POINTER_FIELDS) {
@@ -161,27 +226,63 @@
           (sequence === null && artifactSha256 === null) ||
           (Number.isSafeInteger(sequence) && sequence >= 1 &&
            isSha256(artifactSha256));
+        if (isHttps) {
+          normalized.schemaVersion = HTTPS_POINTER_SCHEMA_VERSION;
+          normalized.stagedChannel = value.stagedChannel;
+          normalized.httpsState = null;
+          normalized.httpsFloor = null;
+          try {
+            if (value.httpsState !== null) {
+              if (!exactKeys(value.httpsState, ['sequence', 'artifactSha256', 'source']) ||
+                  !validSequencePair(value.httpsState.sequence, value.httpsState.artifactSha256) ||
+                  value.httpsState.sequence === null) throw storeError('INVALID_HTTPS_STATE');
+              normalized.httpsState = {sequence: value.httpsState.sequence,
+                artifactSha256: value.httpsState.artifactSha256,
+                source: canonicalHttpsSource(value.httpsState.source)};
+            }
+            if (value.httpsFloor !== null) {
+              if (!exactKeys(value.httpsFloor, ['updatedAt', 'artifactSha256']) ||
+                  !isTimestamp(value.httpsFloor.updatedAt) ||
+                  !isSha256(value.httpsFloor.artifactSha256)) throw storeError('INVALID_HTTPS_FLOOR');
+              normalized.httpsFloor = {updatedAt: value.httpsFloor.updatedAt,
+                artifactSha256: value.httpsFloor.artifactSha256};
+            }
+            if (normalized.httpsState && (!normalized.httpsFloor ||
+                Date.parse(normalized.httpsFloor.updatedAt) <
+                  Date.parse(normalized.httpsState.source.updatedAt) ||
+                normalized.httpsFloor.updatedAt === normalized.httpsState.source.updatedAt &&
+                  normalized.httpsFloor.artifactSha256 !== normalized.httpsState.artifactSha256)) {
+              throw storeError('INVALID_HTTPS_FLOOR');
+            }
+          } catch (_error) {
+            corruptions.httpsState = true;
+          }
+        }
         if (!validSequencePair(
             value.highestAuthenticatedSequence,
             value.highestAuthenticatedArtifactSha256,
-        ) || !validSequencePair(
-            value.stagedSequence,
-            value.stagedArtifactSha256,
-        ) || (value.stagedSequence !== null &&
-          (value.stagedSequence !== value.highestAuthenticatedSequence ||
-           value.stagedArtifactSha256 !==
-             value.highestAuthenticatedArtifactSha256))) {
-          normalized.stagedArtifactSha256 = null;
-          normalized.stagedSequence = null;
-          normalized.highestAuthenticatedSequence = null;
-          normalized.highestAuthenticatedArtifactSha256 = null;
+        )) {
           corruptions.authenticatedSequenceState = true;
         } else {
+          normalized.highestAuthenticatedSequence = value.highestAuthenticatedSequence;
+          normalized.highestAuthenticatedArtifactSha256 = value.highestAuthenticatedArtifactSha256;
+        }
+        const channel = isHttps ? value.stagedChannel :
+          value.stagedSequence === null ? null : 'SIGNED';
+        if (!validSequencePair(
+            value.stagedSequence,
+            value.stagedArtifactSha256,
+        ) || (value.stagedSequence === null ? channel !== null :
+          !matchesCandidateState(normalized, channel, value.stagedSequence,
+              value.stagedArtifactSha256, normalized.httpsState && normalized.httpsState.source)) ||
+          channel === 'HTTPS' && (corruptions.httpsState || !normalized.httpsFloor ||
+            normalized.httpsFloor.artifactSha256 !== value.stagedArtifactSha256)) {
+          normalized.stagedArtifactSha256 = null;
+          normalized.stagedSequence = null;
+          if (isHttps) normalized.stagedChannel = null;
+          corruptions.stagedArtifactSha256 = true;
+        } else {
           normalized.stagedSequence = value.stagedSequence;
-          normalized.highestAuthenticatedSequence =
-            value.highestAuthenticatedSequence;
-          normalized.highestAuthenticatedArtifactSha256 =
-            value.highestAuthenticatedArtifactSha256;
         }
         return {pointers: normalized, corruptions};
 
@@ -206,13 +307,14 @@
       function artifactRecord(verification, artifactBytes) {
 
         const identity = verification.dataset.identity;
-        return {
+        return Object.assign({
           artifactSha256: identity.artifactSha256,
           providerKey: identity.providerKey,
           trust: verification.trust,
           envelope: verification.dataset.envelope,
           artifactBytes: copyBytes(artifactBytes),
-        };
+        }, verification.trust === Dataset.TRUST.REMOTE_HTTPS_VALIDATED ?
+          {source: canonicalHttpsSource(verification.source)} : {});
 
       }
 
@@ -239,9 +341,23 @@
             left.artifactSha256 === right.artifactSha256 &&
             left.providerKey === right.providerKey &&
             left.trust === right.trust &&
+            JSON.stringify(left.source) === JSON.stringify(right.source) &&
             JSON.stringify(left.envelope) === JSON.stringify(right.envelope) &&
             sameBytes(left.artifactBytes, right.artifactBytes),
         );
+
+      }
+
+      function freezeVerification(verification) {
+
+        const {envelope, payload} = verification.dataset;
+        envelope.sourceRevisions.forEach(Object.freeze);
+        Object.freeze(envelope.sourceRevisions);
+        Object.freeze(envelope);
+        payload.buckets.forEach(Object.freeze);
+        Object.freeze(payload.buckets);
+        Object.freeze(payload);
+        return verification;
 
       }
 
@@ -392,9 +508,26 @@
 
         async function verifyInput(input) {
 
-          return Dataset.verifyProviderDataset(Object.assign({}, input, {
+          const verification = await Dataset.verifyProviderDataset(Object.assign({}, input, {
             sha256,
           }));
+          if (!verification.ok || verification.trust !== Dataset.TRUST.REMOTE_HTTPS_VALIDATED) {
+            return verification;
+          }
+          try {
+            const source = canonicalHttpsSource(input.source);
+            const envelope = verification.dataset.envelope;
+            const revisions = envelope.sourceRevisions;
+            if (verification.dataset.identity.providerKey !== 'anticensority' ||
+                envelope.generatedAt !== source.updatedAt ||
+                revisions.length !== 1 || revisions[0].sourceId !== source.sourceId ||
+                revisions[0].revision !== `sha256=${source.sourceSha256}`) {
+              return rejection('HTTPS_SOURCE_IDENTITY_MISMATCH');
+            }
+            return Object.freeze(Object.assign({}, verification, {source}));
+          } catch (_error) {
+            return rejection('INVALID_HTTPS_SOURCE');
+          }
 
         }
 
@@ -411,6 +544,7 @@
               normalized.corruptions[field] = true;
             });
             normalized.corruptions.authenticatedSequenceState = true;
+            normalized.corruptions.httpsState = true;
             return normalized;
           }
 
@@ -431,11 +565,13 @@
             return rejection(`${code}_MISSING`);
           }
           try {
+            const fields = record.trust === Dataset.TRUST.REMOTE_HTTPS_VALIDATED ?
+              [...ARTIFACT_RECORD_FIELDS, 'source'] : ARTIFACT_RECORD_FIELDS;
             if (!record || typeof record !== 'object' ||
                 Array.isArray(record) ||
-                Object.keys(record).length !== ARTIFACT_RECORD_FIELDS.length ||
+                Object.keys(record).length !== fields.length ||
                 Object.keys(record).some((key) =>
-                  !ARTIFACT_RECORD_FIELDS.includes(key)) ||
+                  !fields.includes(key)) ||
                 record.providerKey !== providerKey ||
                 record.artifactSha256 !== artifactSha256 ||
                 !record.envelope ||
@@ -447,6 +583,7 @@
               envelope: record.envelope,
               artifactBytes: copyBytes(record.artifactBytes),
               trust: record.trust,
+              source: record.source,
             });
           } catch (_error) {
             return rejection(`${code}_MALFORMED`);
@@ -470,15 +607,28 @@
             ],
           ];
           const result = {pointers: pointerState.pointers};
+          // Immutable artifacts may fill multiple roles. Share only successful
+          // verification within this pointer snapshot, never across loads.
+          const verifiedArtifacts = new Map();
           for (const [role, field, code] of roles) {
             if (pointerState.corruptions[field]) {
               result[role] = rejection(`${code}_POINTER_CORRUPT`);
             } else {
-              result[role] = await verifyStored(
-                  providerKey,
-                  pointerState.pointers[field],
-                  code,
-              );
+              const artifactSha256 = pointerState.pointers[field];
+              if (verifiedArtifacts.has(artifactSha256)) {
+                result[role] = verifiedArtifacts.get(artifactSha256);
+              } else {
+                result[role] = await verifyStored(
+                    providerKey,
+                    artifactSha256,
+                    code,
+                );
+                if (result[role] && result[role].ok === true) {
+                  verifiedArtifacts.set(
+                      artifactSha256, freezeVerification(result[role]),
+                  );
+                }
+              }
             }
             if (options.firstUsableOnly === true &&
                 result[role] && result[role].ok === true) {
@@ -505,6 +655,9 @@
           const providerKey = verification.dataset.identity.providerKey;
           const current = await readPointerState(providerKey);
           const pointers = current.pointers;
+          if (current.corruptions.authenticatedSequenceState || current.corruptions.httpsState) {
+            return rejection('DATASET_POINTER_STATE_CORRUPT');
+          }
           if (pointers.packagedBaselineArtifactSha256 &&
               pointers.packagedBaselineArtifactSha256 !==
                 verification.dataset.identity.artifactSha256) {
@@ -595,7 +748,7 @@
           }
           const providerKey = candidate.dataset.identity.providerKey;
           const current = await readPointerState(providerKey);
-          if (current.corruptions.authenticatedSequenceState) {
+          if (current.corruptions.authenticatedSequenceState || current.corruptions.httpsState) {
             return rejection('AUTHENTICATED_SEQUENCE_STATE_CORRUPT');
           }
           const pointers = current.pointers;
@@ -614,11 +767,13 @@
                 status: 'UNCHANGED',
                 verification: candidate,
                 sequence,
+                channel: 'SIGNED',
               });
             }
           }
           pointers.stagedArtifactSha256 = artifactSha256;
           pointers.stagedSequence = sequence;
+          if (pointers.schemaVersion === HTTPS_POINTER_SCHEMA_VERSION) pointers.stagedChannel = 'SIGNED';
           pointers.highestAuthenticatedSequence = sequence;
           pointers.highestAuthenticatedArtifactSha256 = artifactSha256;
           await backend.commit(
@@ -630,7 +785,100 @@
             status: 'STAGED',
             verification: candidate,
             sequence,
+            channel: 'SIGNED',
           });
+
+        }
+
+        async function stageHttpsCandidate(input) {
+
+          const {artifactBytes, source} = input;
+          const candidate = await verifyInput(Object.assign({}, input, {artifactBytes, source,
+            trust: Dataset.TRUST.REMOTE_HTTPS_VALIDATED,
+          }));
+          if (!candidate.ok) return candidate;
+          const providerKey = candidate.dataset.identity.providerKey;
+          const current = await readPointerState(providerKey);
+          if (current.corruptions.authenticatedSequenceState || current.corruptions.httpsState ||
+              Object.values(current.corruptions).some(Boolean)) {
+            return rejection('HTTPS_SOURCE_STATE_CORRUPT');
+          }
+          const stored = await loadVerifications(providerKey);
+          const baseline = stored.packagedBaseline;
+          if (!baseline || !baseline.ok || baseline.trust !== Dataset.TRUST.PACKAGED_TRUSTED) {
+            return rejection('HTTPS_BASELINE_REQUIRED');
+          }
+          const selected = DatasetState.planDatasetActivation({
+            protectionIntended: true,
+            providerKey,
+            active: stored.active,
+            previousLkg: stored.previousLkg,
+            packagedBaseline: stored.packagedBaseline,
+          }).selected;
+          const pointers = Object.assign({}, current.pointers);
+          const oldChannel = pointers.schemaVersion === HTTPS_POINTER_SCHEMA_VERSION ?
+            pointers.stagedChannel : pointers.stagedSequence === null ? null : 'SIGNED';
+          if (oldChannel === 'SIGNED' || selected &&
+              selected.trust === Dataset.TRUST.REMOTE_AUTHENTICATED) {
+            return rejection('HTTPS_AUTHENTICATED_CHANNEL_SELECTED');
+          }
+          if (pointers.schemaVersion !== HTTPS_POINTER_SCHEMA_VERSION) {
+            Object.assign(pointers, {schemaVersion: HTTPS_POINTER_SCHEMA_VERSION,
+              stagedChannel: oldChannel, httpsState: null, httpsFloor: null});
+          }
+          const artifactSha256 = candidate.dataset.identity.artifactSha256;
+          const baselineFloor = {updatedAt: baseline.dataset.envelope.generatedAt,
+            artifactSha256: baseline.dataset.identity.artifactSha256};
+          const floors = [baselineFloor, pointers.httpsFloor].filter(Boolean);
+          if (floors.some((floor) => Date.parse(source.updatedAt) < Date.parse(floor.updatedAt))) {
+            return rejection('HTTPS_SOURCE_ROLLBACK_REJECTED');
+          }
+          for (const floor of floors) {
+            if (source.updatedAt === floor.updatedAt && artifactSha256 !== floor.artifactSha256) {
+              return rejection('HTTPS_SOURCE_TIMESTAMP_CONFLICT');
+            }
+          }
+          pointers.httpsFloor = {updatedAt: source.updatedAt, artifactSha256};
+          // Payload hashes identify immutable records, including their original
+          // provenance. A later download must not relabel a packaged artifact.
+          const existing = selected && selected.artifactSha256 === artifactSha256 &&
+            [stored.active, stored.previousLkg, stored.packagedBaseline].find((item) =>
+              item && item.ok && item.dataset.identity.artifactSha256 === artifactSha256);
+          if (existing) {
+            if (pointers.stagedChannel === 'HTTPS') {
+              pointers.stagedArtifactSha256 = null;
+              pointers.stagedSequence = null;
+              pointers.stagedChannel = null;
+            }
+            if (JSON.stringify(pointers) !== JSON.stringify(current.pointers)) {
+              await backend.commit(null, pointers);
+            }
+            return Object.freeze({ok: true, status: 'UNCHANGED',
+              verification: existing, sequence: null, channel: 'HTTPS'});
+          }
+          const staged = await loadStaged(providerKey);
+          if (!staged.ok) return staged;
+          if (staged.status === 'STAGED' && staged.channel === 'HTTPS' &&
+              staged.verification.dataset.identity.artifactSha256 === artifactSha256) {
+            if (JSON.stringify(pointers) !== JSON.stringify(current.pointers)) {
+              await backend.commit(null, pointers);
+            }
+            return Object.freeze({ok: true, status: 'UNCHANGED',
+              verification: staged.verification, sequence: staged.sequence,
+              channel: 'HTTPS', source: staged.source});
+          }
+          // Reusing an older/orphaned immutable record with a new envelope
+          // cannot establish a new candidate; keep it for exact recovery only.
+          if (await backend.readArtifact(artifactSha256)) return rejection('HTTPS_KNOWN_ARTIFACT_REPLAY');
+          const sequence = pointers.httpsState ? pointers.httpsState.sequence + 1 : 1;
+          if (!Number.isSafeInteger(sequence)) return rejection('HTTPS_SEQUENCE_EXHAUSTED');
+          pointers.httpsState = {sequence, artifactSha256, source};
+          pointers.stagedArtifactSha256 = artifactSha256;
+          pointers.stagedSequence = sequence;
+          pointers.stagedChannel = 'HTTPS';
+          await backend.commit(artifactRecord(candidate, artifactBytes), pointers);
+          return Object.freeze({ok: true, status: 'STAGED',
+            verification: candidate, sequence, channel: 'HTTPS', source});
 
         }
 
@@ -640,7 +888,7 @@
             throw storeError('INVALID_PROVIDER_KEY');
           }
           const current = await readPointerState(providerKey);
-          if (current.corruptions.authenticatedSequenceState ||
+          if (current.corruptions.authenticatedSequenceState || current.corruptions.httpsState ||
               current.corruptions.stagedArtifactSha256) {
             return rejection('STAGED_POINTER_CORRUPT');
           }
@@ -650,6 +898,7 @@
               status: 'EMPTY',
               pointers: current.pointers,
               verification: null,
+              channel: null,
             });
           }
           const verification = await verifyStored(
@@ -657,6 +906,13 @@
               current.pointers.stagedArtifactSha256,
               'STAGED_ARTIFACT',
           );
+          const channel = current.pointers.schemaVersion === HTTPS_POINTER_SCHEMA_VERSION ?
+            current.pointers.stagedChannel : 'SIGNED';
+          if (verification && verification.ok && (verification.trust !== trustForChannel(channel) ||
+              !matchesCandidateState(current.pointers, channel, current.pointers.stagedSequence,
+                  current.pointers.stagedArtifactSha256, verification.source))) {
+            return rejection('STAGED_RECEIPT_MISMATCH');
+          }
           return Object.freeze({
             ok: Boolean(verification && verification.ok),
             status: verification && verification.ok ? 'STAGED' : 'REJECTED',
@@ -664,6 +920,8 @@
             sequence: current.pointers.stagedSequence,
             pointers: current.pointers,
             verification,
+            channel,
+            source: channel === 'HTTPS' && verification ? verification.source : null,
           });
 
         }
@@ -672,8 +930,7 @@
 
           const staged = await loadStaged(providerKey);
           if (!staged.ok || staged.status !== 'STAGED' ||
-              staged.verification.trust !==
-                Dataset.TRUST.REMOTE_AUTHENTICATED) {
+              staged.verification.trust !== trustForChannel(staged.channel)) {
             return staged.ok ? rejection('NO_STAGED_CANDIDATE') : staged;
           }
           const pointers = Object.assign({}, staged.pointers);
@@ -683,12 +940,16 @@
           pointers.activeArtifactSha256 = pointers.stagedArtifactSha256;
           pointers.stagedArtifactSha256 = null;
           pointers.stagedSequence = null;
+          if (pointers.schemaVersion === HTTPS_POINTER_SCHEMA_VERSION) {
+            pointers.stagedChannel = null;
+          }
           await backend.commit(null, pointers);
           return Object.freeze({
             ok: true,
             status: 'PROMOTED',
             sequence: staged.sequence,
             verification: staged.verification,
+            channel: staged.channel,
           });
 
         }
@@ -697,6 +958,7 @@
 
           const providerKey = input.providerKey;
           const currentIdentity = input.currentDatasetIdentity;
+          const channel = input.channel === undefined ? 'SIGNED' : input.channel;
           if (!isProviderKey(providerKey) ||
               !isSha256(input.stagedArtifactSha256) ||
               !currentIdentity || typeof currentIdentity !== 'object' ||
@@ -704,22 +966,20 @@
               typeof currentIdentity.datasetVersion !== 'string' ||
               !isSha256(currentIdentity.artifactSha256) ||
               !Number.isSafeInteger(input.stagedSequence) ||
-              input.stagedSequence < 1) {
+              input.stagedSequence < 1 || !trustForChannel(channel)) {
             return rejection('INVALID_PROMOTION_INPUT');
           }
           const staged = await loadStaged(providerKey);
           if (!staged.ok || staged.status !== 'STAGED' ||
-              staged.verification.trust !==
-                Dataset.TRUST.REMOTE_AUTHENTICATED) {
+              staged.channel !== channel ||
+              staged.verification.trust !== trustForChannel(channel)) {
             return staged.ok ? rejection('NO_STAGED_CANDIDATE') : staged;
           }
           if (staged.sequence !== input.stagedSequence ||
               staged.verification.dataset.identity.artifactSha256 !==
                 input.stagedArtifactSha256 ||
-              staged.pointers.highestAuthenticatedSequence !==
-                input.stagedSequence ||
-              staged.pointers.highestAuthenticatedArtifactSha256 !==
-                input.stagedArtifactSha256 ||
+              !matchesCandidateState(staged.pointers, channel, input.stagedSequence,
+                  input.stagedArtifactSha256, input.source) ||
               input.stagedArtifactSha256 === currentIdentity.artifactSha256) {
             return rejection('PROMOTION_STATE_MISMATCH');
           }
@@ -744,12 +1004,16 @@
             stagedArtifactSha256: null,
             stagedSequence: null,
           });
+          if (pointers.schemaVersion === HTTPS_POINTER_SCHEMA_VERSION) {
+            pointers.stagedChannel = null;
+          }
           await backend.commit(null, pointers);
           return Object.freeze({
             ok: true,
             status: 'PROMOTED',
             sequence: staged.sequence,
             verification: staged.verification,
+            channel,
           });
 
         }
@@ -783,6 +1047,25 @@
               stageAuthenticatedCandidate(input));
 
           },
+          stageHttpsCandidate(input) {
+
+            let snapshot;
+            try {
+              const bytes = input && input.artifactBytes;
+              if (bytes && bytes.byteLength > Dataset.LIMITS.MAX_ARTIFACT_BYTES) {
+                throw storeError('ARTIFACT_TOO_LARGE');
+              }
+              snapshot = {
+                envelope: structuredClone(input && input.envelope),
+                artifactBytes: copyBytes(bytes),
+                source: canonicalHttpsSource(input && input.source),
+              };
+            } catch (error) {
+              return Promise.resolve(rejection(error.code || 'INVALID_HTTPS_SOURCE'));
+            }
+            return enqueueMutation(() => stageHttpsCandidate(snapshot));
+
+          },
         });
 
       }
@@ -792,6 +1075,10 @@
         DATABASE_VERSION,
         LEGACY_POINTER_SCHEMA_VERSION,
         POINTER_SCHEMA_VERSION,
+        HTTPS_POINTER_SCHEMA_VERSION,
+        canonicalHttpsSource,
+        matchesCandidateState,
+        trustForChannel,
         createIndexedDbBackend,
         createStore,
         emptyPointers,

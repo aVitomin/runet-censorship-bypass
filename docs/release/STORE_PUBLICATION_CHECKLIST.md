@@ -5,10 +5,12 @@ submission is optional. This documentation task grants no permission to bump
 versions, sign, tag, create releases, upload or submit store packages. Obtain
 separate maintainer authorization for those actions.
 
-Prepared against `8361608fa4ac52cc118cf5e6d32b3feb8772d167`. Current manifests
-still identify `0.0.4.0`; do not upload them as a new “1.0” release based on this
-document alone. Record the final approved version, exact main SHA, browser QA,
-trusted-main run, artifact names and SHA-256 in the release record.
+The current development version and maintained manifests identify `1.0.0`.
+This does not declare a published release, completed store submission or
+validation of a particular archive. Record the final approved version, exact
+main SHA, browser QA, trusted-main run, artifact names and SHA-256 in the release
+record. Published-release documentation remains scoped to `0.0.4.0` until a new
+release is published.
 
 ## Before any upload
 

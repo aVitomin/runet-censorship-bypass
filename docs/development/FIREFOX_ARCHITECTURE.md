@@ -18,8 +18,9 @@ Packaged Anticensority baseline, его воспроизводимость и tr
 в [Firefox production provider dataset](FIREFOX_PROVIDER_DATASET.md).
 Adapter заранее регистрирует `proxy.onRequest` и блокирующий
 `webRequest.onBeforeRequest`, поэтому manifest уже запрашивает `proxy`,
-`webRequest`, `webRequestBlocking` и `<all_urls>`. `alarms` поддерживает только
-12-hour authenticated dataset check и не активирует routing. Пока durable intent равен
+`webRequest`, `webRequestBlocking` и `<all_urls>`. `alarms` запускает 12-hour
+проверку и безопасное обновление данных; при OFF оно не включает routing.
+Пока durable intent равен
 `OFF`, proxy listener не задаёт маршрут, а guard разрешает обычный трафик.
 
 Firefox routing adapter фиксирует проверенную в Firefox 154.0.1 семантику
@@ -98,15 +99,18 @@ Apply/recovery публикует только синхронный resolver и�
 snapshot. `authRef` остаётся непрозрачной
 routing metadata: он хранится только в bounded request-scoped map и никогда не
 попадает в Firefox `ProxyInfo`. Username/password не являются полями routing
-decision, не сохраняются, не логируются, не выдаются через RPC и diagnostics.
+decision и request-bound routing metadata; они не логируются и не выдаются
+через обычные UI reads, RPC status или diagnostics.
 
 Auth handler возвращает credentials только при одновременном совпадении
 активного `requestId`, выбранного в `onBeforeRequest.details.proxyInfo` proxy и
-challenger host/port с одним validated route candidate и его `authRef`. Origin
-authentication при активной защите отменяется; в `OFF` listener возвращает no
-override и не вмешивается в постороннюю browser auth. Missing credentials,
-mismatch, malformed state и внутренний failure отменяют challenge, не открывая
-Firefox proxy-auth prompt.
+challenger host/port с одним validated route candidate и его `authRef`.
+Website challenge с `isProxy:false` во всех runtime states остаётся browser-owned:
+handler возвращает no override, не читает proxy credentials и не расходует их
+retry budget. Routing guard отдельно ограничивает website-auth retries.
+При `OFF` proxy handler также не вмешивается в browser auth. Missing credentials,
+mismatch, malformed state и внутренний failure активного proxy challenge
+отменяют его, не открывая Firefox proxy-auth prompt.
 
 Firefox 154 повторно вызывает `onBeforeRequest` с тем же `requestId` после
 каждого credential response. Поэтому routing и auth используют раздельные
@@ -117,8 +121,8 @@ route-auth, так и attempt state. Отмена исчерпанного auth 
 request вместо перехода к следующему proxy candidate; это известное Firefox
 availability-отличие, а не Direct fallback или утечка.
 
-Production health-проверки и authenticated provider-update control plane
-реализованы. На чистой установке bootstrap проверяет и локально сохраняет
+Production health-проверки и provider-update control plane с отдельными HTTPS
+и signed каналами реализованы. На чистой установке bootstrap проверяет и локально сохраняет
 packaged baseline и default product config, но оставляет durable intent `OFF` и
 не меняет proxy settings.
 
@@ -135,8 +139,9 @@ in-memory credential resolver. Floor identity не является caller input
 Prepared functions не сериализуются; credentials сохраняются только в закрытых
 credential records и retained generation, как описано ниже.
 
-Первое включение из `OFF` сначала полностью проверяет exact dataset и строит lookup index,
-затем требует `READY`, приобретает и подтверждает exact fail-closed floor,
+Первое включение из `OFF` сначала проверяет exact runtime input: artifact и
+lookup index для Anticensority либо package-owned manual policy identity.
+Затем оно требует `READY`, приобретает и подтверждает exact fail-closed floor,
 записывает строгий durable `ON`, очищает старое request/auth ephemeral state и
 только последним синхронным присваиванием публикует immutable active session.
 До floor acquisition controller остаётся `OFF`; между acquisition и publication
@@ -198,13 +203,15 @@ durable `OFF` и floor identity для следующего reconciliation.
 
 Production event page передаёт controller реальные activation и recovery
 factories. Apply сначала дожидается boot initialization, допускает чистый `OFF`
-или активную `READY` session, загружает immutable Saved snapshot, открывает только
-существующий IndexedDB store и передаёт exact prepared contract в serialized
-activation controller. Успешный RPC возвращает только `ON`/`ACTIVE`; ошибки —
+или активную `READY` session, загружает immutable Saved snapshot и передаёт exact
+prepared contract в serialized activation controller. Anticensority использует
+существующий IndexedDB store; manual activation не читает provider dataset.
+Успешный RPC возвращает только `ON`/`ACTIVE`; ошибки —
 только allowlisted code без raw exception или secret. Capability
 `activationSupported` равен `true`, а `providerDatasetAvailable` становится
-`true` после успешной проверки и установки packaged baseline независимо от
-того, активна ли READY session. Первый clean-start bootstrap открывает
+`true` после успешной проверки и установки packaged baseline либо для
+проверенной manual configuration, независимо от того, активна ли READY session.
+Первый clean-start bootstrap открывает
 IndexedDB для установки exact packaged bytes, но не активирует routing.
 
 Draft существует только в Options UI и не участвует в request routing.
@@ -286,15 +293,52 @@ restricted-site permission не блокирует Apply. Safe-failure сооб�
 перезаписывают Draft. Apply не требует refresh страницы; уже открытые соединения
 могут естественно сохраниться.
 
+Public settings schema v1 дополнена `source: "anticensority" | "manual"`.
+Отсутствующее legacy поле означает Anticensority; default не меняется.
+`manual` использует fixed package-owned Direct policy identity, не скачанный
+artifact. Подготовка, Apply и recovery не открывают dataset store и не строят
+provider index; правила сайтов, onion, группы кандидатов, Direct replacement
+и noDirect сохраняют общий приоритет. Для обычного unmatched сайта при default
+flags получается Direct. Exact manual identity проверяется в тех же durable
+config/ON bindings, что и provider identity; произвольный hash не принимается.
+
+Save source change меняет только Saved, Apply — exact revision без очистки floor.
+Manual Effective восстанавливается и при pending Anticensority/password changes.
+Проверенная Saved configuration остаётся редактируемой при недоступном provider
+dataset, чтобы можно было выбрать manual; повреждённая configuration не
+принимается. Bootstrap по-прежнему пытается проверить packaged provider cache,
+но сначала сохраняет default Saved при его отсутствии. Неудача provider bootstrap
+не препятствует manual routing; это не обещание отсутствия фоновых source checks.
+IndexedDB backend открывается лениво; недоступность provider storage даёт
+sanitized CHECK_FAILED/STORAGE_FAILED в status и не блокирует manual Options,
+Apply или recovery. Manual policy не показывается как current provider dataset:
+его version/source date в provider status отсутствуют.
+
 Public schema хранит Direct/Proxy/whitelist patterns, own proxies, отдельные
 local Tor/Tor Browser/WARP scopes и четыре общих routing flags. Patterns и
 proxy hosts нормализуются в lowercase с удалением внешних пробелов и конечной
 точки; `*.example` по-прежнему совпадает с base domain и subdomains, а простой
-pattern — только с exact host. В отличие от Chromium UI, Firefox control plane
-пока не имеет UI-level `enabled` master-toggle для Tor: три явных boolean scope
-показывают участие кандидата в Proxy rules, onion и Direct replacement. Это
-позволяет без скрытой семантики представить production default, где Tor
-кандидаты доступны для `.onion`, но не расширяют explicit Proxy chain.
+pattern — только с exact host. Firefox задаёт для Tor три независимых scope:
+Proxy rules, onion и Direct replacement. Chromium сохраняет общий `enabled` и
+добавляет отдельный `useForProxyRules`; доступность для Proxy равна
+`enabled && useForProxyRules`. В свежей configuration оба браузера задают
+SOCKS5 `localhost:9050` и `localhost:9150`, onion=true, Proxy=false,
+Direct replacement=false; Chromium master включён для обоих. Для старых
+structured Chromium entries с `enabled`, но без `useForProxyRules`, Proxy scope
+сохраняется через default true. Explicit Saved values и отдельная legacy
+`useTor` migration сохраняют прежнюю семантику. В portable format Tor `enabled`
+означает Proxy scope: Chromium import включает master при любом из трёх scope,
+export переносит только действующие scope. Поэтому onion-only и
+Direct-replacement-only настройки переносятся без `torScope` warning.
+Browser-specific DNS/timeout options остаются отдельным ограничением переноса.
+Быстрые Chromium Proxy controls сохраняют действующие другие scope; включение
+отключённого master включает только Proxy, не скрытые неактивные presets.
+WARP также разделяет Proxy и Direct replacement; Chromium хранит отдельный
+`useForProxyRules` рядом с master `enabled`. Единый набор scope для списка
+кандидатов переносится в обе стороны, включая Direct-replacement-only.
+Разные scope отдельных WARP entries остаются непредставимы в текущем UI и дают
+`warpScope` warning. Quick Proxy switch сохраняет действующий Direct replacement;
+включение отключённого master не активирует его прежний неактивный preset.
 
 Сохранение использует write-ahead marker, затем один `storage.local.set` для
 descriptor-bound product config, credential record и redacted settings commit.
@@ -302,22 +346,25 @@ Apply отказывается читать Saved snapshot, пока marker су
 читает отдельный ранее зафиксированный Effective snapshot. После
 crash завершённый exact commit может быть reconciled, а partial/mismatched
 config остаётся fail-closed; новая config никогда не принимается вместе со
-старыми credentials. RPC caller не выбирает provider или dataset identity и не
-может promote staged data.
+старыми credentials. Settings RPC разрешает только source choice Anticensority
+или manual; caller не передаёт произвольную dataset identity/trust и не может
+promote staged data через запись настроек.
 
-Recovery не выполняет network request: production dataset store открывается
-локально через IndexedDB, exact stored artifact ещё раз проверяется существующим
-dataset runtime, и session публикуется только после полного успеха. Packaged
-provider artifact и default product configuration присутствуют; persistent
-credential configuration по-прежнему отсутствует. Provider update check
-изолирован от boot/recovery и не выбирает dataset для текущей session.
+Recovery не выполняет network request. Для Anticensority production dataset
+store открывается локально через IndexedDB, exact stored artifact проверяется
+заново; manual проверяет fixed policy identity без dataset store.
+Session публикуется только после полного успеха. Packaged
+provider artifact и default product configuration присутствуют; на чистой
+установке credentials не заданы. Настроенные credentials восстанавливаются
+только из exact Effective generation. Provider refresh отделён от boot/recovery;
+он меняет текущий dataset только через проверенный promotion transaction.
 
 Production Gecko ID — неизменяемый UUIDv4
 `{adf5f697-1149-42a2-92eb-c163cb9a4146}`. Он создан для этого Firefox
 продукта и не переиспользует legacy AMO identity. Firefox следует общей версии
-репозитория: текущий опубликованный release имеет manifest version `0.0.4.0`,
-совпадающую с `storeVersion` Chromium release train; следующий публичный
-release обновляет обе версии согласованно через обычный release-процесс.
+репозитория: development manifests и Chromium `storeVersion` имеют `1.0.0`.
+Опубликованный release остаётся `0.0.4.0`; изменение source version не означает
+публикацию или отправку пакета в store.
 
 Детерминированные проверки запускаются из корня репозитория:
 
@@ -336,75 +383,87 @@ active -> previous LKG -> packaged baseline; parsed index хранится то�
 памяти event page. Неизменяемые bytes и маленькие provider pointers находятся
 в отдельных object stores Firefox-specific IndexedDB; запись артефакта и
 переключение pointer выполняются одной транзакцией только после проверки точных
-bytes. Remote candidate с unauthenticated trust не может стать active. Пакет
+bytes. `REMOTE_UNAUTHENTICATED` не допускается к activation; проверенный
+фиксированный HTTPS source использует отдельный `REMOTE_HTTPS_VALIDATED`,
+а не signed trust. Пакет
 содержит только локальный declarative Anticensority baseline, описанный в
 `FIREFOX_PROVIDER_DATASET.md`; PAC/JavaScript провайдера в runtime package не
 входит. В `OFF` proxy settings не меняются. Firefox build не меняет Chromium
 build output.
 
-Пакет содержит production authenticated-download control plane и строгие
-no-input RPC `firefox.provider.update.get`/`check`/`install`. Update manifest schema v1
-содержит только `schemaVersion`, `providerKey`, monotonic `sequence`, `keyId`,
-relative `artifactPath` и строгий dataset `envelope`. Отдельная 64-byte
-Ed25519 signature проверяется native WebCrypto над точными UTF-8 bytes
-manifest до доверия его полям. `keyId` выбирает ключ только из injected pinned
-`Map`; remote JSON не может объявить `trust`. Production trust configuration
-пока disabled, потому что release HTTPS manifest endpoint и raw 32-byte
-Ed25519 public key со stable keyId ещё не предоставлены. Никакой test key или
-caller-controlled URL вместо них не используется. После signature, manifest,
-provider identity, exact byte count, SHA-256 и общей declarative dataset
-verification pipeline внутренне присваивает `REMOTE_AUTHENTICATED`.
+Пакет содержит строгие no-input RPC `firefox.provider.update.get`/`check`/`install`.
+Production `SOURCE_UPDATE_ENABLED` включает фиксированный HTTPS data channel.
+Его два разрешённых URL, parser и bounds описаны в
+[контракте источника](FIREFOX_PROVIDER_DATASET.md#fixed-https-source-updates).
+Downloader допускает не более трёх manual redirects только между этими двумя
+точными HTTPS URL; final URL также проверяется по этому списку и exact request.
+URL userinfo/query/fragment запрещены. Downloader опускает credentials/referrer
+и ограничивает source/normalized data.
+Он извлекает статический JSON, не исполняя скачанный PAC. SHA-256 исходных и
+нормализованных bytes вычисляется локально; source timestamp проверяется по
+строгому формату, допустимой дате и пределу future skew 24 часа.
+`REMOTE_HTTPS_VALIDATED` означает эти проверки и HTTPS provenance, не подпись автора.
 
-Fetch boundary принимает только явный HTTPS URL без credentials/query/fragment,
-использует manual redirects с максимум тремя same-origin HTTPS переходами,
-`credentials: omit`, `referrerPolicy: no-referrer`, общий deadline/AbortSignal и
-streaming size bounds. Manifest ограничен 256 KiB, signature — ровно 64 bytes,
-artifact — существующим пределом 16 MiB. Downloaded bytes никогда не
-исполняются и остаются `HOST_BUCKETS_V1` data.
+Отдельный signed-manifest канал остаётся disabled: release HTTPS manifest
+endpoint и raw 32-byte Ed25519 public key со stable keyId не настроены.
+Его manifest schema v1 содержит `schemaVersion`, `providerKey`, monotonic
+`sequence`, `keyId`, relative `artifactPath` и dataset `envelope`. Native WebCrypto
+проверяет отдельную 64-byte Ed25519 signature над точными bytes manifest;
+`keyId` выбирает только pinned key. После проверки подписи, identity, byte count,
+hash и dataset schema канал присваивает `REMOTE_AUTHENTICATED`.
+Manifest ограничен 256 KiB, artifact — 16 MiB. Настроенный signed канал имеет
+приоритет; malformed signed configuration не разрешает fallback к HTTPS.
 
-Provider pointer schema v2 мигрирует v1 с сохранением `active`,
-`previousLkg` и `packagedBaseline`, добавляя отдельный `staged` pointer и
-anti-rollback пару `highestAuthenticatedSequence`/artifact SHA-256. Lower
-sequence отклоняется; одинаковые sequence+SHA idempotent, а одинаковый
-sequence с другим SHA даёт conflict. Только полностью verified candidate
-атомарно записывает immutable artifact, staged pointer и sequence metadata.
-Stage не меняет active/LKG/live session/durable ON identity. Строгий
-`firefox.provider.update.install` без дополнительных полей требует configured
-trust и допускает полный `OFF` или активный `READY`. Он заново проверяет exact
-authenticated staged artifact и anti-rollback pair. В `OFF` прежний journal v1
-связывает atomic IndexedDB active/LKG/staged pointers с
-`productConfig.datasetIdentity` для следующего Apply.
+Provider pointer schema v2 сохраняет v1 active/LKG/baseline identities и signed
+anti-rollback пару `highestAuthenticatedSequence`/artifact hash. HTTPS schema v3
+добавляет typed staged channel, exact source receipt/local sequence и отдельный
+timestamp/content floor. Его исходная граница — дата verified packaged baseline.
+Более старый source отклоняется; тот же timestamp с другим routing hash —
+conflict. Одинаковые данные выбранного dataset дают UNCHANGED без перезаписи
+immutable artifact или переименования packaged trust. Вернувшийся старый
+artifact, когда выбран другой dataset, не считается unchanged.
+Signed high-water и HTTPS receipt не подменяют друг друга.
 
-При `READY` journal v2 добавляет exact Effective routing descriptor. Подготовка
-читает только проверенный staged dataset и неизменяемую **Effective** user
-configuration/credentials, пока старая session обслуживает запросы. Существующий
-`replacePrepared` повторно проверяет Effective identity, staged identity/trust,
-private access и ownership; сохраняет новый durable `ON`, затем публикует routing
-и credential resolver одной generation. Clear, OFF и повторного floor acquisition
-нет. После этого journal завершает dataset pointers и меняет только dataset
+Stage атомарно сохраняет immutable artifact и channel metadata, не меняя
+active/LKG/live session/durable ON. Event page затем может выполнить exact
+promotion в той же control queue. Manual `check` и 12-hour alarm используют
+одну операцию check-and-promotion, сериализованную с Save/Apply/Clear.
+Первый alarm при отсутствии подходящего расписания имеет задержку пять минут.
+Автоматическая установка допускается только в полном OFF или активном READY
+при допустимом live ownership. Если Saved или Effective выбирает manual,
+promotion возвращает DEFERRED: candidate остаётся staged, installed status не
+записывается, источник не меняется. Source checks при manual продолжаются.
+После явного выбора Anticensority через Save/Apply normal promotion возобновляется.
+В blocked/control-loss состоянии candidate также остаётся подготовленным.
+Отдельный `install` применяет точный staged candidate после
+устранения препятствия. Ни URL, ни trust, ни bytes не являются RPC input.
+
+В OFF journal v1 для signed или v3 для HTTPS связывает IndexedDB
+active/LKG/staged pointers с `productConfig.datasetIdentity` для следующего Apply.
+Он не получает proxy control и не включает защиту. В READY journal v2 для signed
+или v4 для HTTPS добавляет exact Effective routing descriptor; HTTPS journal
+также связывает source ID/hash/date. Подготовка читает staged dataset и
+неизменяемую **Effective** user configuration/credentials, пока старая session
+обслуживает запросы. `replacePrepared` повторно проверяет Effective identity,
+staged channel/receipt, private access и ownership; сохраняет новый durable ON,
+затем публикует routing и credential resolver одной generation. Clear, OFF и
+повторного floor acquisition нет.
+
+После commit journal завершает dataset pointers и меняет только dataset
 metadata в Saved config. Если Saved=N+1, а Effective=N, revision N и его credentials
 остаются Effective с новым dataset; N+1 остаётся pending. Password/settings records
 не переписываются. Старые request-bound auth bindings сохраняются.
-
-При restart v2 journal использует durable `ON` как commit decision: OLD оставляет
-старый dataset, NEW завершает exact staged promotion; recovery никогда не выбирает
-latest Saved вместо Effective. Несогласуемый journal блокирует activation/recovery,
-а не сообщает READY. Ошибка подготовки оставляет старую session и provider pointers;
-неоднозначная ошибка после commit сохраняет floor и требует blocked recovery.
-Apply и settings mutation сериализованы с install и запрещены при незавершённом journal.
-
-Manual check принимает только `{type: "firefox.provider.update.check"}` и
-использует исключительно compile-time production trust configuration. Он может
-работать при ACTIVE, но только stage-ит candidate. Manual install использует общий
-promotion controller и никогда не вызывает Clear. Event page синхронно регистрирует `alarms.onAlarm`;
-после включения реального trust anchor создаётся один 12-hour alarm с
-пятиминутной первой задержкой. Alarm выполняет тот же authenticated check и не
-promote-ит dataset, не меняет settings/credentials и не получает proxy control.
-При disabled/malformed trust alarm удаляется и external fetch отсутствует.
+При restart active journal v2/v4 использует durable ON как commit decision:
+OLD оставляет старый dataset, NEW завершает exact staged promotion. Recovery
+никогда не выбирает latest Saved вместо Effective. Несогласуемый journal
+блокирует activation/recovery. Ошибка подготовки оставляет старую session и
+provider pointers; неоднозначная ошибка после commit сохраняет floor и требует
+blocked recovery. Apply и settings mutation запрещены при незавершённом journal.
 
 В `firefoxMv3ProviderUpdateStatus` сохраняются только schema, фиксированный
 статус, timestamps и очищенная error category. Публичный status добавляет
-только current/staged public dataset versions и boolean update availability;
+current/staged public dataset versions, update availability/configuration,
+канал `HTTPS`/`SIGNED`/`NONE` и source-data timestamp отдельно от check timestamp;
 URL, key/signature bytes, provider/hash identity, endpoints, authRef,
 credentials, floor и browsing data из RPC/UI исключены. Прерванный CHECKING
 после event-page recreation становится `UPDATE_INTERRUPTED`; verified staged
@@ -420,19 +479,41 @@ npm --prefix $Project run test:browser:firefox-lifecycle
 
 Smoke проверяет реальное уничтожение и пересоздание event page после idle,
 сохранение `OFF` и отсутствие изменений заранее настроенного localhost proxy.
-Он не является обязательным сетевым CI-шагом. Production update URL/public key
-и release/signing остаются отдельными последующими задачами.
+Он не является обязательным сетевым CI-шагом и не проверяет новый источник
+данных. Signed-manifest endpoint/public key остаются unconfigured; release
+signing и store submission не следуют автоматически из успешных local gates.
 
 Firefox package содержит собственные toolbar popup и Options page с локальными
 EN/RU catalogues. Popup показывает `OFF`, `INITIALIZING`, `ACTIVE`, `RECOVERED`
-или blocked state только из sanitized capabilities RPC и вызывает существующие
+или blocked state только из sanitized capabilities и вызывает существующие
 Apply/Clear без caller-controlled configuration. Private access и dataset
 availability показаны отдельно; `ACTIVE` отображается только для runtime
 `READY` и не показывается при denied private access.
+Загрузка и обновление popup используют один `firefox.popup.get` с единственным
+полем `tabUrl` через общую очередь control operations. Тот же helper, что у
+Options, заново проверяет Saved и существующий Effective один раз на запрос.
+Маршрут сайта, доступность proxy candidates и diagnostics используют Effective
+(Saved только при отсутствии Effective); pending summary содержит текущую
+Saved revision. Ответ ограничен capabilities, site, operational и configuration:
+полный URL, settings и credentials в него не входят. UI проверяет все четыре
+проекции до замены состояния. Между запросами проверенные snapshots не хранятся;
+standalone site/operational RPC продолжают самостоятельно читать и проверять данные.
 
-Options page отражает только schema v1 production settings control plane:
-Direct/Proxy/whitelist rules, own proxies, local Tor, Tor Browser, WARP и четыре
+Options page отражает schema v1 production settings control plane:
+source Anticensority/manual, Direct/Proxy/whitelist rules, own proxies,
+local Tor, Tor Browser, WARP и четыре
 routing flags. Rules editor — единый список с host, scope, route/type и add/delete.
+Загрузка и обновление Options используют один строгий no-input RPC
+`firefox.options.get` через общую очередь control operations. Ответ содержит
+только существующие публичные проекции capabilities, Saved settings, operational
+status, provider update status и configuration summary. В пределах запроса
+Saved проверяется один раз, Effective — отдельно, если он существует;
+диагностика использует Effective, редактор — Saved. Проверенные snapshots не
+сохраняются между запросами: следующее открытие заново читает storage и проверяет
+dataset identity. Ownership и private access читаются из browser API; raw
+generation records и passwords в bundle не попадают. UI проверяет все пять
+проекций до обновления состояния и отбрасывает ответ, если status event уже
+потребовал нового чтения; незаписанный Draft остаётся локальным.
 UI adapter не мигрирует storage: Direct/Proxy и whitelist сохраняют свои buckets,
 порядок и пересечения; старые wildcard patterns показываются отдельно без
 нормализации. Auto удаляет только выбранную запись, а whitelist не выдаётся за
@@ -443,10 +524,11 @@ UI adapter не мигрирует storage: Direct/Proxy и whitelist сохра
 `replaceDirectWithProxy=false`, `noDirect=false`. Firefox-specific Tor scope
 показывается напрямую, без Chromium-only master control. Arbitrary provider
 source и migration controls намеренно отсутствуют. Maintenance предоставляет
-no-input authenticated update check, staged install при OFF/READY, user-triggered
-connection check для последнего explicit Proxy origin и sanitized diagnostics.
+no-input обновление данных с check и допустимым install при OFF/READY,
+отдельный install сохранённого candidate, user-triggered connection check для
+последнего explicit Proxy origin и sanitized diagnostics.
 Firefox CSP разрешает `connect-src http: https:` для этой явной проверки и
-фиксированного HTTPS authenticated-update origin; connection-check запрос
+фиксированных HTTPS source requests; connection-check запрос
 нормализован до origin, не отправляет cookies/referrer, не следует
 redirects и не читает response body. Проверка не меняет rules, dataset,
 credentials или proxy ownership и не использует отдельный telemetry endpoint.
@@ -471,7 +553,22 @@ full tab URL не возвращается странице. Сравнение 
 Firefox `browser.action` badge/icon/title строится из текущих authoritative
 activation, proxy-control и site snapshots: `OFF`, `A`, `P`, `D`, `EXT`, busy,
 loading и warning не имеют отдельного persisted routing state. После recreation
-event page повторно вычисляет presentation. Permission `notifications` служит
+event page повторно вычисляет presentation. Индикаторы OFF, loading, busy,
+warning и известной потери control не читают site settings и dataset, поскольку
+не используют маршрут сайта. Для A/P/D site snapshot читается заново; общего
+кэша проверенных данных между обновлениями нет. Вытесненное новым событием
+обновление прекращается после initialization, чтения вкладки или site snapshot,
+до следующей дорогой операции. Уже начатое чтение завершается, но его результат
+не публикуется. Toolbar держит максимум одно выполняющееся site read:
+последующие обновления ждут его завершения и повторно проверяют актуальность
+запроса и activation. Только последнее актуальное обновление начинает своё
+чтение; snapshot предыдущей вкладки не переиспользуется. Ошибка чтения также
+освобождает ожидание. OFF/busy и другие не зависящие от маршрута индикаторы
+проходят без ожидания этого чтения. Promise существует только в текущей event
+page и не участвует в durable recovery. Перед финальным вычислением presentation
+остаётся живое чтение proxy control, после него используется актуальный
+activation snapshot.
+Permission `notifications` служит
 только фиксированным локализованным alerts о control loss, blocked recovery и
 ошибке явно запрошенной health-проверки. Уведомления и diagnostics не включают
 hostname/URL, proxy endpoints, credentials, `authRef`, dataset hashes или floor

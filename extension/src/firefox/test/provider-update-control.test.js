@@ -71,6 +71,8 @@ function fixture(options = {}) {
   let current = options.current || identity('v1', 'a');
   let staged = options.staged || null;
   const updaterInputs = [];
+  const sourceInputs = [];
+  const sourceRequests = [];
   let fetches = 0;
   const alarmValues = new Map(options.alarm ? [
     [Control.ALARM_NAME, options.alarm],
@@ -82,6 +84,7 @@ function fixture(options = {}) {
     datasetStore: {
       async loadStaged() {
 
+        if (options.storeUnavailable) throw new Error('synthetic private database error');
         if (!staged) {
           return {ok: true, status: 'EMPTY', verification: null};
         }
@@ -93,6 +96,11 @@ function fixture(options = {}) {
 
       },
       async stageAuthenticatedCandidate() {
+
+        throw new Error('TEST_UPDATER_OWNS_STAGING');
+
+      },
+      async stageHttpsCandidate() {
 
         throw new Error('TEST_UPDATER_OWNS_STAGING');
 
@@ -123,8 +131,28 @@ function fixture(options = {}) {
     now: options.now || (() => 1000),
     providerKey: PROVIDER_KEY,
     readCurrentDatasetIdentity: async () => current,
+    readCurrentDatasetInfo: options.sourceUpdatedAt ? async () => ({
+      identity: current, sourceUpdatedAt: options.sourceUpdatedAt,
+    }) : undefined,
     sha256: async () => '0'.repeat(64),
     trustConfiguration: options.trust || trust(),
+    sourceUpdateEnabled: options.sourceUpdateEnabled === true,
+    createSourceUpdater(input) {
+
+      sourceInputs.push(input);
+      return {async fetchAndStage(...request) {
+
+        sourceRequests.push(request);
+        fetches += 1;
+        if (options.updateGate) await options.updateGate;
+        if (updateResult.ok === true && updateResult.status === 'STAGED') {
+          staged = options.next || identity('v2', 'b');
+        }
+        return updateResult;
+
+      }};
+
+    },
     createUpdater(input) {
 
       updaterInputs.push(input);
@@ -161,6 +189,8 @@ function fixture(options = {}) {
 
     },
     updaterInputs,
+    sourceInputs,
+    sourceRequests,
     get fetches() {
 
       return fetches;
@@ -171,6 +201,64 @@ function fixture(options = {}) {
 }
 
 describe('Firefox production provider update control', function() {
+
+  it('reports unavailable dataset storage without failing Options or rewriting check history', async function() {
+    const test = fixture({storeUnavailable: true});
+    const before = structuredClone(test.persisted.values);
+    const result = await test.controller.publicStatus();
+    Assert.strictEqual(result.status, 'CHECK_FAILED');
+    Assert.strictEqual(result.errorCategory, 'STORAGE_FAILED');
+    Assert.strictEqual(result.updateConfigured, true);
+    Assert.strictEqual(result.updateChannel, 'SIGNED');
+    Assert.strictEqual(result.currentDatasetVersion, null);
+    Assert.strictEqual(result.stagedDatasetVersion, null);
+    Assert.strictEqual(result.updateAvailable, false);
+    Assert.deepStrictEqual(test.persisted.values, before);
+    Assert.strictEqual(JSON.stringify(result).includes('private database'), false);
+  });
+
+  const disabledTrust = () => trust({enabled: false, manifestUrl: null, trustedPublicKeys: {}});
+
+  it('uses the explicit HTTPS channel without claiming signed authentication', async function() {
+
+    const test = fixture({trust: disabledTrust(), sourceUpdateEnabled: true, sourceUpdatedAt: 400});
+    const initial = await test.controller.initialize();
+    Assert.strictEqual(initial.trustConfigured, false);
+    Assert.strictEqual(initial.updateConfigured, true);
+    Assert.strictEqual(initial.updateChannel, 'HTTPS');
+    Assert.strictEqual(initial.automaticChecksEnabled, true);
+    Assert.strictEqual(test.alarmValues.get(Control.ALARM_NAME).periodInMinutes, 720);
+    Assert.strictEqual(test.fetches, 0);
+    await test.controller.check();
+    Assert.strictEqual(test.sourceInputs.length, 1);
+    Assert.strictEqual(test.updaterInputs.length, 0);
+    Assert.deepStrictEqual(test.sourceRequests, [[]]);
+    const status = await test.controller.publicStatus();
+    Assert.strictEqual(status.sourceUpdatedAt, 400);
+    Assert.strictEqual(status.lastCheckAt, 1000);
+    Assert.strictEqual(status.stagedDatasetVersion, 'v2');
+    Assert.strictEqual(JSON.stringify(status).includes('https:'), false);
+    Assert.strictEqual(JSON.stringify(status).includes('artifactSha256'), false);
+
+  });
+
+  it('does not downgrade configured or invalid signed trust to HTTPS', async function() {
+
+    const signed = fixture({sourceUpdateEnabled: true});
+    await signed.controller.initialize();
+    await signed.controller.check();
+    Assert.strictEqual(signed.sourceInputs.length, 0);
+    Assert.strictEqual(signed.updaterInputs.length, 1);
+    Assert.strictEqual((await signed.controller.publicStatus()).updateChannel, 'SIGNED');
+    for (const configuration of [trust({trustedPublicKeys: {}}),
+      trust({enabled: false})]) {
+      const invalid = fixture({trust: configuration, sourceUpdateEnabled: true});
+      Assert.strictEqual((await invalid.controller.initialize()).updateConfigured, false);
+      Assert.strictEqual((await invalid.controller.check()).ok, false);
+      Assert.strictEqual(invalid.fetches, 0);
+    }
+
+  });
 
   it('accepts only fixed HTTPS trust tables with exact raw Ed25519 keys',
       function() {
@@ -292,10 +380,16 @@ describe('Firefox production provider update control', function() {
     const cases = [
       ['INVALID_UPDATE_SIGNATURE', 'AUTHENTICATION_FAILED'],
       ['UPDATE_TIMEOUT', 'NETWORK_FAILED'],
+      ['SOURCE_TIMEOUT', 'NETWORK_FAILED'],
+      ['INVALID_SOURCE_SIZE', 'DATASET_REJECTED'],
       ['ARTIFACT_SHA256_MISMATCH', 'DATASET_REJECTED'],
       ['ROLLBACK_REJECTED', 'ROLLBACK_REJECTED'],
+      ['HTTPS_SOURCE_ROLLBACK_REJECTED', 'ROLLBACK_REJECTED'],
       ['SEQUENCE_CONFLICT', 'SEQUENCE_CONFLICT'],
+      ['HTTPS_SOURCE_TIMESTAMP_CONFLICT', 'SEQUENCE_CONFLICT'],
       ['STAGED_POINTER_CORRUPT', 'STORAGE_FAILED'],
+      ['HTTPS_SOURCE_STATE_CORRUPT', 'STORAGE_FAILED'],
+      ['SOURCE_STORAGE_FAILED', 'STORAGE_FAILED'],
       ['unknown secret-bearing failure', 'UPDATE_REJECTED'],
     ];
     for (const [code, category] of cases) {

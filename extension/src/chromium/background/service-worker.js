@@ -1912,21 +1912,9 @@ function applyPopupQuickProxyToggles(pacMods, quickProxies) {
   });
   setBooleanPropertyPatch(next, quick, 'usePacScriptProxies');
   setBooleanPropertyPatch(next, quick, 'ownProxiesOnlyForOwnSites');
-  setBooleanPatch(next.localTor, quick, 'localTorEnabled');
-  setBooleanPatch(next.torBrowser, quick, 'torBrowserEnabled');
-  if (quick.torBrowserEnabled === true) {
-    next.localTor.enabled = false;
-  } else if (quick.localTorEnabled === true) {
-    next.torBrowser.enabled = false;
-  }
-  const torModes = mv3PacMods.enforceExclusiveTorModes(
-      next.localTor,
-      next.torBrowser,
-      'torBrowser',
-  );
-  next.localTor = torModes.localTor;
-  next.torBrowser = torModes.torBrowser;
-  setBooleanPatch(next.warp, quick, 'warpEnabled');
+  setProxyScopePatch(next.localTor, quick, 'localTorEnabled');
+  setProxyScopePatch(next.torBrowser, quick, 'torBrowserEnabled');
+  setProxyScopePatch(next.warp, quick, 'warpEnabled');
   if (
     Object.prototype.hasOwnProperty.call(quick, 'ownProxiesEnabled') &&
     next.ownProxies.length
@@ -1940,11 +1928,19 @@ function applyPopupQuickProxyToggles(pacMods, quickProxies) {
 
 }
 
-function setBooleanPatch(target, source, key) {
+function setProxyScopePatch(target, source, key) {
 
-  if (Object.prototype.hasOwnProperty.call(source, key)) {
-    target.enabled = source[key] === true;
+  if (!Object.prototype.hasOwnProperty.call(source, key)) return;
+  const enabled = source[key] === true;
+  if (!target.enabled) {
+    // Quick controls enable Proxy availability only. Inactive presets for other
+    // scopes must not become active when this action enables the master switch.
+    if (!enabled) return;
+    if (Object.prototype.hasOwnProperty.call(target, 'useForOnion')) target.useForOnion = false;
+    target.useAsDirectReplacement = false;
   }
+  target.useForProxyRules = enabled;
+  target.enabled = enabled || target.useForOnion === true || target.useAsDirectReplacement;
 
 }
 
@@ -2191,13 +2187,13 @@ function getPopupProxyCandidateSummary(pacMods) {
 
   const normalized = mv3PacMods.normalizePacMods(pacMods);
   const labels = [];
-  if (normalized.localTor.enabled) {
+  if (normalized.localTor.enabled && normalized.localTor.useForProxyRules) {
     labels.push('Local Tor');
   }
-  if (normalized.torBrowser.enabled) {
+  if (normalized.torBrowser.enabled && normalized.torBrowser.useForProxyRules) {
     labels.push('Tor Browser');
   }
-  if (normalized.warp.enabled && normalized.warp.proxyString) {
+  if (normalized.warp.enabled && normalized.warp.useForProxyRules && normalized.warp.proxyString) {
     labels.push('WARP/custom proxy');
   }
   const ownProxyCount = normalized.ownProxies.filter((proxy) =>
@@ -2227,9 +2223,9 @@ function getPopupQuickProxyState(pacMods) {
     usePacScriptProxies: normalized.usePacScriptProxies !== false,
     usePacScriptProxiesEditable: true,
     ownProxiesOnlyForOwnSites: normalized.ownProxiesOnlyForOwnSites === true,
-    localTorEnabled: normalized.localTor.enabled === true,
-    torBrowserEnabled: normalized.torBrowser.enabled === true,
-    warpEnabled: normalized.warp.enabled === true,
+    localTorEnabled: normalized.localTor.enabled && normalized.localTor.useForProxyRules,
+    torBrowserEnabled: normalized.torBrowser.enabled && normalized.torBrowser.useForProxyRules,
+    warpEnabled: normalized.warp.enabled && normalized.warp.useForProxyRules,
     ownProxiesConfigured: ownProxyCount > 0,
     ownProxiesEnabled: enabledOwnProxyCount > 0,
     ownProxyCount,
@@ -3448,7 +3444,7 @@ function getProxyHealthMessage(candidateType, ifNotification) {
       getChromeMessage(
           'proxyHealthTorBrowserError',
           'Could not connect to Tor Browser. Make sure Tor Browser is running ' +
-          'and 127.0.0.1:9150 is available.',
+          'and localhost:9150 is available.',
       );
   }
   if (candidateType === 'localTor') {
@@ -3460,7 +3456,7 @@ function getProxyHealthMessage(candidateType, ifNotification) {
       getChromeMessage(
           'proxyHealthLocalTorError',
           'Could not connect to the Tor service. Make sure Tor is running and ' +
-          '127.0.0.1:9050 is available.',
+          'localhost:9050 is available.',
       );
   }
   return getChromeMessage(

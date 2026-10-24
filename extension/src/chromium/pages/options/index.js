@@ -58,6 +58,9 @@
     setupEligibilityInitialized: false,
     setupEligible: false,
   };
+  let refreshPromise = null;
+  let activeRefreshOptions = null;
+  let pendingRefreshOptions = null;
   let fieldId = 0;
   let proxyEditorId = 0;
   let statusId = 0;
@@ -466,9 +469,33 @@
 
   }
 
-  async function refresh(options = {}) {
+  function refresh(options = {}) {
 
-    const serial = ++state.requestSerial;
+    ++state.requestSerial;
+    // Keep one latest refresh behind the active RPC. Retain an operation's
+    // completion message when a later storage/proxy event carries no message.
+    pendingRefreshOptions = Object.assign({},
+        pendingRefreshOptions || activeRefreshOptions, options);
+    if (!refreshPromise) {
+      refreshPromise = Promise.resolve().then(async () => {
+        try {
+          while (pendingRefreshOptions) {
+            activeRefreshOptions = pendingRefreshOptions;
+            pendingRefreshOptions = null;
+            await performRefresh(activeRefreshOptions, state.requestSerial);
+          }
+        } finally {
+          refreshPromise = null;
+          activeRefreshOptions = null;
+        }
+      });
+    }
+    return refreshPromise;
+
+  }
+
+  async function performRefresh(options, serial) {
+
     const focusToken = options.restoreFocus === false ? null : getFocusToken();
     captureDraftForms();
     const previousRevision = getPacRevision();
@@ -2538,11 +2565,11 @@
       ).length :
       0;
     const localTor = isObject(pacMods.localTor) &&
-      pacMods.localTor.enabled === true ? 1 : 0;
+      pacMods.localTor.enabled === true && pacMods.localTor.useForProxyRules !== false ? 1 : 0;
     const torBrowser = isObject(pacMods.torBrowser) &&
-      pacMods.torBrowser.enabled === true ? 1 : 0;
+      pacMods.torBrowser.enabled === true && pacMods.torBrowser.useForProxyRules !== false ? 1 : 0;
     const warp = isObject(pacMods.warp) &&
-      pacMods.warp.enabled === true &&
+      pacMods.warp.enabled === true && pacMods.warp.useForProxyRules !== false &&
       String(pacMods.warp.proxyString || '').trim() ? 1 : 0;
     return own + localTor + torBrowser + warp;
 
@@ -2742,7 +2769,7 @@
         t('optionsTorRequirement'),
       endpoint: formatProxyEndpoint(
           config.type || 'SOCKS5',
-          config.host || '127.0.0.1',
+          config.host || 'localhost',
           config.port || defaultPort,
       ),
       healthError,
@@ -2753,19 +2780,6 @@
     enabled.onchange = () => {
       updateEnabledStatus(connection.status, enabled.checked);
       setConnectionEditorExpanded(connection.card, enabled.checked, true);
-      const otherName = key === 'localTor' ?
-        'torBrowser.enabled' :
-        'localTor.enabled';
-      const other = parent.querySelector(`[name="${otherName}"]`);
-      if (enabled.checked && other) {
-        other.checked = false;
-        const otherCard = other.closest('[data-connection-key]');
-        updateEnabledStatus(
-            otherCard.querySelector('[data-connection-status]'),
-            false,
-        );
-        setConnectionEditorExpanded(otherCard, false, true);
-      }
     };
     appendSelect(
         connection.editor,
@@ -2780,7 +2794,7 @@
         'text',
         `${key}.host`,
         t('optionsHost'),
-        config.host || '127.0.0.1',
+        config.host || 'localhost',
         {full: true},
     );
     appendField(
@@ -2790,6 +2804,13 @@
         t('optionsPort'),
         config.port || defaultPort,
         {full: true, min: 1, max: 65535},
+    );
+    appendCheckbox(
+        connection.editor,
+        `${key}.useForProxyRules`,
+        t('optionsUseForProxyRules'),
+        config.useForProxyRules !== false,
+        '',
     );
     appendCheckbox(
         connection.editor,
@@ -2838,6 +2859,13 @@
         t('optionsProxyString'),
         proxyString,
         {full: true, help: t('optionsProxyStringHelp')},
+    );
+    appendCheckbox(
+        connection.editor,
+        'warp.useForProxyRules',
+        t('optionsUseForProxyRules'),
+        warp.useForProxyRules !== false,
+        '',
     );
     appendCheckbox(
         connection.editor,
@@ -2977,9 +3005,9 @@
           getValue(row, 'proxy.host') && getValue(row, 'proxy.port'))
         .length;
     const count = own +
-      (getChecked(form, 'localTor.enabled') ? 1 : 0) +
-      (getChecked(form, 'torBrowser.enabled') ? 1 : 0) +
-      (getChecked(form, 'warp.enabled') &&
+      (getChecked(form, 'localTor.enabled') && getChecked(form, 'localTor.useForProxyRules') ? 1 : 0) +
+      (getChecked(form, 'torBrowser.enabled') && getChecked(form, 'torBrowser.useForProxyRules') ? 1 : 0) +
+      (getChecked(form, 'warp.enabled') && getChecked(form, 'warp.useForProxyRules') &&
         getValue(form, 'warp.proxyString') ? 1 : 0);
     const status = root.querySelector('[data-proxy-availability]');
     if (!status) {
@@ -3362,6 +3390,7 @@
       type: getValue(form, `${key}.type`),
       host: getValue(form, `${key}.host`),
       port: Number(getValue(form, `${key}.port`)),
+      useForProxyRules: getChecked(form, `${key}.useForProxyRules`),
       useForOnion: getChecked(form, `${key}.useForOnion`),
       useAsDirectReplacement: getChecked(
           form,
@@ -3466,11 +3495,8 @@
       setMessage(t('optionsValidationFailed'), 'error');
       return;
     }
-    let localTor = collectTorConfig(form, 'localTor');
+    const localTor = collectTorConfig(form, 'localTor');
     const torBrowser = collectTorConfig(form, 'torBrowser');
-    if (localTor.enabled && torBrowser.enabled) {
-      localTor = Object.assign({}, localTor, {enabled: false});
-    }
     const pacMods = Object.assign({}, clone(originalPacMods), {
       localTor,
       torBrowser,
@@ -3481,6 +3507,7 @@
       ),
       warp: {
         enabled: getChecked(form, 'warp.enabled'),
+        useForProxyRules: getChecked(form, 'warp.useForProxyRules'),
         proxyString: getValue(form, 'warp.proxyString'),
         useAsDirectReplacement: getChecked(
             form,

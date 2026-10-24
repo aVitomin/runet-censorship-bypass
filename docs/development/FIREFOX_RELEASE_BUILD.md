@@ -1,10 +1,11 @@
 # Firefox release candidate build
 
-Firefox follows the repository release train. Its manifest version is the
-same `0.0.<storeVersion>` derived from `src/templates-data.js` for Chromium;
-the current candidate is `0.0.4.0`. A future public release updates the shared
-release version through the normal release process rather than creating an
-independent Firefox-only version.
+Firefox follows the repository release train. Both targets use the complete
+version from `extension/src/templates-data.js`; the Chromium manifest template
+uses `storeVersion` without an added prefix. The current development version
+is `1.0.0`, which does not declare a published release or store submission.
+Update the shared version and maintained manifests through the release process,
+without introducing an independent Firefox-only version.
 
 The immutable Firefox Gecko ID is
 `{adf5f697-1149-42a2-92eb-c163cb9a4146}`. It is a newly generated UUIDv4 for
@@ -29,10 +30,10 @@ package allowlist/integrity verifier after each build, and compares both
 release sets byte for byte. It refuses a dirty tracked tree and refuses to
 overwrite an existing release output. It then writes:
 
-- `dist/firefox-release/runet-censorship-bypass-firefox-0.0.4.0.xpi` — unsigned
+- `dist/firefox-release/runet-censorship-bypass-firefox-1.0.0.xpi` — unsigned
   release candidate with `manifest.json` at archive root;
 - the matching `.xpi.sha256` file;
-- `runet-censorship-bypass-firefox-0.0.4.0-source.zip` — all tracked source
+- `runet-censorship-bypass-firefox-1.0.0-source.zip` — all tracked source
   files needed for review and reproduction, under one versioned root;
 - the matching source-archive `.sha256` file.
 
@@ -46,18 +47,20 @@ Its bytes are JSON-compatible, human-reviewable and verified against the
 committed byte count and SHA-256 before the extension constructs an index.
 
 The unsigned XPI is a local/reviewer artifact, not a public release. Install it
-temporarily in Firefox 154.0.1 through `about:debugging`, Marionette, or a pinned
+temporarily in supported Firefox 154.0 or later through `about:debugging`, Marionette, or a pinned
 `web-ext` development command. Normal end-user installation requires Mozilla
-signing, which is intentionally outside this build and this PR.
+signing, which is outside the local build and requires a separate submission.
 
 ## Mozilla validation
 
-The release candidate is audited with the exact Mozilla `addons-linter`
-version recorded in the PR. For this candidate the command is:
+Audit the exact release candidate with a reviewed, pinned Mozilla
+`addons-linter` version and record that version with the results. Recheck its
+source, integrity and dependency advisories at the release stage. The following
+reference invocation is not evidence of completed `1.0.0` validation:
 
 ```powershell
 npx --yes --ignore-scripts addons-linter@10.10.0 `
-  "$Project\dist\firefox-release\runet-censorship-bypass-firefox-0.0.4.0.xpi"
+  "$Project\dist\firefox-release\runet-censorship-bypass-firefox-1.0.0.xpi"
 ```
 
 This command is an explicit release audit tool invocation; it is not a project

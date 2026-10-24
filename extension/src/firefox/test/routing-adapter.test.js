@@ -400,6 +400,138 @@ describe('Firefox fail-closed routing adapter', function() {
 
   });
 
+  it('allows bounded browser origin-auth retries on the original Direct or proxy route',
+      function() {
+
+        for (const proxyInfo of [null,
+          {type: 'http', host: 'proxy.test', port: 8080},
+        ]) {
+          const authorizations = new Map();
+          const adapter = adapterForDecision(proxyInfo ? proxyDecision([
+            candidate('proxy', 'HTTP', 'proxy.test', 8080),
+          ]) : DIRECT_DECISION, {authorizations});
+          const request = {requestId: 'origin-auth',
+            url: 'https://origin.test/private', proxyInfo};
+          const challenge = Object.assign({}, request, {
+            statusCode: 401, responseHeaders: [{name: 'WWW-Authenticate'}],
+          });
+          adapter.onProxyRequest(request);
+          // A challenge cannot authorize a route which has not passed the guard.
+          Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+          Assert.strictEqual(authorizations.get(request.requestId), 1);
+          Assert.deepStrictEqual(adapter.onBeforeRequest(request), {cancel: false});
+          for (let retry = 0; retry < Adapter.MAX_ORIGIN_AUTH_RETRIES; retry += 1) {
+            Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+            Assert.strictEqual(authorizations.get(request.requestId), 1);
+            Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+            Assert.strictEqual(authorizations.get(request.requestId), 1);
+            Assert.deepStrictEqual(adapter.onBeforeRequest(request), {cancel: false});
+            Assert.strictEqual(adapter.authorizationCount(), 0);
+          }
+          Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+          Assert.strictEqual(adapter.authorizationCount(), 0);
+          Assert.deepStrictEqual(adapter.onBeforeRequest(request), {cancel: true});
+          adapter.onRequestTerminal(request);
+          Assert.strictEqual(adapter.authContextCount(), 0);
+          Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+          Assert.strictEqual(adapter.authorizationCount(), 0);
+        }
+
+      });
+
+  it('requires a 401 origin challenge from the authorized request, origin and route',
+      function() {
+
+        const adapter = adapterForDecision(DIRECT_DECISION);
+        const request = {requestId: 'origin-auth', url: 'http://origin.test:8081/private'};
+        const challenge = Object.assign({}, request, {
+          statusCode: 401, responseHeaders: [{name: 'www-authenticate'}],
+        });
+        adapter.onProxyRequest(request);
+        adapter.onBeforeRequest(request);
+        for (const override of [
+          {requestId: 'unknown'},
+          {url: 'http://other.test:8081/private'},
+          {url: 'https://origin.test:8081/private'},
+          {url: 'http://origin.test:8082/private'},
+          {url: 'invalid'},
+          {proxyInfo: {type: 'http', host: 'proxy.test', port: 8080}},
+          {statusCode: 407},
+          {statusCode: 200},
+          {responseHeaders: [{name: 'Proxy-Authenticate'}]},
+          {responseHeaders: []},
+          {responseHeaders: null},
+        ]) {
+          Assert.strictEqual(adapter.onHeadersReceived(
+              Object.assign({}, challenge, override)), undefined);
+          Assert.strictEqual(adapter.authorizationCount(), 0);
+        }
+        Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+        Assert.strictEqual(adapter.authorizationCount(), 1);
+        adapter.clearAllAuthorizations();
+        Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+        Assert.strictEqual(adapter.authorizationCount(), 0);
+        Assert.deepStrictEqual(adapter.onBeforeRequest(request), {cancel: true});
+
+      });
+
+  it('does not spend origin retry authorization on a changed route or origin',
+      function() {
+
+        const proxyInfo = {type: 'http', host: 'proxy.test', port: 8080};
+        for (const override of [
+          {proxyInfo: null},
+          {proxyInfo: {type: 'https', host: 'proxy.test', port: 8080}},
+          {proxyInfo: {type: 'http', host: 'other.test', port: 8080}},
+          {url: 'http://other.test/private'},
+        ]) {
+          const adapter = adapterForDecision(proxyDecision([
+            candidate('proxy', 'HTTP', 'proxy.test', 8080),
+          ]));
+          const request = {requestId: 'origin-auth', url: 'http://origin.test/private',
+            proxyInfo};
+          adapter.onProxyRequest(request);
+          adapter.onBeforeRequest(request);
+          Assert.strictEqual(adapter.onHeadersReceived(
+              Object.assign({}, request, {statusCode: 401,
+                responseHeaders: [{name: 'WWW-Authenticate'}]})), undefined);
+          Assert.strictEqual(adapter.authorizationCount(), 1);
+          Assert.deepStrictEqual(adapter.onBeforeRequest(
+              Object.assign({}, request, override)), {cancel: true});
+          Assert.strictEqual(adapter.authorizationCount(), 0);
+          Assert.strictEqual(adapter.authContextCount(), 0);
+        }
+
+      });
+
+  it('does not grant origin retries while OFF or recovering, or after recreation',
+      function() {
+
+        const request = {requestId: 'origin-auth', url: 'https://origin.test/'};
+        const challenge = Object.assign({}, request, {
+          statusCode: 401, responseHeaders: [{name: 'WWW-Authenticate'}],
+        });
+        for (const unavailable of [Adapter.STATES.OFF, Adapter.STATES.INITIALIZING,
+          Adapter.STATES.FAILED,
+        ]) {
+          let state = Adapter.STATES.READY;
+          const adapter = Adapter.createAdapter({
+            runtimeStateForRequest: () => state,
+            decideRoute: () => DIRECT_DECISION,
+            routingInputForRequest: () => null,
+          });
+          adapter.onProxyRequest(request);
+          adapter.onBeforeRequest(request);
+          state = unavailable;
+          Assert.strictEqual(adapter.onHeadersReceived(challenge), undefined);
+          Assert.strictEqual(adapter.authorizationCount(), 0);
+        }
+        const recreated = adapterForDecision(DIRECT_DECISION);
+        Assert.strictEqual(recreated.onHeadersReceived(challenge), undefined);
+        Assert.strictEqual(recreated.authorizationCount(), 0);
+
+      });
+
   it('fails closed for malformed injected route-auth state', function() {
 
     const requestAuthContexts = new Map([['malformed', {

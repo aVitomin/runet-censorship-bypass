@@ -25,6 +25,7 @@
   const TRUST = Object.freeze({
     PACKAGED_TRUSTED: 'PACKAGED_TRUSTED',
     REMOTE_AUTHENTICATED: 'REMOTE_AUTHENTICATED',
+    REMOTE_HTTPS_VALIDATED: 'REMOTE_HTTPS_VALIDATED',
     REMOTE_UNAUTHENTICATED: 'REMOTE_UNAUTHENTICATED',
   });
   const ROUTE_REFS = Object.freeze([
@@ -425,8 +426,9 @@
           decodePayload(exactBytes),
           normalizedEnvelope.ruleCount,
       );
-      const activationEligible = normalizedTrust !==
-        TRUST.REMOTE_UNAUTHENTICATED;
+      const activationEligible = [TRUST.PACKAGED_TRUSTED,
+        TRUST.REMOTE_AUTHENTICATED, TRUST.REMOTE_HTTPS_VALIDATED,
+      ].includes(normalizedTrust);
       return Object.freeze({
         ok: true,
         status: 'VERIFIED',

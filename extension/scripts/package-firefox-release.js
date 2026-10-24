@@ -247,7 +247,7 @@ function releaseVersion() {
 
   const manifestPath = Path.join(FIREFOX_BUILD_ROOT, 'manifest.json');
   const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
-  const expected = `0.0.${Templates.contexts.chromium.storeVersion}`;
+  const expected = Templates.contexts.chromium.storeVersion;
   Assert.strictEqual(manifest.version, expected,
       'Firefox version must follow the repository release version.');
   return manifest.version;

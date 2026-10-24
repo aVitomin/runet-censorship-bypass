@@ -573,7 +573,7 @@ describe('Firefox production settings control plane', function() {
 
       });
 
-  it('rejects a config whose exact dataset identity is not installed',
+  it('keeps verified Saved editable for manual mode when the provider dataset is missing',
       async function() {
 
         const store = await initialStorage();
@@ -583,12 +583,22 @@ describe('Firefox production settings control plane', function() {
           activationSnapshot: () => activation(),
           datasetIdentityAvailable: () => false,
         });
-        await rejectsCode(
-            api.get(),
-            Settings.ERRORS.SETTINGS_DATASET_BINDING_FAILED,
-        );
+        const saved = await api.get();
+        saved.settings.source = 'manual';
+        Assert.strictEqual((await api.replace(saved.revision, saved.settings)).settings.source, 'manual');
+        Assert.deepStrictEqual(store.values[Config.CONFIG_STORAGE_KEY].datasetIdentity,
+            require('../background/dataset-runtime').MANUAL_IDENTITY);
 
       });
+
+  it('accepts legacy source-less Saved as Anticensority and rejects unknown sources', function() {
+    const legacy = Settings.createDefaultSettings();
+    delete legacy.source;
+    Assert.strictEqual(Settings.canonicalSettings(legacy).source, 'anticensority');
+    legacy.source = 'untrusted';
+    Assert.throws(() => Settings.canonicalSettings(legacy),
+        (error) => error.code === Settings.ERRORS.SETTINGS_MALFORMED);
+  });
 
   it('has no browser, network, logging, or dataset mutation dependency', function() {
 

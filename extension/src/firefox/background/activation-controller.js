@@ -163,8 +163,8 @@
             typeof value.checkSavedRevision === 'function';
           if (!hasExactKeys(value, hasGuards ?
             [...PREPARED_KEYS, 'retainSnapshot', 'checkSavedRevision'] : PREPARED_KEYS) ||
-              !value.datasetStore ||
-              typeof value.datasetStore.loadVerifications !== 'function' ||
+              (!DatasetRuntime.isManualIdentity(value.datasetIdentity) &&
+                (!value.datasetStore || typeof value.datasetStore.loadVerifications !== 'function')) ||
               !isSynchronousCallable(value.routingBaseInputForRequest) ||
               !isSynchronousCallable(value.resolveCredentials)) {
             return null;
@@ -198,11 +198,12 @@
 
       }
 
-      function validateRecoveryResult(value) {
+      function validateRecoveryResult(value, datasetIdentity = null) {
 
         try {
-          if (!hasExactKeys(value, RECOVERY_KEYS) || !value.datasetStore ||
-              typeof value.datasetStore.loadVerifications !== 'function' ||
+          if (!hasExactKeys(value, RECOVERY_KEYS) ||
+              (!DatasetRuntime.isManualIdentity(datasetIdentity) &&
+                (!value.datasetStore || typeof value.datasetStore.loadVerifications !== 'function')) ||
               !isSynchronousCallable(value.routingBaseInputForRequest) ||
               !isSynchronousCallable(value.resolveCredentials)) {
             return null;
@@ -376,6 +377,7 @@
             runtime = createDatasetRuntime({
               protectionIntended: true,
               providerKey: input.providerKey,
+              datasetIdentity: input.datasetIdentity,
               store: input.datasetStore,
               baseInputForRequest: input.routingBaseInputForRequest,
             });
@@ -709,7 +711,7 @@
           try {
             recovered = validateRecoveryResult(await recoveryFactory(
                 OffState.canonicalOnState(state),
-            ));
+            ), state.datasetIdentity);
           } catch (error) {
             const code = recoveryFactoryErrorCode(error);
             setUnavailable(code);

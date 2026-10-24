@@ -22,6 +22,7 @@
   const ELIGIBLE_TRUST = Object.freeze([
     'PACKAGED_TRUSTED',
     'REMOTE_AUTHENTICATED',
+    'REMOTE_HTTPS_VALIDATED',
   ]);
   const SHA256_PATTERN = /^[a-f0-9]{64}$/;
   const PROVIDER_KEY_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{0,63})$/;

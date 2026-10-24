@@ -13,8 +13,10 @@ declarative provider data, not Chromium's service worker or PAC execution.
 - Recheck `browser.extension.isAllowedIncognitoAccess()` before activation or
   active replacement. Denied/unknown private-window access blocks activation;
   restricted/quarantined-site access is separate, not a detected prerequisite.
-- Recover the exact durable Effective configuration and verified dataset, not
-  latest Saved or whichever baseline a new release bundles. Keep credentials
+- Recover the exact durable Effective configuration and verified dataset or
+  package-owned manual policy, not latest Saved or a new release's baseline.
+  Manual Apply/recovery must not depend on provider storage; source refresh
+  must not switch manual Saved or Effective. Keep credentials
   bound to the Effective snapshot and request-authorized proxy challenger.
 - Keep UI Draft/conflict handling in the existing runtime/RPC helpers. Settings
   may be saved while active; popup save+apply remains one revision-safe backend
@@ -26,6 +28,10 @@ declarative provider data, not Chromium's service worker or PAC execution.
 For lifecycle/recovery changes, consult
 `docs/development/FIREFOX_ARCHITECTURE.md`; for dataset changes, consult
 `docs/development/FIREFOX_PROVIDER_DATASET.md`. Keep trust verification and the
-unconfigured remote channel intact. Firefox-only runtime/UI uses
-`verify:firefox`; shared packaged inputs use the root aggregate gate. Guidance
+distinct trust channels intact: the signed-manifest channel is unconfigured;
+the fixed HTTPS static-data channel is enabled and must never be represented as
+author-signature authentication. Preserve bounded parsing without downloaded
+JavaScript execution, exact source receipts and timestamp rollback checks.
+Firefox-only runtime/UI uses `verify:firefox`; shared packaged inputs use the
+root aggregate gate. Guidance
 changes alone use the root docs/metadata checks, not runtime or browser suites.
