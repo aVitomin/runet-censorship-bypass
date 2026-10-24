@@ -2,8 +2,9 @@
 
 English preparation for version `1.0.0`; verify the copy against the exact
 canonical package before submission. Chrome Web Store preparation proceeds
-independently of Firefox Add-ons and local installation. No Chrome upload,
-review submission or approval has been completed for this version.
+independently of Firefox Add-ons and local installation. The Chromium package
+has been uploaded to a draft store item; listing/privacy preparation is in
+progress. No review submission or approval has been confirmed for this version.
 Resolve the PAC policy review in the [Chrome reviewer notes](CHROME_REVIEWER_NOTES_1_0.md)
 before deciding to submit.
 
