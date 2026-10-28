@@ -48,6 +48,8 @@ controls browser routing and provides no VPN or proxy service.
 - Save settings, review changes, then Apply. Existing settings stay active until Apply.
 - Preview imported settings, export settings for transfer, or create a separate sanitized support report.
 - Refresh Anticensority data manually or automatically every 12 hours.
+- Find site rules with search and switch settings sections without losing unsaved edits.
+- Choose a light, dark or system appearance shared by Options and the popup.
 
 Automatic proxy routes need a suitable local service running separately.
 Own proxies can be used for explicit Proxy rules. Auto follows the selected
@@ -86,6 +88,8 @@ and does not route other applications. SOCKS authentication depends on Firefox.
 - Сохранение, просмотр изменений и отдельное применение. До «Применить» действуют прежние настройки.
 - Перенос настроек с предварительным просмотром и отдельный очищенный отчёт для поддержки.
 - Обновление базы вручную или автоматически каждые 12 часов.
+- Поиск правил и переключение разделов настроек с сохранением несохранённых правок.
+- Светлая, тёмная или системная тема для настроек и панели расширения.
 
 Автоматическим прокси-маршрутам нужна подходящая отдельно запущенная локальная
 служба. Собственные прокси можно использовать для явных правил «Прокси».

@@ -103,10 +103,14 @@ package tree. Инструкции и AMO notes находятся в
 [TESTING.md](TESTING.md#браузерная-qa). Для authenticated proxy используйте
 только разрешённый тестовый аккаунт и не записывайте пароль.
 
-Для Firefox установите exact unsigned XPI как temporary add-on в Firefox
-154.0.1, проверьте popup/options, Apply/recovery/Clear, EN/RU, authenticated
+Для Firefox установите exact unsigned XPI как temporary add-on в поддерживаемом
+Firefox и запишите точную версию; проверьте popup/options, Apply/recovery/Clear, EN/RU, authenticated
 proxy, private-access revoke и external control loss. Обычная установка
 unsigned XPI не считается пользовательским release path.
+Расчётные минимумы и фактические проверки указаны в
+[матрице совместимости](BROWSER_COMPATIBILITY.md). Полная проверка каждой версии
+или каждого производного браузера не требуется; непроверенные среды не выдаются
+за подтверждённые.
 
 ## 5. Создать ZIP из проверенного artifact
 

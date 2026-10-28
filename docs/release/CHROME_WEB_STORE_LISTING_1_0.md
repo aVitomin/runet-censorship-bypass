@@ -44,6 +44,7 @@ Anticensority fork that controls browser routing; it provides no VPN or proxy se
 - Save settings for review, then Apply them. Existing settings stay active until Apply.
 - Transfer settings with import preview and create a separate sanitized support report.
 - Check routing-data updates and connection status.
+- Choose a light, dark or system appearance in Options; the popup uses the same theme.
 
 Auto follows the selected source and rules; it can use a proxy. Explicit Direct
 takes priority over Proxy. Proxy needs a suitable enabled connection. Updates
@@ -78,6 +79,7 @@ VPN или прокси-сервер в комплект не входят.
 - Сохранение настроек отдельно от применения: прежние продолжают действовать до «Применить».
 - Перенос настроек с предварительным просмотром и отдельный очищенный отчёт для поддержки.
 - Обновление данных маршрутизации и проверка подключений.
+- Светлая, тёмная или системная тема: настройки и панель используют один выбор.
 
 «Авто» следует выбранному источнику и правилам, поэтому может использовать
 прокси. Явное «Напрямую» приоритетнее «Прокси». Для «Прокси» нужно подходящее
