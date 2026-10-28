@@ -1,23 +1,4 @@
 :root {
-  color-scheme: light;
-  --ui-color-canvas: #f4f7fb;
-  --ui-color-surface: #ffffff;
-  --ui-color-surface-subtle: #f8fafc;
-  --ui-color-text: #172033;
-  --ui-color-text-secondary: #334155;
-  --ui-color-text-muted: #5f6f83;
-  --ui-color-border: #d8e0ea;
-  --ui-color-divider: #e8edf3;
-  --ui-color-accent: #1d4ed8;
-  --ui-color-accent-hover: #1e40af;
-  --ui-color-success: #15803d;
-  --ui-color-success-surface: #ecfdf3;
-  --ui-color-warning: #b45309;
-  --ui-color-warning-surface: #fff7ed;
-  --ui-color-error: #b42318;
-  --ui-color-error-surface: #fef2f2;
-  --ui-color-disabled: #667085;
-  --ui-color-focus: #2563eb;
   --ui-space-0-5: 4px;
   --ui-space-1: 8px;
   --ui-space-1-5: 12px;
@@ -38,8 +19,7 @@
   --ui-line-height-tight: 1.25;
   --ui-line-height-body: 1.5;
   --ui-control-height: 40px;
-  --ui-focus-ring: 0 0 0 3px rgb(37 99 235 / 24%);
-  --ui-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+  --ui-shadow: var(--ui-shadow-elevated);
 }
 
 * {
@@ -79,7 +59,7 @@ button {
 
 button.primary {
   border-color: var(--ui-color-accent);
-  color: white;
+  color: var(--ui-color-on-accent);
   background: var(--ui-color-accent);
 }
 

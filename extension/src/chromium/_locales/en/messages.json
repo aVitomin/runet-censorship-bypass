@@ -1778,5 +1778,20 @@
   },
   "optionsRefreshFailedDraftsKept": {
     "message": "Could not refresh the background state. Your unsaved edits remain on this page."
+  },
+  "uiThemeLabel": {
+    "message": "Theme"
+  },
+  "uiThemeSystem": {
+    "message": "System"
+  },
+  "uiThemeLight": {
+    "message": "Light"
+  },
+  "uiThemeDark": {
+    "message": "Dark"
+  },
+  "uiThemeSaveFailed": {
+    "message": "Applied for this page. The browser could not save your theme."
   }
 }

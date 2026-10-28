@@ -72,6 +72,7 @@ const chromiumRuntimeSrc = [
 ];
 const chromiumCommonSrc = './src/chromium-compat/pages/lib/**/*';
 const sharedIconSrc = './src/assets/icons/**/*';
+const sharedUiSrc = ['./src/shared/ui-theme.js', './src/shared/ui-theme.css'];
 const firefoxRuntimeSrc = [
   './src/firefox/manifest.json',
   './src/firefox/background/off-state.js',
@@ -269,12 +270,22 @@ function copyDistributionNotices(target, destination) {
 
 }
 
+function copySharedUi(destination) {
+
+  return function copyUi() {
+    return gulp.src(sharedUiSrc, {base: './src/shared', encoding: false})
+        .pipe(gulp.dest(`${destination}/pages/shared`));
+  };
+
+}
+
 const buildChromium = gulp.series(
     cleanChromium,
     gulp.parallel(
         copyChromium,
         copyChromiumCommon,
         copyChromiumIcons,
+        copySharedUi(chromiumDst),
         copyChromiumTransfer,
         copyChromiumTldts,
         copyDistributionNotices('chromium', chromiumDst),
@@ -286,6 +297,7 @@ const buildFirefox = gulp.series(
         copyFirefox,
         copyFirefoxCommon,
         copyFirefoxIcons,
+        copySharedUi(firefoxDst),
         copyFirefoxTldts,
         copyDistributionNotices('firefox', firefoxDst),
     ),

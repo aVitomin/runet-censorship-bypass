@@ -18,6 +18,7 @@
 - [Участие в проекте](../CONTRIBUTING.md) и [подготовка среды](development/DEVELOPMENT.md)
 - [Архитектура Chromium и общих компонентов](development/ARCHITECTURE.md), [Firefox](development/FIREFOX_ARCHITECTURE.md)
 - [Тестирование](development/TESTING.md)
+- [Изменения готовящейся версии 1.0.1](development/releases/1.0.1.md)
 - [Процесс выпуска](development/RELEASE_PROCESS.md) и [технические сведения о 1.0.0](development/releases/1.0.0.md)
 - [Материалы для магазинов и проверяющих](release/README.md)
 - [Карта документации и происхождение материалов](maintainers/DOCUMENTATION_MAP.md)

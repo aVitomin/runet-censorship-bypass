@@ -635,6 +635,7 @@ async function captureFirefoxSession(
       MOZ_CRASHREPORTER_DISABLE: '1',
       MOZ_DISABLE_NONLOCAL_CONNECTIONS: '1',
       MOZ_NO_REMOTE: '1',
+      MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1',
     }),
     stdio: ['ignore', 'ignore', 'pipe'],
     windowsHide: true,

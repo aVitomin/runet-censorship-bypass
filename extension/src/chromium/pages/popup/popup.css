@@ -258,7 +258,7 @@ main {
 }
 
 .route-option input:checked + .route-label {
-  color: var(--ui-color-surface);
+  color: var(--ui-color-on-accent);
   background: var(--ui-color-accent);
 }
 

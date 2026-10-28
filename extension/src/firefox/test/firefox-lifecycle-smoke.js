@@ -10,7 +10,8 @@ const Path = require('node:path');
 
 const MANUAL_PROXY_MARKER = 'FIREFOX_RUNTIME_MANUAL_PROXY';
 const projectRoot = Path.resolve(__dirname, '..', '..', '..');
-const packageRoot = Path.join(projectRoot, 'build', 'firefox');
+const packageRoot = process.env.FIREFOX_PACKAGE_ROOT ?
+  Path.resolve(process.env.FIREFOX_PACKAGE_ROOT) : Path.join(projectRoot, 'build', 'firefox');
 
 function delay(milliseconds) {
 
@@ -436,6 +437,7 @@ async function main() {
       MOZ_CRASHREPORTER_DISABLE: '1',
       MOZ_DISABLE_NONLOCAL_CONNECTIONS: '1',
       MOZ_NO_REMOTE: '1',
+      MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1',
     }),
     stdio: ['ignore', 'ignore', 'pipe'],
     windowsHide: true,
@@ -594,6 +596,7 @@ module.exports = Object.freeze({
   listen,
   navigate,
   profilePreferences,
+  readProductionCapabilities,
   resolveFirefox,
   safeRemoveTemporary,
   unusedPort,

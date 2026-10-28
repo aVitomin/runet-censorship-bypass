@@ -730,6 +730,45 @@
     let baselineFields = null;
     let ruleRows = [];
     let refreshView = null;
+    let ruleSearch = '';
+    const openProxyEditors = new Set();
+    const view = document.defaultView;
+
+    function activateSection(moveFocus = false) {
+
+      const requested = view ? view.location.hash.slice(1) : '';
+      const selected = NAV_ITEMS.some(([id]) => id === requested) ? requested : 'overview';
+      root.querySelectorAll('.section[id]').forEach((section) => {
+        section.hidden = section.id !== selected;
+      });
+      root.querySelectorAll('.options-nav a').forEach((link) => {
+        if (link.getAttribute('href') === `#${selected}`) {
+          link.setAttribute('aria-current', 'page');
+        } else {
+          link.removeAttribute('aria-current');
+        }
+      });
+      const select = document.getElementById('options-section-select');
+      if (select) select.value = selected;
+      if (moveFocus) {
+        const section = document.getElementById(selected);
+        const heading = section && section.querySelector('h2');
+        if (heading) {
+          heading.tabIndex = -1;
+          heading.focus();
+        }
+      }
+
+    }
+
+    function navigateTo(id) {
+
+      if (view) view.location.hash = id;
+      activateSection(true);
+
+    }
+
+    if (view) view.addEventListener('hashchange', () => activateSection(true));
     const controller = createController({
       rpc: Ui.createRpc(browserApi),
       changed: render,
@@ -798,6 +837,13 @@
       add.type = 'button';
       add.dataset.action = 'rule-add';
       add.textContent = t('rulesAdd');
+      const searchLabel = Ui.append(parent, 'label', 'field');
+      Ui.appendText(searchLabel, 'span', t('rulesSearch'));
+      const search = Ui.append(searchLabel, 'input');
+      search.type = 'search';
+      search.value = ruleSearch;
+      search.dataset.ruleFilter = '';
+      search.placeholder = 'example.com';
       const list = Ui.append(parent, 'div', 'rule-list');
       if (!ruleRows.length) Ui.appendText(list, 'p', t('rulesEmpty'), 'muted');
       ruleRows.forEach((rule, index) => {
@@ -837,6 +883,27 @@
         remove.dataset.index = String(index);
         remove.textContent = t('rulesDelete');
       });
+      const empty = Ui.appendText(parent, 'p', t('rulesSearchEmpty'), 'muted');
+      empty.setAttribute('role', 'status');
+      function filterRules() {
+
+        const query = ruleSearch.trim().toLowerCase();
+        let visible = 0;
+        list.querySelectorAll('.rule-row').forEach((row) => {
+          const host = row.querySelector('[name="ruleHost"]').value.toLowerCase();
+          row.hidden = Boolean(query && !host.includes(query));
+          if (!row.hidden) visible += 1;
+        });
+        empty.hidden = visible > 0 || !ruleRows.length;
+
+      }
+      search.addEventListener('input', (event) => {
+        event.stopPropagation();
+        ruleSearch = search.value;
+        filterRules();
+      });
+      search.addEventListener('change', (event) => event.stopPropagation());
+      filterRules();
 
     }
 
@@ -922,15 +989,21 @@
         field(grid, 'fieldId', 'id', value.id);
       }
       field(grid, 'fieldType', 'type', value.type, 'select');
-      field(grid, 'fieldHost', 'host', value.host);
-      field(grid, 'fieldPort', 'port', value.port, 'number');
-      field(
+      field(grid, 'fieldHost', 'host', value.host).required = true;
+      const port = field(grid, 'fieldPort', 'port', value.port, 'number');
+      port.required = true;
+      port.min = '1';
+      port.max = '65535';
+      port.step = '1';
+      const timeout = field(
           grid,
           'fieldFailoverTimeout',
           'failoverTimeoutSeconds',
           value.failoverTimeoutSeconds,
           'number',
       );
+      timeout.min = '1';
+      timeout.step = '1';
       check(grid, 'fieldProxyDns', 'proxyDNS', value.proxyDNS);
       if (options.enabled) {
         check(grid, 'fieldEnabled', 'enabled', value.enabled);
@@ -996,10 +1069,17 @@
           length,
           disabled,
       );
-      candidateFields(row, proxy, {
+      const editor = Ui.append(row, 'details', 'proxy-editor');
+      editor.open = !proxy.host || openProxyEditors.has(proxy.id);
+      Ui.appendText(editor, 'summary', t('optionsEditConnection'));
+      editor.addEventListener('toggle', () => {
+        if (editor.open) openProxyEditors.add(proxy.id);
+        else openProxyEditors.delete(proxy.id);
+      });
+      candidateFields(editor, proxy, {
         directReplacement: true, enabled: true, id: true,
       });
-      const credentialGrid = Ui.append(row, 'div', 'grid credentials');
+      const credentialGrid = Ui.append(editor, 'div', 'grid credentials');
       const existing = proxy.credentials && proxy.credentials.mode === 'KEEP';
       const modeLabel = Ui.append(credentialGrid, 'label', 'field');
       Ui.appendText(modeLabel, 'span', t('fieldCredentials'));
@@ -1025,7 +1105,7 @@
       );
       password.autocomplete = 'new-password';
       Ui.appendText(
-          row,
+          editor,
           'p',
           existing ? t('optionsPasswordKept') : t('optionsPasswordEmpty'),
           'muted technical-note',
@@ -1219,6 +1299,8 @@
       const header = Ui.append(root, 'header', 'page-header');
       Ui.appendText(header, 'h1', t('optionsTitle'));
       Ui.appendText(header, 'p', t('optionsSubtitle'), 'muted');
+      const theme = document.defaultView && document.defaultView.rucbTheme;
+      if (theme) theme.mountControl(header, t);
       if (!draft) {
         const loading = Ui.append(root, 'section', 'card section');
         Ui.appendText(
@@ -1242,8 +1324,22 @@
         const link = Ui.append(nav, 'a');
         link.href = `#${id}`;
         link.textContent = t(labelKey);
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          navigateTo(id);
+        });
       }
       const content = Ui.append(layout, 'div', 'options-content');
+      const mobile = Ui.append(content, 'label', 'field mobile-nav');
+      Ui.appendText(mobile, 'span', t('optionsNavigationLabel'));
+      const sectionSelect = Ui.append(mobile, 'select');
+      sectionSelect.id = 'options-section-select';
+      for (const [id, labelKey] of NAV_ITEMS) {
+        const option = Ui.append(sectionSelect, 'option');
+        option.value = id;
+        option.textContent = t(labelKey);
+      }
+      sectionSelect.addEventListener('change', () => navigateTo(sectionSelect.value));
       if (transferModel) {
         const section = Ui.append(content, 'section', 'card section');
         section.id = 'import-export';
@@ -1273,6 +1369,28 @@
       renderMessages();
       const form = Ui.append(content, 'form');
       form.id = 'settings-form';
+      // Native validation must be able to focus controls in another section.
+      form.addEventListener('invalid', (event) => {
+        // A submit may emit several invalid events; keep the first field visible.
+        const invalid = form.querySelector(':invalid') || event.target;
+        const section = invalid.closest('.section[id]');
+        if (section && view) {
+          view.history.replaceState(null, '', `#${section.id}`);
+          activateSection();
+        }
+        const row = invalid.closest('.rule-row');
+        if (row && row.hidden) {
+          ruleSearch = '';
+          const search = section.querySelector('[data-rule-filter]');
+          search.value = '';
+          search.dispatchEvent(new view.Event('input', {bubbles: true}));
+        }
+        let ancestor = invalid.parentElement;
+        while (ancestor && ancestor !== form) {
+          if (ancestor.tagName === 'DETAILS') ancestor.open = true;
+          ancestor = ancestor.parentElement;
+        }
+      }, true);
 
       const overview = Ui.append(form, 'section', 'card section');
       overview.id = 'overview';
@@ -1788,6 +1906,7 @@
           const action = button.dataset.action;
           const index = Number(button.dataset.index);
           if (action === 'rule-add') {
+            ruleSearch = '';
             ruleRows.push({host: '', route: 'PROXY', scope: 'HOST'});
           } else if (action === 'rule-remove') {
             ruleRows.splice(index, 1);
@@ -1825,7 +1944,10 @@
           render(controller.snapshot());
         }
       });
+      activateSection();
       if (Number.isInteger(focusedIndex) && focusedIndex >= 0 && form.elements[focusedIndex]) {
+        const editor = form.elements[focusedIndex].closest('details');
+        if (editor) editor.open = true;
         form.elements[focusedIndex].focus();
       }
 

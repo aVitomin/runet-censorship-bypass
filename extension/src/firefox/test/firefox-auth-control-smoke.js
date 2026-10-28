@@ -10,7 +10,8 @@ const Path = require('node:path');
 const Smoke = require('./firefox-lifecycle-smoke');
 
 const projectRoot = Path.resolve(__dirname, '..', '..', '..');
-const packageRoot = Path.join(projectRoot, 'build', 'firefox');
+const packageRoot = process.env.FIREFOX_PACKAGE_ROOT ?
+  Path.resolve(process.env.FIREFOX_PACKAGE_ROOT) : Path.join(projectRoot, 'build', 'firefox');
 const OWNER_ID = 'firefox-auth-owner-smoke@example.invalid';
 
 function writeOwnerFixture(directory, port) {
@@ -295,7 +296,7 @@ async function main() {
     child = ChildProcess.spawn(firefox, ['-headless', '-no-remote', '-profile', profile,
       '-marionette', '-remote-allow-system-access', 'about:blank'], {
       env: Object.assign({}, process.env, {MOZ_CRASHREPORTER_DISABLE: '1',
-        MOZ_DISABLE_NONLOCAL_CONNECTIONS: '1', MOZ_NO_REMOTE: '1'}),
+        MOZ_DISABLE_NONLOCAL_CONNECTIONS: '1', MOZ_NO_REMOTE: '1', MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1'}),
       stdio: ['ignore', 'ignore', 'ignore'], windowsHide: true,
     });
     phase = 'CONNECT';

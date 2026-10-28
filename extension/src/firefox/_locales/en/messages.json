@@ -162,7 +162,7 @@
   "popupRulePreview": {"message": "Rule: $1"},
   "popupNotApplied": {"message": "Not applied"},
   "popupAutomaticRouting": {"message": "Routing source"},
-  "popupAutomaticSource": {"message": "Anticensority is the verified local routing source."},
+  "popupAutomaticSource": {"message": "Auto follows the source selected in Settings. With the manual source, only your rules and connections are used."},
   "actionSave": {"message": "Save settings"},
   "actionReload": {"message": "Reload"},
   "actionAddProxy": {"message": "Add own proxy"},
@@ -327,5 +327,29 @@
   "notificationControlLoss": {"message": "Another controller changed Firefox proxy settings. Protection stopped safely and was not resumed."},
   "notificationPrivateAccessBlocked": {"message": "Private-window access was removed. Protection is blocked and can be turned off safely."},
   "notificationRecoveryBlocked": {"message": "Firefox could not restore the protected session. Open the extension to review or turn it off."},
-  "notificationHealthFailure": {"message": "The requested proxy connection check failed. Open Maintenance to review the sanitized result."}
+  "notificationHealthFailure": {"message": "The requested proxy connection check failed. Open Maintenance to review the sanitized result."},
+  "uiThemeLabel": {
+    "message": "Theme"
+  },
+  "uiThemeSystem": {
+    "message": "System"
+  },
+  "uiThemeLight": {
+    "message": "Light"
+  },
+  "uiThemeDark": {
+    "message": "Dark"
+  },
+  "uiThemeSaveFailed": {
+    "message": "Applied for this page. The browser could not save your theme."
+  },
+  "rulesSearch": {
+    "message": "Find a rule"
+  },
+  "rulesSearchEmpty": {
+    "message": "No matching rules. Clear the search to see all rules."
+  },
+  "optionsEditConnection": {
+    "message": "Server and authentication settings"
+  }
 }

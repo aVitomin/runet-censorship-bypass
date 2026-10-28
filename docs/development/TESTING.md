@@ -334,6 +334,17 @@ Apply, explicit Direct, website auth и ownership/OFF. Эта проверка �
 отсутствие фоновых source requests: в manual mode они остаются включёнными,
 а stage/defer contract проверяется детерминированными тестами.
 
+### Firefox ESR и отдельный тестовый пакет
+
+Для проверки другой версии браузера задайте `FIREFOX_BIN`. Три сценария
+`firefox-lifecycle-smoke.js`, `firefox-proxy-control-smoke.js` и
+`firefox-auth-control-smoke.js` также принимают `FIREFOX_PACKAGE_ROOT` —
+абсолютный путь к явно подготовленной тестовой копии пакета. Без него они
+используют `extension/build/firefox`. Переменная не меняет production manifest.
+Сценарии разрешают Marionette system access только запущенному тестовому
+процессу с одноразовым профилем, без изменения установленного Firefox.
+См. [проверку Firefox 153 ESR на Linux](qa/FIREFOX_ESR_153.md).
+
 ### Firefox routing-data refresh
 
 Детерминированные suites `provider-source-updater`, `provider-update-control`,

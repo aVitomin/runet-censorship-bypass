@@ -162,7 +162,7 @@
   "popupRulePreview": {"message": "Правило: $1"},
   "popupNotApplied": {"message": "Не применено"},
   "popupAutomaticRouting": {"message": "Источник правил"},
-  "popupAutomaticSource": {"message": "Anticensority — проверенный локальный источник правил."},
+  "popupAutomaticSource": {"message": "«Автоматически» использует выбранный в настройках источник. В ручном режиме действуют только ваши правила и подключения."},
   "actionSave": {"message": "Сохранить настройки"},
   "actionReload": {"message": "Перезагрузить"},
   "actionAddProxy": {"message": "Добавить свой прокси"},
@@ -327,5 +327,29 @@
   "notificationControlLoss": {"message": "Другой контроллер изменил настройки прокси Firefox. Защита безопасно остановлена и не возобновлена."},
   "notificationPrivateAccessBlocked": {"message": "Доступ в приватных окнах отозван. Защита заблокирована, её можно безопасно выключить."},
   "notificationRecoveryBlocked": {"message": "Firefox не смог восстановить защищённую сессию. Откройте расширение, чтобы проверить состояние или выключить его."},
-  "notificationHealthFailure": {"message": "Запрошенная проверка прокси завершилась ошибкой. Откройте раздел Обслуживание для безопасного результата."}
+  "notificationHealthFailure": {"message": "Запрошенная проверка прокси завершилась ошибкой. Откройте раздел Обслуживание для безопасного результата."},
+  "uiThemeLabel": {
+    "message": "Тема"
+  },
+  "uiThemeSystem": {
+    "message": "Как в системе"
+  },
+  "uiThemeLight": {
+    "message": "Светлая"
+  },
+  "uiThemeDark": {
+    "message": "Тёмная"
+  },
+  "uiThemeSaveFailed": {
+    "message": "Тема изменена для этой страницы. Браузер не смог сохранить выбор."
+  },
+  "rulesSearch": {
+    "message": "Найти правило"
+  },
+  "rulesSearchEmpty": {
+    "message": "Подходящих правил нет. Очистите поиск, чтобы увидеть все правила."
+  },
+  "optionsEditConnection": {
+    "message": "Настройки сервера и авторизация"
+  }
 }

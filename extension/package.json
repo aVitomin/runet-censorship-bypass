@@ -1,6 +1,6 @@
 {
   "name": "runet-censorship-bypass",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Development tools for the Chromium and Firefox extension",
   "scripts": {
     "lint:chromium": "eslint ./src/chromium/**/*.js ./src/shared/**/*.js",
@@ -34,7 +34,7 @@
     "globals": "17.11.0",
     "gulp": "5.0.1",
     "mocha": "11.8.0",
-    "puppeteer-core": "25.8.0"
+    "puppeteer-core": "25.15.0"
   },
   "dependencies": {
     "tldts": "7.4.8"

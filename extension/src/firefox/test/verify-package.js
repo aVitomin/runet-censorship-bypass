@@ -68,6 +68,8 @@ const EXPECTED_FILES = Object.freeze([
   'pages/popup/popup.css',
   'pages/shared/ui-runtime.js',
   'pages/shared/ui-tokens.css',
+  'pages/shared/ui-theme.css',
+  'pages/shared/ui-theme.js',
   'provider/anticensority-hosts-v1.data',
   'provider/anticensority-hosts-v1.envelope.json',
 ].concat(EXPECTED_ICON_FILES, Object.keys(NOTICE_SOURCES)).sort());
@@ -117,7 +119,8 @@ function verifyPackage(packageRoot, sourceRoot) {
     let sourcePath = Path.join(sourceRoot, relativePath);
     if (NOTICE_SOURCES[relativePath]) {
       sourcePath = NOTICE_SOURCES[relativePath];
-    } else if (relativePath.startsWith('background/common/')) {
+    } else if (relativePath.startsWith('background/common/') ||
+        ['pages/shared/ui-theme.js', 'pages/shared/ui-theme.css'].includes(relativePath)) {
       sourcePath = Path.resolve(
           sourceRoot,
           '..',

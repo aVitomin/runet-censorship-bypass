@@ -1778,5 +1778,20 @@
   },
   "optionsRefreshFailedDraftsKept": {
     "message": "Не удалось обновить состояние фоновой части. Несохранённые изменения остались на странице."
+  },
+  "uiThemeLabel": {
+    "message": "Тема"
+  },
+  "uiThemeSystem": {
+    "message": "Как в системе"
+  },
+  "uiThemeLight": {
+    "message": "Светлая"
+  },
+  "uiThemeDark": {
+    "message": "Тёмная"
+  },
+  "uiThemeSaveFailed": {
+    "message": "Тема изменена для этой страницы. Браузер не смог сохранить выбор."
   }
 }

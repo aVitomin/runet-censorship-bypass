@@ -97,6 +97,12 @@ ul:last-child {
   margin-bottom: var(--ui-space-3);
 }
 
+.appearance-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-1-5);
+}
+
 .options-header-copy {
   max-width: 760px;
 }
@@ -826,7 +832,7 @@ details.disclosure[open] > summary {
   border: 1px solid var(--ui-color-border);
   border-radius: var(--ui-radius-large);
   background: var(--ui-color-surface);
-  box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
+  box-shadow: var(--ui-shadow-floating);
 }
 
 .global-action-copy {

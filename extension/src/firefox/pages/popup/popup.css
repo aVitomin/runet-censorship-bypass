@@ -73,19 +73,19 @@ fieldset {
 }
 
 .pill.success {
-  border-color: #86d19e;
+  border-color: var(--ui-color-success);
   color: var(--ui-color-success);
   background: var(--ui-color-success-surface);
 }
 
 .pill.warning {
-  border-color: #f4c47c;
+  border-color: var(--ui-color-warning);
   color: var(--ui-color-warning);
   background: var(--ui-color-warning-surface);
 }
 
 .pill.error {
-  border-color: #efa5a0;
+  border-color: var(--ui-color-error);
   color: var(--ui-color-error);
   background: var(--ui-color-error-surface);
 }
@@ -144,7 +144,7 @@ fieldset {
 }
 
 .route-option input:checked + span {
-  color: white;
+  color: var(--ui-color-on-accent);
   background: var(--ui-color-accent);
 }
 
