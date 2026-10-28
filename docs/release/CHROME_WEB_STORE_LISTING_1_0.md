@@ -1,8 +1,9 @@
 # Chrome Web Store listing — 1.0
 
-Version `1.0.0` was submitted for review, as confirmed by the publisher.
-No approval or public installation link has been verified. The PAC policy
-determination remains open in the [reviewer notes](CHROME_REVIEWER_NOTES_1_0.md).
+Public version `1.0.0` and its installation button were verified on 2026-10-28:
+[Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph). The
+[reviewer notes](CHROME_REVIEWER_NOTES_1_0.md) retain the PAC disclosure and
+review requirements for future changes.
 The shorter descriptions below are repository drafts for a future listing
 edit; they have not replaced the submitted store copy or package metadata.
 

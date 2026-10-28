@@ -39,9 +39,12 @@ This distinction does **not** establish Chrome Web Store approval. The
 while the [MV3 policy](https://developer.chrome.com/docs/webstore/program-policies/mv3-requirements/)
 restricts remotely supplied logic and specifies exceptions. We cannot infer
 that this precise PAC path is accepted from absence of extension-side `eval`.
-Disclose the behavior, obtain a policy determination for the candidate, and
-keep optional Chrome publication on hold until resolved. Do not obscure the
-behavior by describing all downloaded PAC as non-executable data.
+The submitted `1.0.0` is now publicly available (verified 2026-10-28; see
+[channel status](STORE_PUBLICATION_CHECKLIST.md#current-channel-status)). This
+confirms publication of that package, not a blanket policy exception for future
+changes. Disclose this behavior in each relevant submission and resolve any
+reviewer concerns before publication. Do not describe downloaded PAC as
+non-executable data.
 
 Also review data-transport policy for user-configured HTTP proxies and the
 loopback HTTP PAC exception; this extension does not add encryption. No policy

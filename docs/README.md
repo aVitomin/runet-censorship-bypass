@@ -8,9 +8,9 @@
 - [Приватность 1.0](release/PRIVACY_1_0.md)
 - [Снимки интерфейса](assets/releases/1.0/README.md)
 
-Chromium **1.0.0** доступен для локальной установки. Chrome Web Store и Firefox
-**1.0** ожидают проверки. Доступный подписанный Firefox — **0.0.4.0**;
-для него нужны отдельные [руководство](user/USER_GUIDE.md),
+Версия **1.0.0** доступна в [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) и
+[Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/), а также для ручной установки.
+Для старого Firefox **0.0.4.0** сохранены отдельные [руководство](user/USER_GUIDE.md),
 [решение проблем](user/TROUBLESHOOTING.md) и [приватность](user/PRIVACY_AND_SECURITY.md).
 
 ## Разработчикам
@@ -30,5 +30,5 @@ Chromium **1.0.0** доступен для локальной установки
 
 Start with [installation](user/INSTALLATION.md#english-summary),
 [the 1.0 guide](user/USER_GUIDE_1_0.md#english-summary), or [help and bug reports](../SUPPORT.md#english).
-For development, use the separate guides above. Signed Firefox **0.0.4.0**
-has different behavior from the Firefox **1.0** submission awaiting review.
+Both browser versions **1.0.0** are available in their stores. For development,
+use the separate guides above. Older Firefox **0.0.4.0** has its own documentation.

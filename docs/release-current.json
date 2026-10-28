@@ -9,11 +9,14 @@
   "zipSize": 1221761,
   "zipSha256": "0faa3e0208c9d8295d2216066184930ece89eddeae20d1d37e9ede0c2a1a48bb",
   "checksumFilename": "runet-censorship-bypass-mv3-1.0.0-9de66de.zip.sha256.txt",
-  "firefoxVersionName": "0.0.4.0",
-  "firefoxTag": "v0.0.4.0",
-  "firefoxReleaseUrl": "https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0",
-  "firefoxXpiFilename": "runet-censorship-bypass-firefox-0.0.4.0-signed.xpi",
-  "firefoxXpiSize": 3610991,
-  "firefoxXpiSha256": "c7e3042e48819644673db92b9150a9d54a551281046212d896a7f7202bc9c34c",
-  "firefoxChecksumFilename": "runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt"
+  "firefoxVersionName": "1.0.0",
+  "firefoxTag": "v1.0.0",
+  "firefoxReleaseUrl": "https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0",
+  "firefoxXpiFilename": "runet-censorship-bypass-firefox-1.0.0-signed.xpi",
+  "firefoxXpiSize": 3672051,
+  "firefoxXpiSha256": "74ff7eca8eb8f50e5bca57b1642894db473e99f990e1dfbb936faf5d66162b6c",
+  "firefoxChecksumFilename": "runet-censorship-bypass-firefox-1.0.0-signed.sha256.txt",
+  "chromeWebStoreUrl": "https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph",
+  "firefoxAddonsUrl": "https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/",
+  "storeAvailabilityCheckedAt": "2026-10-28"
 }

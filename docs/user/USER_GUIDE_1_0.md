@@ -1,6 +1,6 @@
 # Руководство версии 1.0
 
-Для Chromium 1.0.0 и Firefox 1.0, ожидающего проверки Mozilla.
+Для Chromium и Firefox **1.0.0**, доступных в магазинах расширений.
 [Скачать доступную версию](INSTALLATION.md). Для подписанного Firefox 0.0.4.0
 есть [отдельное руководство](USER_GUIDE.md).
 
@@ -146,5 +146,5 @@ Version 1.0 separates **Save settings** from **Apply**. Auto follows your source
 and rules; Proxy requires suitable selected connections; Direct bypasses this
 extension's proxy routing. The extension provides no VPN or proxy service.
 Imports save settings without activating them. Updates preserve applied settings
-and keep inactive routing inactive. Firefox 1.0 is awaiting Mozilla review;
-use the [installation page](INSTALLATION.md) to choose an available signed version.
+and keep inactive routing inactive. Both browser versions are published;
+use the [installation page](INSTALLATION.md) for store links and manual downloads.
