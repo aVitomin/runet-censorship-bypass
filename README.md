@@ -31,6 +31,11 @@
 Обе версии опубликованы. Установка из магазина — основной способ: следующие
 одобренные версии браузер получает через механизм обновления расширений.
 
+Для готовящейся **1.0.1** расчётная совместимость — настольные браузеры на
+**Chromium 108+** и **Firefox 140+**, включая ESR, с необходимыми API расширений.
+Это оценка по используемым технологиям, а не проверка каждой версии и каждого
+форка. [Требования и проверенные версии](docs/development/BROWSER_COMPATIBILITY.md).
+
 **Ручная установка:** [Chromium ZIP](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-mv3-1.0.0-9de66de.zip) ·
 [подписанный Firefox XPI](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-firefox-1.0.0-signed.xpi) ·
 [все файлы выпуска v1.0.0](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0).

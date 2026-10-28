@@ -225,6 +225,7 @@ function verifyPackagedManifestIdentity(root) {
   const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
   Assert.strictEqual(manifest.version, EXPECTED_CHROMIUM_VERSION);
   Assert.strictEqual(manifest.version_name, EXPECTED_CHROMIUM_VERSION_NAME);
+  Assert.strictEqual(manifest.minimum_chrome_version, '108');
   return {
     version: manifest.version,
     versionName: manifest.version_name,

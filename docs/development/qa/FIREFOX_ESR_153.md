@@ -1,8 +1,8 @@
 # Проверка Firefox 153 ESR на Linux
 
-Цель — проверить совместимость, прежде чем снижать минимальную версию Firefox
-с 154 до 153. Успешная сборка или изменение manifest сами по себе совместимость
-не подтверждают. Используйте Debian/Linux, отдельный профиль и синтетические
+Цель — дополнить расчётную совместимость **Firefox 140+** реальной проверкой
+ESR 153 на Debian/Linux. Проверять каждую промежуточную версию не требуется;
+расчёт по API и результат запуска учитываются отдельно. Используйте отдельный профиль и синтетические
 настройки. Личный профиль и его пароли не нужны.
 
 ## Среда и тестовый пакет
@@ -18,8 +18,8 @@ e289bdc532decf2b54dea9b5ac64cf6f84a62eeec4d4a9ec2f69590f61b0ff1c
 ```
 
 Следующие команды Bash выполняются из корня репозитория. Укажите свой путь
-к распакованному Firefox. Production manifest остаётся неизменным; снижение
-минимальной версии допускается только в одноразовой тестовой копии.
+к распакованному Firefox. Manifest изменять не нужно: минимум 140 уже допускает
+установку в ESR 153.
 
 ```bash
 set -euo pipefail
@@ -32,19 +32,7 @@ npm --prefix extension run verify:firefox
 qaRoot="$(mktemp -d "${TMPDIR:-/tmp}/rucb-esr-qa.XXXXXX")"
 export FIREFOX_PACKAGE_ROOT="$qaRoot/extension"
 cp -R extension/build/firefox "$FIREFOX_PACKAGE_ROOT"
-node <<'NODE'
-const fs = require('node:fs');
-const path = require('node:path');
-const file = path.join(process.env.FIREFOX_PACKAGE_ROOT, 'manifest.json');
-const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-const gecko = manifest.browser_specific_settings.gecko;
-if (gecko.strict_min_version !== '154.0') {
-  throw new Error('Review the current production minimum before this test.');
-}
-gecko.strict_min_version = '153.0';
-fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n');
-NODE
-diff -qr --exclude=manifest.json extension/build/firefox "$FIREFOX_PACKAGE_ROOT"
+diff -qr extension/build/firefox "$FIREFOX_PACKAGE_ROOT"
 ```
 
 Не загружайте эту копию в магазины и не выдавайте её за релизный пакет.
