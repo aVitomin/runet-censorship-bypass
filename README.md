@@ -18,25 +18,27 @@
 
 ## Скачать
 
-| Браузер | Доступная версия | Установка |
+| Браузер | Версия | Установка из магазина |
 | --- | --- | --- |
-| **Chromium** — Chrome, Brave и совместимые браузеры | [1.0.0](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0) | [Скачать ZIP](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-mv3-1.0.0-9de66de.zip) и загрузить распакованным |
-| **Firefox 154+** | [0.0.4.0, подписанная Mozilla](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0) | [Скачать XPI](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.xpi) и открыть в Firefox |
+| **Chrome, Brave и совместимые Chromium-браузеры** | **1.0.0** | [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) |
+| **Firefox 154+** | **1.0.0** | [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) |
 
-**Версии 1.0 для Chrome Web Store и Firefox Add-ons отправлены на проверку.**
-Публичных ссылок на установку из магазинов пока нет. Подписанный Firefox 1.0
-пока недоступен; возможности старой версии описаны в [руководстве 0.0.4.0](docs/user/USER_GUIDE.md).
+Обе версии опубликованы. Установка из магазина — основной способ: следующие
+одобренные версии браузер получает через механизм обновления расширений.
 
-### Chromium: быстрый старт
+**Ручная установка:** [Chromium ZIP](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-mv3-1.0.0-9de66de.zip) ·
+[подписанный Firefox XPI](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-firefox-1.0.0-signed.xpi) ·
+[все файлы выпуска v1.0.0](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0).
 
-1. Распакуйте ZIP в постоянную папку.
-2. Откройте `chrome://extensions` или `brave://extensions`, включите **Режим разработчика**.
-3. Нажмите **Загрузить распакованное расширение** и выберите папку с `manifest.json`.
-4. В настройках расширения выберите источник и нужные подключения.
-5. Нажмите **Сохранить настройки**, затем **Применить**.
+### Быстрый старт
 
-Не удаляйте папку после установки. Архивы **Source code** не являются готовым
-расширением. [Подробная установка, обновление и проверка файлов](docs/user/INSTALLATION.md).
+1. Установите расширение из магазина своего браузера и закрепите его значок.
+2. В Firefox разрешите работу в приватных окнах: это нужно для общей настройки прокси.
+3. Откройте настройки, выберите источник и нужные подключения.
+4. Нажмите **Сохранить настройки**, затем **Применить**.
+
+[Подробная установка, обновление и проверка файлов](docs/user/INSTALLATION.md).
+Архивы **Source code** предназначены для разработки.
 
 ## Как пользоваться версией 1.0
 
@@ -60,12 +62,11 @@
 
 ## Интерфейс
 
-Chromium 1.0 слева, Firefox 1.0 справа. Firefox на снимках — версия, ожидающая
-проверки Mozilla; доступный подписанный Firefox 0.0.4.0 выглядит иначе.
+Chromium 1.0 слева, Firefox 1.0 справа. Интерфейс доступен на русском и английском.
 
 <p align="center">
   <img src="docs/assets/releases/1.0/chromium/06-native-popup.png" alt="Панель Chromium 1.0" width="392">
-  <img src="docs/assets/releases/1.0/firefox/05-native-popup-direct.png" alt="Панель Firefox 1.0, ожидающего проверки" width="380">
+  <img src="docs/assets/releases/1.0/firefox/05-native-popup-direct.png" alt="Панель Firefox 1.0" width="380">
 </p>
 
 <details>
@@ -73,7 +74,7 @@ Chromium 1.0 слева, Firefox 1.0 справа. Firefox на снимках �
 
 ![Настройки Chromium 1.0](docs/assets/releases/1.0/chromium/01-overview-active.png)
 
-![Настройки Firefox 1.0, ожидающего проверки](docs/assets/releases/1.0/firefox/01-overview-manual-active.png)
+![Настройки Firefox 1.0](docs/assets/releases/1.0/firefox/01-overview-manual-active.png)
 
 [Все снимки интерфейса](docs/assets/releases/1.0/README.md)
 
@@ -99,11 +100,11 @@ SHA-256: `0faa3e0208c9d8295d2216066184930ece89eddeae20d1d37e9ede0c2a1a48bb`
 
 [Контрольная сумма ZIP](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-mv3-1.0.0-9de66de.zip.sha256.txt)
 
-**Firefox 0.0.4.0** — `runet-censorship-bypass-firefox-0.0.4.0-signed.xpi`
+**Firefox 1.0.0** — `runet-censorship-bypass-firefox-1.0.0-signed.xpi`
 
-SHA-256: `c7e3042e48819644673db92b9150a9d54a551281046212d896a7f7202bc9c34c`
+SHA-256: `74ff7eca8eb8f50e5bca57b1642894db473e99f990e1dfbb936faf5d66162b6c`
 
-[Контрольная сумма XPI](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v0.0.4.0/runet-censorship-bypass-firefox-0.0.4.0-signed.sha256.txt)
+[Контрольная сумма XPI](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-firefox-1.0.0-signed.sha256.txt)
 
 </details>
 
@@ -113,9 +114,9 @@ Choose **Auto**, **Proxy**, or **Direct** for websites in Chromium and Firefox.
 The extension controls browser routing and provides no VPN or proxy service.
 Save records settings; Apply activates them.
 
-Chromium **1.0.0** is available as an unpacked ZIP. Store submissions for Chrome
-and Firefox **1.0** are awaiting review. The signed Firefox download is still
-**0.0.4.0**. See [installation](docs/user/INSTALLATION.md#english-summary),
+Install **1.0.0** from [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) or
+[Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/). Firefox requires version **154+**.
+Manual ZIP and signed XPI downloads are also available. See [installation](docs/user/INSTALLATION.md#english-summary),
 [the 1.0 guide](docs/user/USER_GUIDE_1_0.md#english-summary), and [help](SUPPORT.md#english).
 
 <details>

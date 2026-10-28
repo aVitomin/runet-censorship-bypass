@@ -15,18 +15,21 @@ version separately for each browser.
 
 ## Current channel status
 
-Last confirmed on 2026-10-25; this is not a live store-status feed.
+Last confirmed on 2026-10-28; this is not a live store-status feed.
 
-- Firefox 1.0: submitted to Mozilla and awaiting review. Both listing languages,
-  source/build instructions, privacy notice, icon and five screenshots are saved.
-  A signed 1.0 XPI and public listing have not been verified as available.
-- Chrome Web Store: the publisher confirmed submission and pending review.
-  Approval, public availability and automatic/deferred publication selection
-  have not been verified. The PAC policy determination remains open.
-- Local packages: Chromium 1.0 is [published on GitHub](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0).
-  Use only the versions and links actually published in the
-  [installation guide](../user/INSTALLATION.md). Unsigned Firefox candidates are
-  excluded from ordinary installation instructions.
+- [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph): public version **1.0.0**,
+  installation button present, listing updated 2026-10-26. No deferred
+  publication step remains for this version. Publication is not a general
+  PAC-policy exception for future changes.
+- [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/): public version **1.0.0**,
+  Firefox **154+**. Mozilla records review on 2026-10-27. The downloadable XPI
+  matches the published SHA-256 and the canonical candidate's runtime files;
+  only signature files and manifest formatting differ.
+- [GitHub Release v1.0.0](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0):
+  Chromium ZIP and Mozilla-signed Firefox XPI, each with a checksum.
+  Existing Chromium assets and the source tag are unchanged.
+- This check confirms public listings and package identity. It does not add
+  a normal store-install/restart test to the [recorded browser QA](../development/releases/1.0.0.md).
 
 The remaining checklists are procedures for a submission or future update;
 unchecked boxes are not a claim that the confirmed submissions did not occur.
@@ -110,7 +113,7 @@ unchecked boxes are not a claim that the confirmed submissions did not occur.
 ## Chrome Web Store — parallel channel
 
 - [ ] First resolve the [PAC/remote-code policy review](CHROME_REVIEWER_NOTES_1_0.md#pac-disclosure-and-publication-hold)
-  and data-transport review. If unresolved, keep Chrome preparation unpublished;
+  and data-transport review for the new candidate. If unresolved, keep that update unpublished;
   do not make an unsupported remote-code/secure-transmission certification.
 - [ ] Use the authorized publisher account and correct extension identity.
   Upload the canonical Chromium ZIP with its manifest at archive root; record

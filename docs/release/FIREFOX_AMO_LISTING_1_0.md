@@ -3,8 +3,8 @@
 Reference material for version `1.0.0`. The canonical package and reviewer
 source archive were submitted to Mozilla on 2026-10-24 with English and Russian
 listing descriptions, current screenshots, a privacy notice and build notes.
-The version is awaiting review. Submission does not establish approval,
-signature availability or a public installation link. The shorter descriptions
+Public version `1.0.0` and its signed download were verified on 2026-10-28:
+[Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/). The shorter descriptions
 below are repository drafts for a future listing edit; they have not replaced
 the descriptions already submitted to Mozilla.
 
