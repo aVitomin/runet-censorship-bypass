@@ -3,6 +3,8 @@
   "name": "__MSG_extensionName__",
   "version": "1.0.0",
   "description": "__MSG_extensionDescription__",
+  "author": "aVitomin",
+  "homepage_url": "https://github.com/aVitomin/runet-censorship-bypass",
   "default_locale": "en",
   "permissions": [
     "storage",

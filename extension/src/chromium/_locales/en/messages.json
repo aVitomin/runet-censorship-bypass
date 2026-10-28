@@ -81,13 +81,13 @@
   "unifiedCategory_proxyConnections": {"message": "Proxy connections changed"},
   "unifiedCategory_routingSettings": {"message": "Routing settings changed"},
   "extName": {
-    "message": "Runet Censorship Bypass"
+    "message": "Runet Censorship Bypass — Revived"
   },
   "extDesc": {
-    "message": "Bypass Runet censorship with configurable routing rules."
+    "message": "Independent Anticensority fork. Control website routing with Auto, Proxy and Direct rules."
   },
   "popupTitle": {
-    "message": "Runet Censorship Bypass"
+    "message": "Runet Censorship Bypass — Revived"
   },
   "popupControlLoading": {
     "message": "Checking extension proxy state"
@@ -1019,7 +1019,7 @@
     "message": "The automatic routing data update failed. Open settings for details."
   },
   "optionsPageTitle": {
-    "message": "Runet Censorship Bypass settings"
+    "message": "Runet Censorship Bypass — Revived settings"
   },
   "optionsPageSubtitle": {
     "message": "Manage how sites are routed and which proxy connections are available."

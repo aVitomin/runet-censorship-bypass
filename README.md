@@ -1,8 +1,13 @@
 <p align="center">
-  <img src="extension/src/assets/brand/icon-512.png" alt="Runet Censorship Bypass" width="88">
+  <img src="extension/src/assets/brand/icon-512.png" alt="Runet Censorship Bypass — Revived" width="88">
 </p>
 
-# Runet Censorship Bypass
+# Runet Censorship Bypass — Revived
+
+Независимый форк [Anticensority](https://github.com/anticensority/runet-censorship-bypass).
+Название **Revived** подготовлено для следующего выпуска. Опубликованная
+**1.0.0** пока называется «Обход блокировок Рунета» / Runet Censorship Bypass;
+ссылки установки ниже ведут на этот доступный выпуск.
 
 Выбирайте, как браузер открывает сайты: по автоматическим правилам, через
 настроенный прокси или напрямую. Расширение для Chromium и Firefox с интерфейсом
@@ -109,6 +114,10 @@ SHA-256: `74ff7eca8eb8f50e5bca57b1642894db473e99f990e1dfbb936faf5d66162b6c`
 </details>
 
 ## English
+
+**Runet Censorship Bypass — Revived** is an independent Anticensority fork.
+The new name is prepared for the next release; published **1.0.0** still uses
+Runet Censorship Bypass. The installation links on this page still lead to that product.
 
 Choose **Auto**, **Proxy**, or **Direct** for websites in Chromium and Firefox.
 The extension controls browser routing and provides no VPN or proxy service.

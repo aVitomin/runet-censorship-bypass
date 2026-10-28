@@ -10,7 +10,11 @@ the descriptions already submitted to Mozilla.
 
 ## Listing fields
 
-- **Title:** Runet Censorship Bypass
+The Revived names and copy below are prepared for the next release, not applied
+to the live 1.0.0 listing. Update the existing AMO entry, preserving its Gecko ID
+and public URL. Canonical links: [link audit](LINK_AUDIT_1_0.md#revived-preparation--2026-10-28).
+
+- **Title:** Runet Censorship Bypass — Revived
 - **Summary:** Choose Auto, Proxy or Direct for websites. Manage site rules and proxy connections, with separate Save and Apply controls.
 - **Category:** Other. One category is sufficient; no security-benefit category
   or keyword is needed to describe routing control.
@@ -20,7 +24,7 @@ the descriptions already submitted to Mozilla.
 - **Support URL:** [issue forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
 - **Privacy URL:** the [1.0 privacy notice](PRIVACY_1_0.md) is published on main.
   The submitted notice uses its public project/support/security links.
-- **Russian title:** Обход блокировок Рунета.
+- **Russian title:** Обход блокировок Рунета — Revived.
 - **Russian summary:** Выбирайте «Авто», «Прокси» или «Напрямую» для сайтов.
   Настраивайте правила и подключения, сохраняйте изменения и применяйте их отдельно.
 - **Screenshots:** [current 1.0 gallery](../assets/releases/1.0/README.md),
@@ -34,7 +38,8 @@ in the live submission form.
 
 ## Description — English
 
-Choose Auto, Proxy or Direct for websites in Firefox. Runet Censorship Bypass
+Runet Censorship Bypass — Revived is an independent Anticensority fork.
+Choose Auto, Proxy or Direct for websites in Firefox. The extension
 controls browser routing and provides no VPN or proxy service.
 
 - Set rules for one host or a domain and its subdomains.
@@ -71,6 +76,7 @@ and does not route other applications. SOCKS authentication depends on Firefox.
 
 ## Полное описание — русский
 
+«Обход блокировок Рунета — Revived» — независимый форк Anticensority.
 Выбирайте «Авто», «Прокси» или «Напрямую» для сайтов в Firefox. Расширение
 управляет маршрутами браузера; VPN или прокси-сервер в комплект не входят.
 
