@@ -1309,7 +1309,7 @@ describe('Firefox production control package', function() {
     );
     Assert.strictEqual(
         manifest.browser_specific_settings.gecko.strict_min_version,
-        '154.0',
+        '140.0',
     );
 
   });

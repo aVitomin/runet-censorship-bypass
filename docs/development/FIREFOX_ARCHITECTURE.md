@@ -542,6 +542,12 @@ Conflict сохраняет Draft со старой базой; явный Disca
 `textContent`, используют только extension-local scripts/styles и не добавляют
 permissions или remote assets.
 
+В исходниках 1.0.1 разделы Options переключаются без пересоздания формы:
+скрытые поля остаются частью Draft и Save. Поиск правил только фильтрует
+отображение, параметры подключения раскрываются отдельно. Native validation
+открывает раздел и редактор первого ошибочного поля перед фокусировкой.
+Навигация и общая тема страниц не отправляют RPC и не меняют Saved/Effective.
+
 Popup текущего Firefox target также читает активную HTTP(S)-вкладку и через
 строгие `firefox.site.get` / `firefox.site.apply` RPC показывает Auto / Proxy /
 Direct с exact-host или public-suffix-aware domain scope. Site mutation проходит

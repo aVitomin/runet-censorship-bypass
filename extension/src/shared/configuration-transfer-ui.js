@@ -124,6 +124,7 @@
         button('transferCancel', () => model.cancel());
       }
       const errors = {TRANSFER_VERSION: 'transferVersion', TRANSFER_LIMIT: 'transferLimit',
+        TRANSFER_SOCKS4A_UNSUPPORTED: 'transferSocks4aUnsupported',
         TRANSFER_DRAFT: 'transferDraft', TRANSFER_NO_CONFIGURATION: 'transferNoConfiguration',
         SAVED_REVISION_CHANGED: 'transferConflict', SETTINGS_REVISION_CONFLICT: 'transferConflict',
         STALE_REVISION: 'transferConflict'};

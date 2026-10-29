@@ -1,0 +1,111 @@
+:root {
+  color-scheme: light;
+  --ui-color-canvas: #f4f7fb;
+  --ui-color-surface: #ffffff;
+  --ui-color-surface-subtle: #f8fafc;
+  --ui-color-text: #172033;
+  --ui-color-text-secondary: #334155;
+  --ui-color-text-muted: #5f6f83;
+  --ui-color-border: #d8e0ea;
+  --ui-color-divider: #e8edf3;
+  --ui-color-accent: #1d4ed8;
+  --ui-color-on-accent: #ffffff;
+  --ui-color-accent-surface: #eff6ff;
+  --ui-color-accent-hover: #1e40af;
+  --ui-color-accent-pressed: #1e3a8a;
+  --ui-color-success: #15803d;
+  --ui-color-success-surface: #ecfdf3;
+  --ui-color-warning: #b45309;
+  --ui-color-warning-surface: #fff7ed;
+  --ui-color-error: #b42318;
+  --ui-color-error-surface: #fef2f2;
+  --ui-color-disabled: #667085;
+  --ui-color-focus: #2563eb;
+  --ui-focus-ring: 0 0 0 3px rgb(37 99 235 / 24%);
+  --ui-shadow-elevated: 0 1px 2px rgb(15 23 42 / 8%);
+  --ui-shadow-floating: 0 8px 24px rgb(15 23 42 / 12%);
+}
+
+:root[data-ui-theme="dark"] {
+  color-scheme: dark;
+  --ui-color-canvas: #101722;
+  --ui-color-surface: #192333;
+  --ui-color-surface-subtle: #202d40;
+  --ui-color-text: #eff4fc;
+  --ui-color-text-secondary: #d1dcee;
+  --ui-color-text-muted: #a6b5cb;
+  --ui-color-border: #4d607b;
+  --ui-color-divider: #35465f;
+  --ui-color-accent: #a3c1ff;
+  --ui-color-on-accent: #101f38;
+  --ui-color-accent-surface: #253b5d;
+  --ui-color-accent-hover: #bfd3ff;
+  --ui-color-accent-pressed: #8baeff;
+  --ui-color-success: #7ce3a0;
+  --ui-color-success-surface: #17372a;
+  --ui-color-warning: #ffd08a;
+  --ui-color-warning-surface: #41321e;
+  --ui-color-error: #ffaaa3;
+  --ui-color-error-surface: #44282b;
+  --ui-color-disabled: #a6b5cb;
+  --ui-color-focus: #b9d0ff;
+  --ui-focus-ring: 0 0 0 3px rgb(163 193 255 / 28%);
+  --ui-shadow-elevated: 0 1px 2px rgb(0 0 0 / 22%);
+  --ui-shadow-floating: 0 8px 24px rgb(0 0 0 / 28%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-ui-theme="light"]) {
+    color-scheme: dark;
+    --ui-color-canvas: #101722;
+    --ui-color-surface: #192333;
+    --ui-color-surface-subtle: #202d40;
+    --ui-color-text: #eff4fc;
+    --ui-color-text-secondary: #d1dcee;
+    --ui-color-text-muted: #a6b5cb;
+    --ui-color-border: #4d607b;
+    --ui-color-divider: #35465f;
+    --ui-color-accent: #a3c1ff;
+    --ui-color-on-accent: #101f38;
+    --ui-color-accent-surface: #253b5d;
+    --ui-color-accent-hover: #bfd3ff;
+    --ui-color-accent-pressed: #8baeff;
+    --ui-color-success: #7ce3a0;
+    --ui-color-success-surface: #17372a;
+    --ui-color-warning: #ffd08a;
+    --ui-color-warning-surface: #41321e;
+    --ui-color-error: #ffaaa3;
+    --ui-color-error-surface: #44282b;
+    --ui-color-disabled: #a6b5cb;
+    --ui-color-focus: #b9d0ff;
+    --ui-focus-ring: 0 0 0 3px rgb(163 193 255 / 28%);
+    --ui-shadow-elevated: 0 1px 2px rgb(0 0 0 / 22%);
+    --ui-shadow-floating: 0 8px 24px rgb(0 0 0 / 28%);
+  }
+}
+
+/* Presentation preferences sit outside the routing-settings forms. */
+.theme-field {
+  display: grid;
+  gap: var(--ui-space-0-5);
+  min-width: 160px;
+  align-content: start;
+  color: var(--ui-color-text-secondary);
+  font-size: var(--ui-font-size-caption);
+  font-weight: var(--ui-font-weight-medium);
+}
+
+.theme-field select {
+  width: 100%;
+  min-height: var(--ui-control-height);
+  padding: var(--ui-space-1);
+}
+
+.theme-feedback {
+  max-width: 240px;
+  color: var(--ui-color-warning);
+}
+
+.theme-feedback:empty {
+  display: none;
+}

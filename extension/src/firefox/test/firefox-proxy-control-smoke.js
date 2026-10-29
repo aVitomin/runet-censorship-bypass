@@ -11,7 +11,8 @@ const Smoke = require('./firefox-lifecycle-smoke');
 const EXTENSION_ID = '{adf5f697-1149-42a2-92eb-c163cb9a4146}';
 const MANUAL_PROXY_MARKER = 'FIREFOX_PROXY_CONTROL_PREVIOUS_MANUAL';
 const projectRoot = Path.resolve(__dirname, '..', '..', '..');
-const packageRoot = Path.join(projectRoot, 'build', 'firefox');
+const packageRoot = process.env.FIREFOX_PACKAGE_ROOT ?
+  Path.resolve(process.env.FIREFOX_PACKAGE_ROOT) : Path.join(projectRoot, 'build', 'firefox');
 
 function localIpv4() {
 
@@ -412,6 +413,7 @@ async function main() {
       MOZ_CRASHREPORTER_DISABLE: '1',
       MOZ_DISABLE_NONLOCAL_CONNECTIONS: '1',
       MOZ_NO_REMOTE: '1',
+      MOZ_REMOTE_ALLOW_SYSTEM_ACCESS: '1',
     }),
     stdio: ['ignore', 'ignore', 'pipe'],
     windowsHide: true,
@@ -454,7 +456,12 @@ async function main() {
       path: packageRoot,
       temporary: true,
     });
-    await Smoke.delay(500);
+    const productionCapabilities = await Smoke.readProductionCapabilities(
+        client,
+        await Smoke.extensionOrigin(client),
+    );
+    Assert.strictEqual(productionCapabilities.result.runtimeState, 'OFF');
+    Assert.strictEqual(productionCapabilities.result.durableIntent, 'OFF');
     await expectManualProxy(
         client, handle, targetUrl, proxyRequests, originRequests,
         'production-off',

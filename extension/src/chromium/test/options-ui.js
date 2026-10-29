@@ -24,6 +24,9 @@ const POPUP_CSS = Fs.readFileSync(
     'utf8',
 );
 const UI_TOKENS = Fs.readFileSync(
+    Path.join(CHROMIUM_DIRECTORY, '..', 'shared', 'ui-theme.css'),
+    'utf8',
+) + Fs.readFileSync(
     Path.join(CHROMIUM_DIRECTORY, 'pages', 'shared', 'ui-tokens.css'),
     'utf8',
 );

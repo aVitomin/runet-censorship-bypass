@@ -50,6 +50,13 @@ lint/build без повторного запуска suites/builds. Обе buil
 отдельно доказывают byte-identical rebuild и создают архивы. После всех команд
 tracked tree должен остаться чистым.
 
+Для каждого результата запишите SHA, команду, код возврата и путь к журналу.
+Уже успешные проверки можно использовать повторно, если их входные файлы и
+среда не изменились; укажите исходный запуск. Правки только документации не
+требуют нового прогона runtime-тестов. Изменение зависимостей требует проверок
+из `dependency-review` и итогового gate на объединённом состоянии. Архивы,
+исходники и trusted-main CI всегда должны соответствовать финальному SHA.
+
 ## 3. Подтвердить trusted-main CI
 
 Для exact main SHA workflow **Verify extension** должен завершиться успешно как
@@ -98,15 +105,20 @@ package tree. Инструкции и AMO notes находятся в
 после проверки exact unsigned XPI; signing credentials в репозитории и CI нет.
 
 Если выпуск требует browser QA, загрузите именно распакованный trusted artifact
-в чистый профиль. Запишите browser и точную версию. Минимально проверьте Brave;
-статус stable Chrome укажите честно. Сценарии перечислены в
+в чистый профиль. Для Chromium проверьте Chrome или Brave и запишите точную
+версию; результаты одного браузера не выдавайте за проверку всех форков.
+Сценарии перечислены в
 [TESTING.md](TESTING.md#браузерная-qa). Для authenticated proxy используйте
 только разрешённый тестовый аккаунт и не записывайте пароль.
 
-Для Firefox установите exact unsigned XPI как temporary add-on в Firefox
-154.0.1, проверьте popup/options, Apply/recovery/Clear, EN/RU, authenticated
+Для Firefox установите exact unsigned XPI как temporary add-on в поддерживаемом
+Firefox и запишите точную версию; проверьте popup/options, Apply/recovery/Clear, EN/RU, authenticated
 proxy, private-access revoke и external control loss. Обычная установка
 unsigned XPI не считается пользовательским release path.
+Расчётные минимумы и фактические проверки указаны в
+[матрице совместимости](BROWSER_COMPATIBILITY.md). Полная проверка каждой версии
+или каждого производного браузера не требуется; непроверенные среды не выдаются
+за подтверждённые.
 
 ## 5. Создать ZIP из проверенного artifact
 
@@ -134,8 +146,9 @@ Get-FileHash $Archive -Algorithm SHA256
 
 - Tag имеет форму `v<version-name>` и должен указывать на exact validated main
   SHA, а не просто на текущее имя ветки.
-- **Prerelease** обязателен для ограниченной beta, неполного browser matrix или
-  значимых известных границ.
+- **Prerelease** обязателен для ограниченной beta, незакрытых проверок
+  согласованного support scope или значимых известных ограничений. Отсутствие
+  исчерпывающей проверки всех версий и форков само по себе не блокирует stable.
 - **Stable** допустим только после согласованного support scope, закрытых release
   blockers и достаточной real-browser QA; unit tests сами по себе недостаточны.
 

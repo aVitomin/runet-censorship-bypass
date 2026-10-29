@@ -7,9 +7,21 @@ review requirements for future changes.
 The shorter descriptions below are repository drafts for a future listing
 edit; they have not replaced the submitted store copy or package metadata.
 
+## Prepared name for the next release
+
+- **English:** Runet Censorship Bypass — Revived.
+- **Russian:** Обход блокировок Рунета — Revived.
+- Chrome reads the localized name from the package manifest. Apply this name
+  with the next validated version of the existing store item; it is not live yet.
+- Keep the existing extension ID and store URL. Homepage, support and privacy
+  links already point to this fork; their canonical destinations are in the
+  [link audit](LINK_AUDIT_1_0.md#revived-preparation--2026-10-28).
+
 ## Short description
 
-Control website routing with Auto, Proxy and Direct rules, configurable PAC sources, and separate Save and Apply.
+Independent Anticensority fork. Control website routing with Auto, Proxy and Direct rules.
+
+Russian: Независимый форк Anticensority. Управление маршрутами сайтов: автоматически, через прокси или напрямую.
 
 This proposed copy is below the
 [132-character manifest description limit](https://developer.chrome.com/docs/extensions/reference/manifest/description).
@@ -23,8 +35,8 @@ description change requires a new validated artifact.
 ## Long description — English
 
 Choose how Chrome opens websites: follow automatic rules, use a configured
-proxy, or connect directly. Runet Censorship Bypass controls browser routing;
-it provides no VPN or proxy service.
+proxy, or connect directly. Runet Censorship Bypass — Revived is an independent
+Anticensority fork that controls browser routing; it provides no VPN or proxy service.
 
 - Choose Auto, Proxy or Direct for a site, an exact host or a domain with subdomains.
 - Use built-in PAC sources, a custom source, or Only my rules and connections.
@@ -32,6 +44,7 @@ it provides no VPN or proxy service.
 - Save settings for review, then Apply them. Existing settings stay active until Apply.
 - Transfer settings with import preview and create a separate sanitized support report.
 - Check routing-data updates and connection status.
+- Choose a light, dark or system appearance in Options; the popup uses the same theme.
 
 Auto follows the selected source and rules; it can use a proxy. Explicit Direct
 takes priority over Proxy. Proxy needs a suitable enabled connection. Updates
@@ -55,6 +68,7 @@ SOCKS authentication depends on the browser.
 
 ## Полное описание — русский
 
+«Обход блокировок Рунета — Revived» — независимый форк Anticensority.
 Выбирайте, как Chrome открывает сайты: по автоматическим правилам, через
 настроенный прокси или напрямую. Расширение управляет маршрутами браузера;
 VPN или прокси-сервер в комплект не входят.
@@ -65,6 +79,7 @@ VPN или прокси-сервер в комплект не входят.
 - Сохранение настроек отдельно от применения: прежние продолжают действовать до «Применить».
 - Перенос настроек с предварительным просмотром и отдельный очищенный отчёт для поддержки.
 - Обновление данных маршрутизации и проверка подключений.
+- Светлая, тёмная или системная тема: настройки и панель используют один выбор.
 
 «Авто» следует выбранному источнику и правилам, поэтому может использовать
 прокси. Явное «Напрямую» приоритетнее «Прокси». Для «Прокси» нужно подходящее
@@ -139,4 +154,6 @@ the 440x280 promotional PNG and the verified packaged icon. Native popup images
 are genuine documentation workflow captures, not padded 1280x800 store shots.
 Follow the [current listing guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-listing/)
 and [image requirements](https://developer.chrome.com/docs/webstore/images).
-There is no verified public Chrome store URL to announce yet.
+The existing public store link is recorded above. Its current name is still
+the 1.0.0 name. Recapture any screenshots displaying the name from the final
+Revived build before submitting the update; do not relabel old captures as new.

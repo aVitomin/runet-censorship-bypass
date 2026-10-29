@@ -5,6 +5,30 @@ security and official store-guidance links used by this publication set.
 This dated record does not establish current URL availability.
 Historical/upstream attribution in `docs/legacy/` is not rewritten.
 
+## Revived preparation — 2026-10-28
+
+The following is the current link set for the next branding update. Public
+Chrome listing HTML and the Mozilla API still show the 1.0.0 names. Their
+homepage/support links already point to this fork; Chrome also links the
+1.0 privacy notice below. Renaming the product does not require moving these URLs.
+
+| Field | URL to retain |
+| --- | --- |
+| Homepage / source | [repository](https://github.com/aVitomin/runet-censorship-bypass) |
+| Support | [issue forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose) |
+| Privacy for the current 1.0 behavior | [privacy notice](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md) |
+| Downloads | [installation](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/INSTALLATION.md) |
+| Chrome Web Store | [existing item](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) |
+| Firefox Add-ons | [existing item](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) |
+
+The prepared manifests identify aVitomin as the fork maintainer and link the
+same repository. Original authorship and license notices remain intact.
+At release, recheck the live cards and the exact release's privacy notice;
+change links only if their destinations actually change. Do not insert an
+unpublished news-issue URL or alter the Chrome/Firefox installation identifiers.
+
+The remaining sections are the original dated audit, not a current status report.
+
 ## Fork-owned public destinations
 
 | Purpose | Canonical link | Observed result |

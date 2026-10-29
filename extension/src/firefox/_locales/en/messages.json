@@ -35,6 +35,7 @@
   "transferImported": {"message":"Settings imported. They are saved but not applied."},
   "transferExported": {"message":"Export prepared. Keep settings files private."},
   "transferInvalid": {"message":"The file is not a valid settings export. Nothing was imported."},
+  "transferSocks4aUnsupported": {"message":"This file contains SOCKS4A connections, which Chromium does not support. Nothing was imported. Use Firefox, or configure SOCKS5 if your proxy server supports it."},
   "transferVersion": {"message":"This export format version is not supported."},
   "transferLimit": {"message":"The import exceeds the size or complexity limit (maximum file size: 1 MiB)."},
   "transferDraft": {"message":"Review and save or discard your edits before importing. Your edits have been preserved."},
@@ -89,8 +90,8 @@
   "unifiedCategory_siteRules": {"message": "Site rules changed"},
   "unifiedCategory_proxyConnections": {"message": "Proxy connections changed"},
   "unifiedCategory_routingSettings": {"message": "Routing settings changed"},
-  "extensionName": {"message": "Runet Censorship Bypass"},
-  "extensionDescription": {"message": "Routes selected sites through censorship-bypass proxies."},
+  "extensionName": {"message": "Runet Censorship Bypass — Revived"},
+  "extensionDescription": {"message": "Independent Anticensority fork. Control website routing with Auto, Proxy and Direct rules."},
   "popupTitle": {"message": "Protection status"},
   "popupSubtitle": {"message": "Firefox routing control"},
   "popupLoading": {"message": "Reading the current state…"},
@@ -124,7 +125,7 @@
   "permissionPrivateAccessTitle": {"message": "Private-window access is required"},
   "permissionPrivateAccessExplanation": {"message": "This extension currently controls Firefox's browser-wide proxy settings, which also affect private windows. Access is required so protection is not reported while private windows remain outside the extension's control."},
   "permissionPrivateAccessUnknown": {"message": "Firefox did not return the current permission state. Activation remains unavailable until the extension can verify it."},
-  "permissionPrivateAccessSteps": {"message": "Open the Firefox menu → Add-ons and themes → Extensions. Select Runet Censorship Bypass, then under Run in Private Windows choose Allow. Return here when finished."},
+  "permissionPrivateAccessSteps": {"message": "Open the Firefox menu → Add-ons and themes → Extensions. Select Runet Censorship Bypass — Revived, then under Run in Private Windows choose Allow. Return here when finished."},
   "permissionCheckAgain": {"message": "Check again"},
   "permissionRestrictedSitesInfo": {"message": "Firefox's Run on sites with restrictions permission is separate and is not required for activation. This extension cannot read that setting; review it manually only when a normal website is restricted. Firefox about: pages cannot be routed."},
   "valueAvailable": {"message": "Available"},
@@ -162,7 +163,7 @@
   "popupRulePreview": {"message": "Rule: $1"},
   "popupNotApplied": {"message": "Not applied"},
   "popupAutomaticRouting": {"message": "Routing source"},
-  "popupAutomaticSource": {"message": "Anticensority is the verified local routing source."},
+  "popupAutomaticSource": {"message": "Auto follows the source selected in Settings. With the manual source, only your rules and connections are used."},
   "actionSave": {"message": "Save settings"},
   "actionReload": {"message": "Reload"},
   "actionAddProxy": {"message": "Add own proxy"},
@@ -223,7 +224,7 @@
   "providerUpdateError_UPDATE_INTERRUPTED": {"message": "The previous check was interrupted"},
   "providerUpdateError_UPDATE_REJECTED": {"message": "Update rejected safely"},
   "optionsAdvancedHelp": {"message": "Configure Direct replacement and local Tor, Tor Browser, or WARP routes."},
-  "optionsAboutHelp": {"message": "Runet Censorship Bypass for Firefox uses built-in verified routing data and contains no remote executable code."},
+  "optionsAboutHelp": {"message": "Runet Censorship Bypass — Revived for Firefox uses built-in verified routing data and contains no remote executable code."},
   "optionsVersion": {"message": "Version $1"},
   "optionsLoading": {"message": "Loading the saved settings…"},
   "optionsLoadFailed": {"message": "The saved settings could not be loaded."},
@@ -263,7 +264,7 @@
   "fieldHost": {"message": "Host"},
   "fieldPort": {"message": "Port"},
   "fieldFailoverTimeout": {"message": "Failover timeout (seconds, optional)"},
-  "fieldProxyDns": {"message": "Proxy DNS where supported"},
+  "fieldProxyDns": {"message": "Resolve hostnames through the SOCKS proxy (SOCKS4A / SOCKS5)"},
   "fieldEnabled": {"message": "Enabled for explicit Proxy rules"},
   "fieldUseForProxyRules": {"message": "Use for explicit Proxy rules"},
   "fieldUseForOnion": {"message": "Use for .onion"},
@@ -327,5 +328,29 @@
   "notificationControlLoss": {"message": "Another controller changed Firefox proxy settings. Protection stopped safely and was not resumed."},
   "notificationPrivateAccessBlocked": {"message": "Private-window access was removed. Protection is blocked and can be turned off safely."},
   "notificationRecoveryBlocked": {"message": "Firefox could not restore the protected session. Open the extension to review or turn it off."},
-  "notificationHealthFailure": {"message": "The requested proxy connection check failed. Open Maintenance to review the sanitized result."}
+  "notificationHealthFailure": {"message": "The requested proxy connection check failed. Open Maintenance to review the sanitized result."},
+  "uiThemeLabel": {
+    "message": "Theme"
+  },
+  "uiThemeSystem": {
+    "message": "System"
+  },
+  "uiThemeLight": {
+    "message": "Light"
+  },
+  "uiThemeDark": {
+    "message": "Dark"
+  },
+  "uiThemeSaveFailed": {
+    "message": "Applied for this page. The browser could not save your theme."
+  },
+  "rulesSearch": {
+    "message": "Find a rule"
+  },
+  "rulesSearchEmpty": {
+    "message": "No matching rules. Clear the search to see all rules."
+  },
+  "optionsEditConnection": {
+    "message": "Server and authentication settings"
+  }
 }

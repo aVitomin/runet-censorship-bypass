@@ -62,9 +62,18 @@ integrity и минимальный lifecycle baseline (`fsevents@2.3.3`, option
 MV2 и его nested Options compiler удалены из maintained `main`; повторное
 добавление nested package root блокируется как непроверенная dependency
 boundary. На PR registry
-publication time запрашивается только для новых выбранных direct versions;
-граница равна 168 часам и ошибка registry/metadata блокирует change. Эти gates
-дают defense in depth, но не доказывают безопасность package.
+publication time запрашивается только для новых выбранных direct versions.
+По умолчанию требуется 168 часов. Проверенное обновление известного пакета
+можно использовать раньше: запись в `scripts/reviewed-dependencies.json`
+должна содержать точные name/version/integrity из lockfile, ссылку на source
+commit, дату, основание и выполненные проверки. Поля `checks`: `source`,
+`maintainers`, `license`, `contents`, `code-diff`, `registry-signature`,
+`provenance`, `advisories`, `lock-delta`; формат файла — `schemaVersion: 1`
+и массив `reviews`. Запись составляет сопровождающий после проверки;
+CI проверяет её полноту и привязку к байтам, а не достоверность выводов.
+Другая версия или integrity требуют нового review. Ошибка registry/metadata
+блокирует change даже при наличии записи. Популярность и истечение недели
+не заменяют проверку безопасности; нерешённые риски блокируют установку.
 
 Перенос npm-root требует отдельного review и явного обновления tooling/CI/build
 путей. Verifier не принимает обнаруженный root автоматически. Для сравнения
@@ -333,6 +342,17 @@ provider Apply сохраняет прежнюю manual session; проверя�
 Apply, explicit Direct, website auth и ownership/OFF. Эта проверка не доказывает
 отсутствие фоновых source requests: в manual mode они остаются включёнными,
 а stage/defer contract проверяется детерминированными тестами.
+
+### Firefox ESR и отдельный тестовый пакет
+
+Для проверки другой версии браузера задайте `FIREFOX_BIN`. Три сценария
+`firefox-lifecycle-smoke.js`, `firefox-proxy-control-smoke.js` и
+`firefox-auth-control-smoke.js` также принимают `FIREFOX_PACKAGE_ROOT` —
+абсолютный путь к явно подготовленной тестовой копии пакета. Без него они
+используют `extension/build/firefox`. Переменная не меняет production manifest.
+Сценарии разрешают Marionette system access только запущенному тестовому
+процессу с одноразовым профилем, без изменения установленного Firefox.
+См. [проверку Firefox 153 ESR на Linux](qa/FIREFOX_ESR_153.md).
 
 ### Firefox routing-data refresh
 

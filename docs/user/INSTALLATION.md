@@ -19,9 +19,16 @@
 
 ## Требования
 
-Firefox требует версию **154.0 или новее**. Firefox ESR 153 пока не поддерживается.
-Для Chromium отдельный минимум в манифесте не задан: нужен современный браузер
-с необходимыми MV3 API. Поддержка всех Chromium-форков не гарантируется.
+Опубликованный Firefox-пакет **1.0.0** требует **154.0+** и не устанавливается
+в ESR 153. У опубликованного Chromium-пакета отдельный минимум не задан.
+
+Для готовящейся **1.0.1** в манифестах установлены расчётные минимумы:
+**Chromium 108+** и **Firefox 140+**, включая ESR на подходящей базе.
+Ожидается работа в совместимых настольных браузерах с Manifest V3 и API прокси.
+Версия движка Chromium важнее собственного номера Brave, Opera или другого
+форка. Android, iOS, WebView и браузеры без нужных API в эту оценку не входят.
+Каждая версия и каждый форк отдельно не проверялись;
+[основания и фактические проверки](../development/BROWSER_COMPATIBILITY.md) указаны отдельно.
 
 Проверенные браузеры и границы QA: [технические сведения о выпуске](../development/releases/1.0.0.md).
 
@@ -127,6 +134,11 @@ Install **1.0.0** from [Chrome Web Store](https://chromewebstore.google.com/deta
 [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/). Firefox requires **154+** and private-window
 permission for browser-wide proxy control. Store installations receive approved
 updates through the browser when automatic updates are enabled.
+
+The upcoming **1.0.1** targets desktop **Chromium 108+** and **Firefox 140+**,
+including ESR releases on a compatible base. These are API-based compatibility
+estimates, not test results for every version or fork. Required MV3 and proxy
+extension APIs must be available; mobile browsers and WebView are outside this scope.
 
 For manual installation, verify the ZIP/XPI checksum. Load the extracted Chromium
 folder in Developer mode, or install the Mozilla-signed XPI through Firefox's

@@ -35,6 +35,7 @@
   "transferImported": {"message":"Настройки импортированы. Они сохранены, но не применены."},
   "transferExported": {"message":"Файл экспорта подготовлен. Не публикуйте файл настроек."},
   "transferInvalid": {"message":"Файл не соответствует формату настроек. Импорт не выполнен."},
+  "transferSocks4aUnsupported": {"message":"Файл содержит подключения SOCKS4A, которые Chromium не поддерживает. Импорт не выполнен. Используйте Firefox или настройте SOCKS5, если ваш прокси-сервер его поддерживает."},
   "transferVersion": {"message":"Эта версия формата экспорта не поддерживается."},
   "transferLimit": {"message":"Превышен предел размера или сложности импорта (файл не более 1 МиБ)."},
   "transferDraft": {"message":"Перед импортом проверьте и сохраните или отмените свои правки. Они не потеряны."},
@@ -89,8 +90,8 @@
   "unifiedCategory_siteRules": {"message": "Изменены правила сайтов"},
   "unifiedCategory_proxyConnections": {"message": "Изменены подключения к прокси"},
   "unifiedCategory_routingSettings": {"message": "Изменены настройки маршрутизации"},
-  "extensionName": {"message": "Обход блокировок Рунета"},
-  "extensionDescription": {"message": "Направляет выбранные сайты через прокси для обхода блокировок."},
+  "extensionName": {"message": "Обход блокировок Рунета — Revived"},
+  "extensionDescription": {"message": "Независимый форк Anticensority. Управление маршрутами сайтов: автоматически, через прокси или напрямую."},
   "popupTitle": {"message": "Состояние защиты"},
   "popupSubtitle": {"message": "Управление маршрутизацией Firefox"},
   "popupLoading": {"message": "Читаем текущее состояние…"},
@@ -124,7 +125,7 @@
   "permissionPrivateAccessTitle": {"message": "Нужен доступ к приватным окнам"},
   "permissionPrivateAccessExplanation": {"message": "Сейчас расширение управляет общими настройками прокси Firefox, которые действуют и в приватных окнах. Доступ нужен, чтобы расширение не показывало защиту включённой, пока приватные окна остаются вне его управления."},
   "permissionPrivateAccessUnknown": {"message": "Firefox не сообщил текущее состояние разрешения. Включение останется недоступным, пока расширение не сможет его проверить."},
-  "permissionPrivateAccessSteps": {"message": "Откройте меню Firefox → Дополнения и темы → Расширения. Выберите «Обход блокировок Рунета», затем в разделе «Работа в приватных окнах» выберите «Разрешить». После этого вернитесь сюда."},
+  "permissionPrivateAccessSteps": {"message": "Откройте меню Firefox → Дополнения и темы → Расширения. Выберите «Обход блокировок Рунета — Revived», затем в разделе «Работа в приватных окнах» выберите «Разрешить». После этого вернитесь сюда."},
   "permissionCheckAgain": {"message": "Проверить снова"},
   "permissionRestrictedSitesInfo": {"message": "Разрешение Firefox «Работа на сайтах с ограничениями» настраивается отдельно и для включения защиты не требуется. Расширение не умеет проверять его состояние; изменяйте его вручную, только если Firefox ограничивает обычный сайт. Страницы about: нельзя маршрутизировать."},
   "valueAvailable": {"message": "Доступен"},
@@ -162,7 +163,7 @@
   "popupRulePreview": {"message": "Правило: $1"},
   "popupNotApplied": {"message": "Не применено"},
   "popupAutomaticRouting": {"message": "Источник правил"},
-  "popupAutomaticSource": {"message": "Anticensority — проверенный локальный источник правил."},
+  "popupAutomaticSource": {"message": "«Автоматически» использует выбранный в настройках источник. В ручном режиме действуют только ваши правила и подключения."},
   "actionSave": {"message": "Сохранить настройки"},
   "actionReload": {"message": "Перезагрузить"},
   "actionAddProxy": {"message": "Добавить свой прокси"},
@@ -223,7 +224,7 @@
   "providerUpdateError_UPDATE_INTERRUPTED": {"message": "Предыдущая проверка была прервана"},
   "providerUpdateError_UPDATE_REJECTED": {"message": "Обновление безопасно отклонено"},
   "optionsAdvancedHelp": {"message": "Настройте замену Direct и маршруты через локальный Tor, Tor Browser или WARP."},
-  "optionsAboutHelp": {"message": "Обход блокировок Рунета для Firefox использует встроенные проверенные данные маршрутизации и не содержит удалённого исполняемого кода."},
+  "optionsAboutHelp": {"message": "Обход блокировок Рунета — Revived для Firefox использует встроенные проверенные данные маршрутизации и не содержит удалённого исполняемого кода."},
   "optionsVersion": {"message": "Версия $1"},
   "optionsLoading": {"message": "Загружаем сохранённые настройки…"},
   "optionsLoadFailed": {"message": "Не удалось загрузить сохранённые настройки."},
@@ -263,7 +264,7 @@
   "fieldHost": {"message": "Хост"},
   "fieldPort": {"message": "Порт"},
   "fieldFailoverTimeout": {"message": "Тайм-аут переключения (секунды, необязательно)"},
-  "fieldProxyDns": {"message": "Проксировать DNS, если поддерживается"},
+  "fieldProxyDns": {"message": "Разрешать имена сайтов через SOCKS-прокси (SOCKS4A / SOCKS5)"},
   "fieldEnabled": {"message": "Включён для явных правил Proxy"},
   "fieldUseForProxyRules": {"message": "Использовать для явных правил Proxy"},
   "fieldUseForOnion": {"message": "Использовать для .onion"},
@@ -327,5 +328,29 @@
   "notificationControlLoss": {"message": "Другой контроллер изменил настройки прокси Firefox. Защита безопасно остановлена и не возобновлена."},
   "notificationPrivateAccessBlocked": {"message": "Доступ в приватных окнах отозван. Защита заблокирована, её можно безопасно выключить."},
   "notificationRecoveryBlocked": {"message": "Firefox не смог восстановить защищённую сессию. Откройте расширение, чтобы проверить состояние или выключить его."},
-  "notificationHealthFailure": {"message": "Запрошенная проверка прокси завершилась ошибкой. Откройте раздел Обслуживание для безопасного результата."}
+  "notificationHealthFailure": {"message": "Запрошенная проверка прокси завершилась ошибкой. Откройте раздел Обслуживание для безопасного результата."},
+  "uiThemeLabel": {
+    "message": "Тема"
+  },
+  "uiThemeSystem": {
+    "message": "Как в системе"
+  },
+  "uiThemeLight": {
+    "message": "Светлая"
+  },
+  "uiThemeDark": {
+    "message": "Тёмная"
+  },
+  "uiThemeSaveFailed": {
+    "message": "Тема изменена для этой страницы. Браузер не смог сохранить выбор."
+  },
+  "rulesSearch": {
+    "message": "Найти правило"
+  },
+  "rulesSearchEmpty": {
+    "message": "Подходящих правил нет. Очистите поиск, чтобы увидеть все правила."
+  },
+  "optionsEditConnection": {
+    "message": "Настройки сервера и авторизация"
+  }
 }

@@ -44,11 +44,17 @@ only when its description matches the task.
 ## Hard supply-chain invariants
 
 Use `$dependency-review` for package/lock, vendored code, dependency-manager,
-or GitHub Action changes. Prefer existing/platform APIs. A new direct version
-must have been public for at least 168 hours; an emergency exception requires
-the user's explicit approval. Verify registry/source identity, license,
-ownership, lifecycle scripts, integrity, and the complete lock delta before
-installation. Reject unexplained non-registry sources or integrity/ownership
+or GitHub Action changes. Prefer existing/platform APIs. Use only dependencies
+whose exact selected release has a satisfactory source and security review.
+Popularity and age are supporting signals, never approval by themselves.
+For a well-established package with verified source, maintainers, signatures,
+provenance and reviewed changes, a documented exact-version review may permit
+an update before 168 hours. Record applicable CI approvals in
+`scripts/reviewed-dependencies.json`, bound to the locked version and integrity.
+Unfamiliar or insufficiently reviewed releases retain the 168-hour baseline;
+waiting alone does not make them acceptable. Stop on unresolved risk.
+Verify registry/source identity, license, ownership, lifecycle scripts,
+integrity, and the complete lock delta before installation. Reject unexplained non-registry sources or integrity/ownership
 changes. Pin Actions to verified full SHAs with least privilege and checkout
 credentials disabled unless write access is required. Never run
 `npm audit fix --force`; vendoring does not bypass review.
@@ -89,6 +95,18 @@ credentials disabled unless write access is required. Never run
   Serialize whole-state writes and reread storage inside queued mutations.
 
 ## Select checks once
+
+Plan one integrated gate after related edits. Record the source SHA, relevant
+input changes, command, exit status and evidence path. Reuse passing evidence
+only while its inputs and environment remain applicable; identify the original
+run instead of claiming a new one. Documentation or instruction edits alone do
+not invalidate unchanged runtime tests. Release artifact/source hashes and the
+required trusted-main CI must still match the final release commit.
+
+For timeout-only failures, inspect the failed case and machine load before
+retrying. A justified process-local test timeout may accommodate a slow host;
+do not change product timeouts, skip assertions, or repeat whole suites without
+a diagnosed reason. Preserve the failed and successful results.
 
 Focused commands are optional development feedback; a final local gate is the
 completion evidence. Do not repeat a focused command after an unchanged final

@@ -2,13 +2,14 @@
 
 ## Scope and purpose
 
-Reviewer reference for version `1.0.0`, submitted to Mozilla on 2026-10-24
-with its exact canonical package, source archive and concise build instructions.
-Review is pending; these notes do not establish approval or signing.
-For later submissions, attach exact source commit/checksums separately.
-The manifest minimum is Firefox `154.0`.
+Reviewer reference for the prepared `1.0.1` update. Published `1.0.0` was
+verified on 2026-10-28; preparation of this update does not establish its
+submission, approval or signing. Attach the exact source commit and checksums
+for the package being submitted.
+The prepared manifest minimum is Firefox `140.0`, calculated from required
+APIs; see [compatibility and actual QA](BROWSER_COMPATIBILITY.md).
 
-Runet Censorship Bypass controls Firefox routing with Auto, Proxy and Direct
+Runet Censorship Bypass — Revived controls Firefox routing with Auto, Proxy and Direct
 site rules. It is not a VPN or a proxy service. A clean installation starts off.
 Save records settings; Apply activates them. Turn off releases the
 extension-owned proxy setting without discarding saved settings.
@@ -148,11 +149,11 @@ not a public connectivity-test service. Source reproduction and package layout:
     configuration is restored when the extension still owns the setting.
     Turning off does not erase saved settings.
 
-These are reviewer instructions, not evidence that this documentation task ran
-a new release QA cycle. Existing [visual regression evidence](../assets/store/regression-results.json)
-covers Firefox 156.0.1 at the preceding runtime revision. Repeat release QA on
-the exact submitted package. Firefox native popup remains
-**manual pre-release capture required**.
+These are reviewer instructions, not evidence that every scenario was repeated
+on the current package. Record exact-package QA separately. The
+[published 1.0 gallery](../assets/releases/1.0/README.md) includes a genuine
+toolbar popup from that release; capture new listing images from the updated
+package rather than relabelling earlier screenshots.
 
 ## Maintainer submission attachments
 
@@ -161,5 +162,6 @@ source commit and reproducible build instructions through AMO's appropriate
 fields. Do not include profiles, raw logs, secrets or personal test accounts.
 Use the [listing draft](../release/FIREFOX_AMO_LISTING_1_0.md) and
 [publication checklist](../release/STORE_PUBLICATION_CHECKLIST.md) only after
-their final package/privacy review. Do not claim this fork is an already
-published AMO listing or reuse a legacy add-on identity.
+their final package/privacy review. Update the existing fork listing, retaining
+its Gecko ID and URL; do not reuse the upstream add-on identity or claim that
+the prepared update has already been published.

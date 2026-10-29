@@ -799,7 +799,9 @@
     const copy = append(header, 'div', 'options-header-copy');
     appendText(copy, 'h1', t('optionsPageTitle'));
     appendText(copy, 'p', t('optionsPageSubtitle'), 'options-subtitle');
-    const language = append(header, 'label', 'language-field');
+    const preferences = append(header, 'div', 'appearance-controls');
+    if (window.rucbTheme) window.rucbTheme.mountControl(preferences, t);
+    const language = append(preferences, 'label', 'language-field');
     appendText(language, 'span', t('optionsLanguage'));
     const select = append(language, 'select', 'ui-input');
     select.setAttribute('aria-label', t('optionsLanguage'));

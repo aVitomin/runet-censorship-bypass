@@ -19,8 +19,8 @@ const PACKAGED_CHROMIUM_ROOT = Path.resolve(
 
 const CHROMIUM_SOURCE_ROOT = Path.resolve(__dirname, '..');
 const CHROMIUM_LOCALES = Object.freeze(['en', 'ru']);
-const EXPECTED_CHROMIUM_VERSION = '1.0.0';
-const EXPECTED_CHROMIUM_VERSION_NAME = '1.0.0';
+const EXPECTED_CHROMIUM_VERSION = '1.0.1';
+const EXPECTED_CHROMIUM_VERSION_NAME = '1.0.1';
 
 const ALLOWED_RUNTIME_DIRECTORIES = new Set([
   'background/vendor/tldts/dist',
@@ -225,6 +225,7 @@ function verifyPackagedManifestIdentity(root) {
   const manifest = JSON.parse(Fs.readFileSync(manifestPath, 'utf8'));
   Assert.strictEqual(manifest.version, EXPECTED_CHROMIUM_VERSION);
   Assert.strictEqual(manifest.version_name, EXPECTED_CHROMIUM_VERSION_NAME);
+  Assert.strictEqual(manifest.minimum_chrome_version, '108');
   return {
     version: manifest.version,
     versionName: manifest.version_name,

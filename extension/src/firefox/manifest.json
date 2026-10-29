@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "__MSG_extensionDescription__",
+  "author": "aVitomin",
+  "homepage_url": "https://github.com/aVitomin/runet-censorship-bypass",
   "default_locale": "en",
   "permissions": [
     "storage",
@@ -72,7 +74,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "{adf5f697-1149-42a2-92eb-c163cb9a4146}",
-      "strict_min_version": "154.0",
+      "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": [
           "authenticationInfo",

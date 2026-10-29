@@ -9,6 +9,7 @@ import { TOOLING_ROOT } from './repository-paths.mjs';
 
 export const MIN_VERSION_AGE_MS = 168 * 60 * 60 * 1000;
 export const AUTHORITATIVE_PACKAGE = TOOLING_ROOT;
+export const DEPENDENCY_REVIEWS_PATH = 'scripts/reviewed-dependencies.json';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const expectedPackageRoots = new Set([AUTHORITATIVE_PACKAGE]);
@@ -347,9 +348,37 @@ async function registryPublicationTime(name, version) {
   return packument?.time?.[version];
 }
 
+// This record preserves a maintainer's exact-version review. It is not an
+// automatic reputation score or proof that the recorded review was sufficient.
+export function validateDependencyReviews(document, lockfile) {
+  const reviewed = new Set();
+  if (document?.schemaVersion !== 1 || !Array.isArray(document.reviews)) {
+    throw new SupplyChainVerificationError(['Dependency reviews must use schemaVersion 1 and a reviews array']);
+  }
+  const requiredChecks = ['source', 'maintainers', 'license', 'contents', 'code-diff',
+    'registry-signature', 'provenance', 'advisories', 'lock-delta'];
+  for (const entry of document.reviews) {
+    const key = `${entry?.name}@${entry?.version}`;
+    const selected = lockfile?.packages?.[`node_modules/${entry?.name}`];
+    if (!packageNamePattern.test(entry?.name ?? '') ||
+        !exactVersionPattern.test(entry?.version ?? '') || reviewed.has(key) ||
+        !selected || selected.version !== entry.version ||
+        !integrityPattern.test(entry.integrity ?? '') || selected.integrity !== entry.integrity ||
+        !/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/commit\/[0-9a-f]{40}$/u.test(entry.source ?? '') ||
+        typeof entry.reviewedAt !== 'string' || !Number.isFinite(Date.parse(entry.reviewedAt)) ||
+        typeof entry.reason !== 'string' || entry.reason.trim().length < 40 ||
+        !Array.isArray(entry.checks) || !requiredChecks.every((check) => entry.checks.includes(check))) {
+      throw new SupplyChainVerificationError([`Invalid or stale dependency review for ${key}; exact locked identity, source and complete review evidence are required`]);
+    }
+    reviewed.add(key);
+  }
+  return reviewed;
+}
+
 export async function verifyPublicationAges(selections, {
   reviewTime = new Date(),
   getPublicationTime = registryPublicationTime,
+  reviewedVersions = new Set(),
 } = {}) {
   const reviewTimestamp = reviewTime instanceof Date
     ? reviewTime.getTime()
@@ -374,15 +403,21 @@ export async function verifyPublicationAges(selections, {
     }
     const publicationTimestamp = Date.parse(publicationValue);
     const ageMilliseconds = reviewTimestamp - publicationTimestamp;
-    if (ageMilliseconds < MIN_VERSION_AGE_MS) {
+    const reviewed = reviewedVersions.has(`${selection.name}@${selection.version}`);
+    if (ageMilliseconds < 0) {
+      errors.push(`${selection.name}@${selection.version}: publication timestamp is in the future`);
+      continue;
+    }
+    if (ageMilliseconds < MIN_VERSION_AGE_MS && !reviewed) {
       const ageHours = Math.floor(ageMilliseconds / (60 * 60 * 1000));
-      errors.push(`${selection.name}@${selection.version}: selected version is ${ageHours} hours old; 168 full hours are required`);
+      errors.push(`${selection.name}@${selection.version}: selected version is ${ageHours} hours old; 168 full hours are required without a verified exact-version dependency review`);
       continue;
     }
     results.push({
       ...selection,
       publicationTime: publicationValue,
       ageHours: Math.floor(ageMilliseconds / (60 * 60 * 1000)),
+      reviewed,
     });
   }
 
@@ -482,6 +517,12 @@ async function main() {
   const summary = inspectRepository(repoRoot);
   console.log(`Supply-chain static verification passed: ${summary.packageCount} authoritative lock packages, ${summary.directSelections.size} exact direct pins.`);
   console.log(`Accepted authoritative lifecycle baseline: ${summary.lifecyclePackages.join(', ') || 'none present'}.`);
+  const reviewPath = path.join(repoRoot, DEPENDENCY_REVIEWS_PATH);
+  const reviewedVersions = fs.existsSync(reviewPath)
+    ? validateDependencyReviews(JSON.parse(fs.readFileSync(reviewPath, 'utf8')),
+      summary.documents.get(AUTHORITATIVE_PACKAGE).lockfile)
+    : new Set();
+  console.log(`Recorded exact-version dependency reviews: ${reviewedVersions.size}.`);
 
   const baseSha = (process.env.SUPPLY_CHAIN_BASE_SHA ?? '').trim();
   if (process.env.GITHUB_EVENT_NAME === 'pull_request' && !baseSha) {
@@ -505,7 +546,7 @@ async function main() {
     if (changedSelections.length === 0) {
       console.log('Dependency age verification passed: no newly selected direct versions; registry was not queried.');
     } else {
-      const ages = await verifyPublicationAges(changedSelections);
+      const ages = await verifyPublicationAges(changedSelections, {reviewedVersions});
       console.log(`Dependency age verification passed for ${ages.length} newly selected direct version(s): ${ages.map((item) => `${item.name}@${item.version} (${item.ageHours}h)`).join(', ')}.`);
     }
   } else {

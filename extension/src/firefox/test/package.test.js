@@ -19,7 +19,8 @@ function makePackage() {
     let source = Path.join(sourceRoot, relativePath);
     if (noticeSources[relativePath]) {
       source = noticeSources[relativePath];
-    } else if (relativePath.startsWith('background/common/')) {
+    } else if (relativePath.startsWith('background/common/') ||
+        ['pages/shared/ui-theme.js', 'pages/shared/ui-theme.css'].includes(relativePath)) {
       source = Path.resolve(
           sourceRoot,
           '..',

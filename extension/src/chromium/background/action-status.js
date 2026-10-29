@@ -797,7 +797,8 @@
     if (prefs[type] === false || !canNotify()) {
       return Promise.resolve({ok: false, status: 'disabled'});
     }
-    const title = sanitizeMessage(params.title || 'Runet Censorship Bypass');
+    const title = sanitizeMessage(
+        params.title || 'Runet Censorship Bypass — Revived');
     const message = sanitizeMessage(params.message || 'Operation failed.');
     const notificationId = `mv3-${type}-${Date.now()}`;
     return new Promise((resolve) => {

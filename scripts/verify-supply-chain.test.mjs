@@ -14,6 +14,7 @@ import {
   readBasePackage,
   resolveBasePackageRoot,
   verifyPublicationAges,
+  validateDependencyReviews,
 } from './verify-supply-chain.mjs';
 
 const integrity = `sha512-${Buffer.from('fixture-integrity').toString('base64')}`;
@@ -207,6 +208,45 @@ test('rejects a selected version 167h59m59s old', async () => {
       return true;
     },
   );
+});
+
+function reviewedRelease(overrides = {}) {
+  return {name: 'safe-package', version: '1.2.3', integrity,
+    source: `https://github.com/example/safe-package/commit/${'a'.repeat(40)}`,
+    reviewedAt: '2026-08-26T10:00:00Z',
+    reason: 'Established package update with unchanged ownership and reviewed code, contents and provenance.',
+    checks: ['source', 'maintainers', 'license', 'contents', 'code-diff',
+      'registry-signature', 'provenance', 'advisories', 'lock-delta'], ...overrides};
+}
+
+test('a complete exact-version review permits a young update, not the next version', async () => {
+  const reviewedVersions = validateDependencyReviews({schemaVersion: 1, reviews: [reviewedRelease()]}, packageDocuments().lockfile);
+  const options = {reviewedVersions, reviewTime: new Date('2026-08-26T12:00:00Z'),
+    getPublicationTime: async () => '2026-08-26T11:00:00Z'};
+  const result = await verifyPublicationAges([{name: 'safe-package', version: '1.2.3'}], options);
+  assert.equal(result[0].reviewed, true);
+  assert.equal(result[0].ageHours, 1);
+  await assert.rejects(verifyPublicationAges([{name: 'safe-package', version: '1.2.4'}], options), /168 full hours/u);
+});
+
+test('review cannot authorize changed bytes, stale versions, duplicates or incomplete evidence', () => {
+  for (const reviews of [
+    [reviewedRelease({integrity: 'sha512-different='})],
+    [reviewedRelease({version: '1.2.4'})],
+    [reviewedRelease({checks: ['source']})],
+    [reviewedRelease(), reviewedRelease()],
+  ]) {
+    assertSupplyChainFailure(() => validateDependencyReviews({schemaVersion: 1, reviews}, packageDocuments().lockfile), /Invalid or stale dependency review/u);
+  }
+});
+
+test('review does not bypass missing, failed or future registry metadata', async () => {
+  const reviewedVersions = new Set(['safe-package@1.2.3']);
+  for (const getPublicationTime of [async () => undefined, async () => '2026-08-27T12:00:00Z', async () => { throw new Error('offline'); }]) {
+    await assert.rejects(verifyPublicationAges([{name: 'safe-package', version: '1.2.3'}], {
+      reviewedVersions, reviewTime: new Date('2026-08-26T12:00:00Z'), getPublicationTime,
+    }), SupplyChainVerificationError);
+  }
 });
 
 test('fails closed on malformed publication metadata', async () => {

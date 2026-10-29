@@ -14,9 +14,16 @@ do not establish its impact.
 
 1. Establish why an existing/platform API is insufficient.
 2. Verify package/Action/vendor identity, official source, license, ownership
-   history, advisories, maintenance, and provenance. A new direct package
-   version must be at least 168 hours old; otherwise return
-   `NEEDS USER APPROVAL` with the emergency rationale.
+   history, advisories, maintenance, and provenance for the exact release.
+   Wide adoption and project age support the review but never replace it.
+   A well-established package update may be used before 168 hours after its
+   source, maintainers, code/contents, signatures, provenance and lock delta
+   are verified. Record the exact version, integrity, source commit, checks
+   and rationale in `scripts/reviewed-dependencies.json` when permitting early
+   use. This is a maintainer review record, not an automatic safety certificate.
+   For unfamiliar or insufficiently reviewed releases keep the 168-hour
+   baseline, but do not treat elapsed time as approval. Stop and resolve any
+   uncertain identity, ownership, integrity or behavior before installation.
 3. Inspect tarball or vendored contents, size, executable files, lifecycle
    scripts, signatures/integrity, and transitive growth. Reject unexplained
    git/file/URL sources, registry changes, or integrity churn.
@@ -51,4 +58,5 @@ audit results, registry/provenance limitations, package impact, and lifecycle
 behavior.
 
 Return `APPROVE`, `REJECT`, or `NEEDS USER APPROVAL`. Stop on unresolved source,
-ownership, integrity, lifecycle, or young-version risk.
+ownership, integrity, lifecycle, or release-specific risk; do not request an
+additional age exception for an already authorized, satisfactorily reviewed update.
