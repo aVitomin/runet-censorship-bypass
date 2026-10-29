@@ -59,8 +59,11 @@ Android, iOS, WebView и оболочки без полноценной подд
 **Chrome 156.0.8078.48** и **Firefox 159.0**. На **Firefox 153.5.1 ESR** прошли
 автоматические сценарии авторизации прокси, Save/Apply, восстановления фоновой
 страницы, private access и владения настройками прокси. Это были временные
-установки; повторный запуск подписанного постоянно установленного пакета и
-полная Linux-проверка здесь не подтверждены.
+установки. Дополнительно подписанный Mozilla Firefox 1.0.1 постоянно установлен
+в чистый профиль Firefox 159.0 на Windows: подпись принята, расширение активно
+после перезапуска без переустановки, настройки открываются. Этот тест не заменяет
+полную проверку маршрутизации или обычной установки через интерфейс магазина.
+Linux остаётся непроверенным.
 
 Chromium 108 и Firefox 140 отдельно не запускались. Для дополнительной проверки
 ESR на Debian/Linux есть [воспроизводимый сценарий](qa/FIREFOX_ESR_153.md);
@@ -69,9 +72,9 @@ ESR на Debian/Linux есть [воспроизводимый сценарий]
 ## Доступные пакеты
 
 Опубликованный Chromium ZIP **1.0.1** требует **Chromium 108+**.
-В магазинах и подписанном Firefox XPI пока доступна **1.0.0**.
-У этого Firefox XPI минимум **154.0**; минимум 140.0 станет доступен после
-подписания Firefox 1.0.1. У Chromium 1.0.0 `minimum_chrome_version` не задан.
+Firefox **1.0.1** доступен в Mozilla Add-ons и как подписанный XPI с минимумом
+**140.0**. Chrome Web Store пока распространяет **1.0.0**; обновление 1.0.1
+ожидает проверки. У Chromium 1.0.0 `minimum_chrome_version` не задан.
 Старые пакеты не изменяются задним числом. Матрица выполненных проверок 1.0.0
 сохранена в [записи выпуска](releases/1.0.0.md).
 
@@ -81,5 +84,6 @@ Version 1.0.1 is expected to work in desktop **Chromium 108+** and
 **Firefox 140+**, including ESR on a compatible base, provided the required
 extension APIs are available. These are source/API-based minimums; every
 version, platform and derivative has not been tested. Mobile browsers and
-WebView are outside this scope. The published Firefox 1.0.0 package still
-requires Firefox 154+.
+WebView are outside this scope. The published Firefox 1.0.1 package requires Firefox 140+. Its signature,
+permanent installation, options loading and persistence after restart were
+verified in a clean Windows profile on Firefox 159.0. Linux remains untested.

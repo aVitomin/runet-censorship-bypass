@@ -2,11 +2,11 @@
 
 ## Scope and purpose
 
-Reviewer reference for the prepared `1.0.1` update. Published `1.0.0` was
-verified on 2026-10-28; preparation of this update does not establish its
-submission, approval or signing. Attach the exact source commit and checksums
-for the package being submitted.
-The prepared manifest minimum is Firefox `140.0`, calculated from required
+Reviewer reference for `1.0.1`, published on Mozilla Add-ons and verified on
+2026-10-29. Source tag: `v1.0.1`, commit
+`4b9a9b31d19677d6ed8fb1399503b24023a51c02`. See the
+[release record](releases/1.0.1.md) for the signed package and validation scope.
+The manifest minimum is Firefox `140.0`, calculated from required
 APIs; see [compatibility and actual QA](BROWSER_COMPATIBILITY.md).
 
 Runet Censorship Bypass — Revived controls Firefox routing with Auto, Proxy and Direct
