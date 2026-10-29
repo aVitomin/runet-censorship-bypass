@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "reviews": [
+    {
+      "name": "serialize-javascript",
+      "version": "7.1.3",
+      "integrity": "sha512-kYEnegpAxWFjUw3dSYdSM9zVlTrsxDbsSkq/qd3B7VanqyJ+JdDy6qVyuqVGBhSfuD/rLZQEKuXsO5KZFCrVYQ==",
+      "source": "https://github.com/yahoo/serialize-javascript/commit/4d36b828f7c1c6a1f0de9ef932fefadcca0edace",
+      "reviewedAt": "2026-10-29T11:39:52Z",
+      "reason": "Established Yahoo package already used by Mocha. The reviewed update fixes GHSA-m5mm-p8h7-m29v. Maintainers, registry source and BSD-3-Clause license are unchanged; the four-file tarball has no install hooks or new dependencies. Registry signatures and provenance attestations verify. Full npm and production audits report no vulnerabilities. The lock delta changes one development dependency only; no extension runtime dependency changes.",
+      "checks": ["source", "maintainers", "license", "contents", "code-diff", "registry-signature", "provenance", "advisories", "lock-delta"]
+    }
+  ]
+}

@@ -44,11 +44,17 @@ only when its description matches the task.
 ## Hard supply-chain invariants
 
 Use `$dependency-review` for package/lock, vendored code, dependency-manager,
-or GitHub Action changes. Prefer existing/platform APIs. A new direct version
-must have been public for at least 168 hours; an emergency exception requires
-the user's explicit approval. Verify registry/source identity, license,
-ownership, lifecycle scripts, integrity, and the complete lock delta before
-installation. Reject unexplained non-registry sources or integrity/ownership
+or GitHub Action changes. Prefer existing/platform APIs. Use only dependencies
+whose exact selected release has a satisfactory source and security review.
+Popularity and age are supporting signals, never approval by themselves.
+For a well-established package with verified source, maintainers, signatures,
+provenance and reviewed changes, a documented exact-version review may permit
+an update before 168 hours. Record applicable CI approvals in
+`scripts/reviewed-dependencies.json`, bound to the locked version and integrity.
+Unfamiliar or insufficiently reviewed releases retain the 168-hour baseline;
+waiting alone does not make them acceptable. Stop on unresolved risk.
+Verify registry/source identity, license, ownership, lifecycle scripts,
+integrity, and the complete lock delta before installation. Reject unexplained non-registry sources or integrity/ownership
 changes. Pin Actions to verified full SHAs with least privilege and checkout
 credentials disabled unless write access is required. Never run
 `npm audit fix --force`; vendoring does not bypass review.
