@@ -90,6 +90,18 @@ credentials disabled unless write access is required. Never run
 
 ## Select checks once
 
+Plan one integrated gate after related edits. Record the source SHA, relevant
+input changes, command, exit status and evidence path. Reuse passing evidence
+only while its inputs and environment remain applicable; identify the original
+run instead of claiming a new one. Documentation or instruction edits alone do
+not invalidate unchanged runtime tests. Release artifact/source hashes and the
+required trusted-main CI must still match the final release commit.
+
+For timeout-only failures, inspect the failed case and machine load before
+retrying. A justified process-local test timeout may accommodate a slow host;
+do not change product timeouts, skip assertions, or repeat whole suites without
+a diagnosed reason. Preserve the failed and successful results.
+
 Focused commands are optional development feedback; a final local gate is the
 completion evidence. Do not repeat a focused command after an unchanged final
 gate that already includes it. See `docs/development/TESTING.md` only when the
