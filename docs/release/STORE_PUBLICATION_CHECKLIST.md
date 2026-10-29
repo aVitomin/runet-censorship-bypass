@@ -1,4 +1,4 @@
-# Store publication checklist — 1.0
+# Store publication checklist — 1.0.x
 
 **Publication checklist.** Firefox Add-ons and locally installed desktop packages
 can ship independently of Chrome Web Store. Chrome Web Store preparation now
@@ -6,7 +6,7 @@ proceeds in parallel; its review does not block those channels. This document gr
 versions, sign, tag, create releases, upload or submit store packages. Obtain
 separate maintainer authorization for those actions.
 
-The maintained source and manifests identify `1.0.0`.
+The maintained source and manifests identify `1.0.1`.
 This does not declare a published release, completed store submission or
 validation of a particular archive. Record the final approved version, exact
 main SHA, browser QA, trusted-main run, artifact names and SHA-256 in the release
@@ -15,21 +15,13 @@ version separately for each browser.
 
 ## Current channel status
 
-Last confirmed on 2026-10-28; this is not a live store-status feed.
+Last confirmed on 2026-10-29; this is not a live store-status feed.
 
-- [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph): public version **1.0.0**,
-  installation button present, listing updated 2026-10-26. No deferred
-  publication step remains for this version. Publication is not a general
-  PAC-policy exception for future changes.
-- [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/): public version **1.0.0**,
-  Firefox **154+**. Mozilla records review on 2026-10-27. The downloadable XPI
-  matches the published SHA-256 and the canonical candidate's runtime files;
-  only signature files and manifest formatting differ.
-- [GitHub Release v1.0.0](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.0):
-  Chromium ZIP and Mozilla-signed Firefox XPI, each with a checksum.
-  Existing Chromium assets and the source tag are unchanged.
-- This check confirms public listings and package identity. It does not add
-  a normal store-install/restart test to the [recorded browser QA](../development/releases/1.0.0.md).
+- [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph): published **1.0.0**; the developer dashboard shows **1.0.1** awaiting review. Publication is not a general PAC-policy exception for future changes.
+- [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/): public **1.0.1**, desktop Firefox **140+**, Revived name in English and Russian. Mozilla file **5182456** is public.
+- [GitHub Release v1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1): Chromium ZIP and Mozilla-signed Firefox XPI, each with a checksum. The source tag and existing Chromium assets are unchanged.
+- The signed Firefox payload matches the canonical candidate: 77 files byte for byte, plus a semantically identical manifest with changed formatting and Mozilla signature files. Permanent installation, signature acceptance, options loading and persistence after restart passed in a clean Windows Firefox 159.0 profile. This does not assert installation through the store UI or Linux QA.
+- See the [release record](../development/releases/1.0.1.md) for hashes and full validation boundaries.
 
 The remaining checklists are procedures for a submission or future update;
 unchecked boxes are not a claim that the confirmed submissions did not occur.

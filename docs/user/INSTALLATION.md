@@ -1,18 +1,19 @@
 # Установка, обновление и удаление
 
-**Доступны:** Chromium 1.0.1 для ручной установки; в магазинах и в подписанном
-Firefox XPI — 1.0.0. Магазинные обновления 1.0.1 готовятся отдельно.
+**Доступны:** Firefox 1.0.1 в Mozilla Add-ons и как подписанный XPI;
+Chromium 1.0.1 для ручной установки. Chrome Web Store пока распространяет
+1.0.0; обновление 1.0.1 ожидает проверки.
 
 ## Установить из магазина
 
 | Браузер | Версия | Где установить |
 | --- | --- | --- |
 | Chrome, Brave и совместимые Chromium-браузеры | **1.0.0** | [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) |
-| Firefox **154+** | **1.0.0** | [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) |
+| Firefox **140+** | **1.0.1** | [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) |
 
 1. Откройте магазин в нужном браузере, нажмите кнопку установки и подтвердите разрешения.
 2. Закрепите значок расширения на панели.
-3. В Firefox откройте **Дополнения и темы → Расширения → Обход блокировок Рунета**
+3. В Firefox откройте **Дополнения и темы → Расширения → Обход блокировок Рунета — Revived**
    и разрешите работу в приватных окнах. Это требуется для общей настройки
    прокси, в том числе в обычных окнах.
 4. Настройте расширение по разделу [«Первый запуск»](#первый-запуск).
@@ -22,13 +23,12 @@ Firefox XPI — 1.0.0. Магазинные обновления 1.0.1 гото�
 
 ## Требования
 
-Опубликованный Firefox-пакет **1.0.0** требует **154.0+** и не устанавливается
-в ESR 153. У магазинного Chromium 1.0.0 отдельный минимум не задан;
+Опубликованный Firefox **1.0.1** требует **140.0+**, включая ESR на подходящей
+базе. У магазинного Chromium 1.0.0 отдельный минимум не задан;
 у опубликованного ZIP **1.0.1 — Chromium 108+**.
 
 В манифестах **1.0.1** установлены расчётные минимумы:
 **Chromium 108+** и **Firefox 140+**, включая ESR на подходящей базе.
-Firefox 1.0.1 пока готовится к отправке в Mozilla и не доступен как подписанный XPI.
 Ожидается работа в совместимых настольных браузерах с Manifest V3 и API прокси.
 Версия движка Chromium важнее собственного номера Brave, Opera или другого
 форка. Android, iOS, WebView и браузеры без нужных API в эту оценку не входят.
@@ -65,8 +65,8 @@ Get-FileHash .\runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip -Algorithm SHA256
 
 ## Ручная установка Firefox: подписанный XPI
 
-1. Скачайте [подписанный Firefox XPI 1.0.0](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-firefox-1.0.0-signed.xpi)
-   и [его контрольную сумму](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.0/runet-censorship-bypass-firefox-1.0.0-signed.sha256.txt).
+1. Скачайте [подписанный Firefox XPI 1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.xpi)
+   и [его контрольную сумму](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.sha256.txt).
 2. Проверьте SHA-256. В Firefox откройте **Дополнения и темы → шестерёнка →
    Установить дополнение из файла**, выберите XPI и подтвердите установку.
 3. Разрешите расширению работу в приватных окнах и закрепите значок.
@@ -76,7 +76,7 @@ Get-FileHash .\runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip -Algorithm SHA256
 SHA-256 XPI:
 
 ```text
-74ff7eca8eb8f50e5bca57b1642894db473e99f990e1dfbb936faf5d66162b6c
+15e49ac406b0788bb35b002df1e81107012ede6093d411000db3565f980b75cb
 ```
 
 Для проверки используйте `Get-FileHash` с именем XPI. Unsigned-кандидаты и временная
@@ -135,13 +135,13 @@ Chromium-версии на магазинную могут создать отд
 
 ## English summary
 
-Install **1.0.0** from [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) or
-[Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/). Firefox requires **154+** and private-window
+Install **Chrome 1.0.0** from [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) or **Firefox 1.0.1** from
+[Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/). Firefox requires **140+** and private-window
 permission for browser-wide proxy control. Store installations receive approved
 updates through the browser when automatic updates are enabled.
 
-**Chromium 1.0.1** is available as a manual ZIP; Firefox 1.0.1 signing and
-store updates are being prepared. Version **1.0.1** targets desktop **Chromium 108+** and **Firefox 140+**,
+**Chromium 1.0.1** is available as a manual ZIP and its store update is under
+review. **Firefox 1.0.1** is also available as a Mozilla-signed XPI. Version **1.0.1** targets desktop **Chromium 108+** and **Firefox 140+**,
 including ESR releases on a compatible base. These are API-based compatibility
 estimates, not test results for every version or fork. Required MV3 and proxy
 extension APIs must be available; mobile browsers and WebView are outside this scope.

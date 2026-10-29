@@ -2,8 +2,9 @@
 
 Firefox follows the repository release train. Both targets use the complete
 version from `extension/src/templates-data.js`; the Chromium manifest template
-uses `storeVersion` without an added prefix. The prepared source version is `1.0.1`;
-the latest published release is `1.0.0`. Source version and local artifacts do not establish store approval.
+uses `storeVersion` without an added prefix. The source and latest published Firefox release are `1.0.1`.
+Mozilla publication and the signed artifact were verified on 2026-10-29;
+local build output remains unsigned until processed by Mozilla.
 See the [channel status](../release/STORE_PUBLICATION_CHECKLIST.md#current-channel-status).
 Update the shared version and maintained manifests through the release process,
 without introducing an independent Firefox-only version.
@@ -74,4 +75,5 @@ SHA. Pull requests build and verify the package once but neither pay the
 release-only reproducibility cost nor upload artifacts. Only a successful
 trusted-main push or an explicitly dispatched workflow on exact `main` builds
 and uploads the unsigned XPI, checksums and reviewer source archive. AMO
-submission and signing remain manual future release actions.
+submission and signing are separate from CI. Version 1.0.1 has completed
+that process; future updates must repeat it for their exact artifacts.

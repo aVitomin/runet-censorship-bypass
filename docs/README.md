@@ -8,8 +8,10 @@
 - [Приватность 1.0](release/PRIVACY_1_0.md)
 - [Снимки интерфейса](assets/releases/1.0/README.md)
 
-Версия **1.0.0** доступна в [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) и
-[Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/), а также для ручной установки.
+В [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) доступна **1.0.1**.
+В [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) пока **1.0.0**;
+обновление 1.0.1 ожидает проверки. Для ручной установки доступны Chromium ZIP
+и подписанный Firefox XPI **1.0.1**.
 Для старого Firefox **0.0.4.0** сохранены отдельные [руководство](user/USER_GUIDE.md),
 [решение проблем](user/TROUBLESHOOTING.md) и [приватность](user/PRIVACY_AND_SECURITY.md).
 
@@ -32,5 +34,6 @@
 
 Start with [installation](user/INSTALLATION.md#english-summary),
 [the 1.0 guide](user/USER_GUIDE_1_0.md#english-summary), or [help and bug reports](../SUPPORT.md#english).
-Both browser versions **1.0.0** are available in their stores. For development,
-use the separate guides above. Older Firefox **0.0.4.0** has its own documentation.
+Firefox **1.0.1** is available in its store and as a signed XPI. Chrome Web Store
+still offers **1.0.0** while the 1.0.1 update is under review; the Chromium
+1.0.1 ZIP is available for manual installation. For development, use the separate guides above. Older Firefox **0.0.4.0** has its own documentation.
