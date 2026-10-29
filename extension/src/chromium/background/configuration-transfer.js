@@ -53,6 +53,11 @@
   function toPatch(configuration) {
 
     const config = Format.configuration(configuration);
+    // Chromium cannot request SOCKS4 remote DNS. Never silently downgrade a
+    // portable SOCKS4A connection to local DNS, even when currently disabled.
+    if (config.proxies.some((value) => value.type === 'SOCKS4' && value.proxyDNS === true)) {
+      Format.fail('TRANSFER_SOCKS4A_UNSUPPORTED');
+    }
     const unsupported = [];
     const mods = Mods.normalizePacMods({});
     const endpoint = (value) => ({type: chromiumType(value.type),

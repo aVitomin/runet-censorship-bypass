@@ -114,6 +114,16 @@ describe('Portable configuration boundary', function() {
     Assert.deepEqual(result.unsupported, []);
   });
 
+  it('preserves SOCKS4A remote DNS through Firefox export and import', function() {
+    const settings = FirefoxSettings.createDefaultSettings();
+    settings.localTor.type = 'SOCKS4';
+    settings.localTor.proxyDNS = true;
+    const exported = Format.parse(JSON.stringify(file(Firefox.fromSettings(settings))));
+    const imported = Firefox.toSettings(exported.configuration).settings;
+    Assert.equal(imported.localTor.type, 'SOCKS4');
+    Assert.equal(imported.localTor.proxyDNS, true);
+  });
+
   it('reports unsupported source/language/disabled rules instead of pretending source parity', function() {
     const config = portable();
     config.source = {kind: 'builtin', id: 'antizapret'};
@@ -126,6 +136,47 @@ describe('Portable configuration boundary', function() {
 });
 
 describe('Chromium configuration transfer RPC', function() {
+  it('rejects SOCKS4A preview and direct import without changing Saved or Effective', async function() {
+    const h = await createRuntimeHarness();
+    Assert.equal((await h.audit.applyCookedPacAndPersist({})).ok, true);
+    const before = JSON.stringify(h.getState());
+    const effective = JSON.stringify(await h.context.mv3Effective.current());
+    const counts = copy(h.counts);
+    for (const kind of ['own', 'localTor', 'torBrowser', 'warp']) {
+      for (const enabled of [false, true]) {
+        const config = portable();
+        config.proxies = [{name: 'remote-dns', kind, type: 'SOCKS4',
+          host: '127.0.0.1', port: 1080, enabled, useForOnion: false,
+          useAsDirectReplacement: false, proxyDNS: true,
+          timeoutSeconds: null, credentialsRequired: false}];
+        const text = JSON.stringify(file(config));
+        for (const method of ['previewConfigurationImport', 'importConfiguration']) {
+          const result = await h.callRpcRaw(method, {text,
+            expectedRevision: h.getState().savedRevision});
+          Assert.equal(result.error.code, 'TRANSFER_SOCKS4A_UNSUPPORTED');
+        }
+      }
+    }
+    Assert.equal(JSON.stringify(h.getState()), before);
+    Assert.equal(JSON.stringify(await h.context.mv3Effective.current()), effective);
+    Assert.equal(h.counts.proxySettingsWrites, counts.proxySettingsWrites);
+    Assert.equal(h.counts.pacDownloads, counts.pacDownloads);
+  });
+
+  it('still imports ordinary SOCKS4 and SOCKS5 without a protocol downgrade', async function() {
+    const h = await createRuntimeHarness();
+    for (const [type, proxyDNS] of [['SOCKS4', false], ['SOCKS4', null], ['SOCKS5', true]]) {
+      const config = portable();
+      config.proxies = [{name: 'supported', kind: 'own', type,
+        host: '127.0.0.1', port: 1080, enabled: true, useForOnion: false,
+        useAsDirectReplacement: false, proxyDNS, timeoutSeconds: null, credentialsRequired: false}];
+      const text = JSON.stringify(file(config));
+      const preview = await h.callRpc('previewConfigurationImport', {text});
+      await h.callRpc('importConfiguration', {text, expectedRevision: preview.expectedRevision});
+      Assert.equal(h.getState().pacMods.ownProxies[0].type, type);
+    }
+  });
+
   it('imports inactive into a new Saved revision without downloads, Apply or credentials restoration', async function() {
     const h = await createRuntimeHarness();
     await h.callRpc('clearProxy');

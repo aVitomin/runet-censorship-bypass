@@ -791,7 +791,7 @@
       const input = Ui.append(label, type === 'select' ? 'select' : 'input');
       input.name = name;
       if (type === 'select') {
-        for (const candidateType of CANDIDATE_TYPES) {
+        for (const candidateType of ['HTTP', 'HTTPS', 'SOCKS4', 'SOCKS4A', 'SOCKS5']) {
           const option = Ui.append(input, 'option');
           option.value = candidateType;
           option.textContent = candidateType;
@@ -988,7 +988,10 @@
       if (options.id) {
         field(grid, 'fieldId', 'id', value.id);
       }
-      field(grid, 'fieldType', 'type', value.type, 'select');
+      // SOCKS4A is the existing SOCKS4 + remote-DNS configuration, not a new
+      // persisted protocol. Keep portable settings and the routing adapter stable.
+      const type = field(grid, 'fieldType', 'type',
+          value.type === 'SOCKS4' && value.proxyDNS ? 'SOCKS4A' : value.type, 'select');
       field(grid, 'fieldHost', 'host', value.host).required = true;
       const port = field(grid, 'fieldPort', 'port', value.port, 'number');
       port.required = true;
@@ -1004,7 +1007,21 @@
       );
       timeout.min = '1';
       timeout.step = '1';
-      check(grid, 'fieldProxyDns', 'proxyDNS', value.proxyDNS);
+      const proxyDns = check(grid, 'fieldProxyDns', 'proxyDNS', value.proxyDNS);
+      const syncType = () => {
+        if (type.value === 'SOCKS4' || type.value === 'SOCKS4A') {
+          proxyDns.checked = type.value === 'SOCKS4A';
+        }
+      };
+      const syncDns = () => {
+        if (type.value === 'SOCKS4' || type.value === 'SOCKS4A') {
+          type.value = proxyDns.checked ? 'SOCKS4A' : 'SOCKS4';
+        }
+      };
+      for (const event of ['input', 'change']) {
+        type.addEventListener(event, syncType);
+        proxyDns.addEventListener(event, syncDns);
+      }
       if (options.enabled) {
         check(grid, 'fieldEnabled', 'enabled', value.enabled);
       }
@@ -1160,11 +1177,13 @@
 
     function readCandidate(row, requiresId) {
 
+      const type = row.querySelector('[name="type"]').value;
       const value = {
-        type: row.querySelector('[name="type"]').value,
+        type: type === 'SOCKS4A' ? 'SOCKS4' : type,
         host: row.querySelector('[name="host"]').value,
         port: readNumber(row, 'port'),
-        proxyDNS: row.querySelector('[name="proxyDNS"]').checked,
+        proxyDNS: type === 'SOCKS4A' ||
+          (type !== 'SOCKS4' && row.querySelector('[name="proxyDNS"]').checked),
         failoverTimeoutSeconds: readNumber(
             row, 'failoverTimeoutSeconds', true,
         ),

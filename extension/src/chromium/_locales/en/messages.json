@@ -42,6 +42,7 @@
   "transferImported": {"message":"Settings imported. They are saved but not applied."},
   "transferExported": {"message":"Export prepared. Keep settings files private."},
   "transferInvalid": {"message":"The file is not a valid settings export. Nothing was imported."},
+  "transferSocks4aUnsupported": {"message":"This file contains SOCKS4A connections, which Chromium does not support. Nothing was imported. Use Firefox, or configure SOCKS5 if your proxy server supports it."},
   "transferVersion": {"message":"This export format version is not supported."},
   "transferLimit": {"message":"The import exceeds the size or complexity limit (maximum file size: 1 MiB)."},
   "transferDraft": {"message":"Review and save or discard your edits before importing. Your edits have been preserved."},
@@ -1509,7 +1510,7 @@
     "message": "Use the existing PAC proxy-string format. Candidate order is not changed here."
   },
   "optionsOwnProxyEditorHelp": {
-    "message": "Custom proxy servers are optional. Passwords are stored locally for authentication and are never shown after saving."
+    "message": "Custom proxy servers are optional. Passwords are stored locally for authentication and are never shown after saving. Chromium does not support SOCKS4A. For proxy-side DNS, use SOCKS5 if your server supports it."
   },
   "optionsNoOwnProxies": {
     "message": "No custom proxy servers"
