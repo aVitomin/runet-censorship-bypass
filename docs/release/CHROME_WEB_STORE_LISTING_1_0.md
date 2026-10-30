@@ -62,9 +62,9 @@ The extension does not guarantee bypass or encryption, and does not route other
 applications. Some Chromium/PAC errors can lead to a direct connection.
 SOCKS authentication depends on the browser.
 
-[Guide](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
-[Help](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
-[Privacy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
+[Guide](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Help](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SUPPORT.md) ·
+[Privacy](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/release/PRIVACY_1_0.md)
 
 ## Полное описание — русский
 
@@ -98,9 +98,9 @@ VPN или прокси-сервер в комплект не входят.
 маршрутизируются. При некоторых ошибках Chromium/PAC возможен прямой выход.
 Поддержка авторизации SOCKS зависит от браузера.
 
-[Руководство](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
-[Помощь](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
-[Приватность](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
+[Руководство](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Помощь](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SUPPORT.md) ·
+[Приватность](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/release/PRIVACY_1_0.md)
 
 ## Permission justifications for the dashboard
 

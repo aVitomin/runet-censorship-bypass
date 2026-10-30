@@ -1,7 +1,7 @@
 # Privacy notice — version 1.0
 
 For Runet Censorship Bypass in
-[aVitomin/runet-censorship-bypass](https://github.com/aVitomin/runet-censorship-bypass).
+[aVitomin/runet-censorship-bypass-revived](https://github.com/aVitomin/runet-censorship-bypass-revived).
 Effective date: 24 October 2026. This notice describes version `1.0.0` for
 Firefox and Chromium, including locally installed packages. The availability
 of each distribution channel is recorded separately on the project's release
@@ -155,10 +155,10 @@ do not verify a proxy connection.
 
 ## Contact
 
-Ordinary questions: [support forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
+Ordinary questions: [support forms](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose).
 Possible vulnerabilities: follow the
-[security policy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SECURITY.md)
-and use [private reporting](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new).
+[security policy](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SECURITY.md)
+and use [private reporting](https://github.com/aVitomin/runet-censorship-bypass-revived/security/advisories/new).
 Do not put secrets, private configuration, full URLs with tokens, or browser
 profiles in public reports. Use the policy's contact-only fallback if private
 reporting is unavailable.

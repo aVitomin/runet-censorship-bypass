@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "sourceCommit": "9de66def0db68b3573dec1680b387940611cef17",
-  "sourceRun": "https://github.com/aVitomin/runet-censorship-bypass/actions/runs/40080389722",
+  "sourceRun": "https://github.com/aVitomin/runet-censorship-bypass-revived/actions/runs/40080389722",
   "artifacts": {
     "chromium": {
       "filename": "runet-censorship-bypass-mv3-1.0.0-9de66de.zip",

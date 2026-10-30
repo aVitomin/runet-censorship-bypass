@@ -20,8 +20,8 @@ and public URL. Canonical links: [link audit](LINK_AUDIT_1_0.md#revived-preparat
   or keyword is needed to describe routing control.
 - **Keywords/tags:** no tags were selected: the live form's fixed choices did
   not include suitable routing/proxy terms. Do not substitute misleading tags.
-- **Homepage:** [repository](https://github.com/aVitomin/runet-censorship-bypass).
-- **Support URL:** [issue forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
+- **Homepage:** [repository](https://github.com/aVitomin/runet-censorship-bypass-revived).
+- **Support URL:** [issue forms](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose).
 - **Privacy URL:** the [1.0 privacy notice](PRIVACY_1_0.md) is published on main.
   The submitted notice uses its public project/support/security links.
 - **Russian title:** Обход блокировок Рунета — Revived.
@@ -72,9 +72,9 @@ cryptographic signature. Arbitrary/custom PAC sources are not supported here.
 The extension does not guarantee bypass, connectivity, anonymity or encryption
 and does not route other applications. SOCKS authentication depends on Firefox.
 
-[Guide](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
-[Help](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
-[Privacy](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
+[Guide](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Help](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SUPPORT.md) ·
+[Privacy](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/release/PRIVACY_1_0.md)
 
 ## Полное описание — русский
 
@@ -113,9 +113,9 @@ Firefox обрабатывает данные с закреплённых HTTPS-
 Расширение не гарантирует обход, доступность, анонимность или шифрование
 и не маршрутизирует другие приложения. Авторизация SOCKS зависит от Firefox.
 
-[Руководство](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/USER_GUIDE_1_0.md) ·
-[Помощь](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) ·
-[Приватность](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md)
+[Руководство](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/user/USER_GUIDE_1_0.md) ·
+[Помощь](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SUPPORT.md) ·
+[Приватность](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/release/PRIVACY_1_0.md)
 
 ## Maintainer attachments — not part of description
 

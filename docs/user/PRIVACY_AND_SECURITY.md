@@ -15,7 +15,7 @@
 разрешения, потому что должно выбрать прямой или прокси-маршрут и при необходимости
 ответить на запрос аутентификации прокси.
 
-Ранее опубликованный [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v0.0.4.0)
+Ранее опубликованный [`v0.0.4.0`](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/v0.0.4.0)
 содержит Chromium-пакет и Mozilla-подписанный Firefox XPI.
 Эта страница описывает его границы. Для версии 1.0 используйте отдельное
 [уведомление о приватности](../release/PRIVACY_1_0.md) и
@@ -134,8 +134,8 @@ Firefox использует `proxy`, `webRequest`, `webRequestBlocking`, `stora
 посещений. Для диагностики используйте очищенный отчёт из раздела
 **Обслуживание / Maintenance**.
 
-Обычные проблемы: [issue form](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose).
-Уязвимости: [приватная форма GitHub](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new)
+Обычные проблемы: [issue form](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose).
+Уязвимости: [приватная форма GitHub](https://github.com/aVitomin/runet-censorship-bypass-revived/security/advisories/new)
 по [политике безопасности](../../SECURITY.md).
 
 ## English summary

@@ -18,8 +18,8 @@
 ## Клонирование и установка
 
 ```powershell
-git clone https://github.com/aVitomin/runet-censorship-bypass.git runet-censorship-bypass
-Set-Location .\runet-censorship-bypass
+git clone https://github.com/aVitomin/runet-censorship-bypass-revived.git
+Set-Location .\runet-censorship-bypass-revived
 npm ci --prefix .\extension
 ```
 

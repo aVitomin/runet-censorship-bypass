@@ -34,8 +34,8 @@
 
 ## Ручная установка Chromium: ZIP
 
-1. Скачайте [готовый ZIP 1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip)
-   и [его контрольную сумму](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip.sha256.txt).
+1. Скачайте [готовый ZIP 1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip)
+   и [его контрольную сумму](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip.sha256.txt).
 2. Проверьте SHA-256 и полностью распакуйте ZIP в постоянную папку.
 3. Откройте `chrome://extensions`, `brave://extensions` или `edge://extensions`.
 4. Включите **Режим разработчика → Загрузить распакованное расширение**.
@@ -60,8 +60,8 @@ Get-FileHash .\runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip -Algorithm SHA256
 
 ## Ручная установка Firefox: подписанный XPI
 
-1. Скачайте [подписанный Firefox XPI 1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.xpi)
-   и [его контрольную сумму](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.sha256.txt).
+1. Скачайте [подписанный Firefox XPI 1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.xpi)
+   и [его контрольную сумму](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.sha256.txt).
 2. Проверьте SHA-256. В Firefox откройте **Дополнения и темы → шестерёнка →
    Установить дополнение из файла**, выберите XPI и подтвердите установку.
 3. Разрешите расширению работу в приватных окнах и закрепите значок.
@@ -102,7 +102,7 @@ SHA-256 XPI:
 Для расширения, загруженного из распакованного ZIP:
 
 1. Выключите маршрутизацию перед заменой файлов.
-2. Скачайте новый ZIP из [Releases](https://github.com/aVitomin/runet-censorship-bypass/releases)
+2. Скачайте новый ZIP из [Releases](https://github.com/aVitomin/runet-censorship-bypass-revived/releases)
    и проверьте SHA-256.
 3. Полностью замените файлы в **той же постоянной папке**. Не смешивайте разные версии.
 4. На странице расширений нажмите **Перезагрузить / Reload** у существующей карточки.
