@@ -5,11 +5,18 @@ security and official store-guidance links used by this publication set.
 This dated record does not establish current URL availability.
 Historical/upstream attribution in `docs/legacy/` is not rewritten.
 
+## Current store check — 2026-10-30
+
+The public Chrome Web Store listing and Mozilla Add-ons API both show **1.0.1**
+with the **Revived** name. The existing store URLs below remain valid. Chrome
+reports its update date as October 30, 2026. This confirms public availability,
+not a new installation or routing test.
+
 ## Revived preparation — 2026-10-28
 
-The following is the current link set for the next branding update. Public
-Chrome listing HTML and the Mozilla API still show the 1.0.0 names. Their
-homepage/support links already point to this fork; Chrome also links the
+At this earlier check, public Chrome listing HTML and the Mozilla API still
+showed the 1.0.0 names. Their homepage/support links pointed to this fork;
+Chrome also linked the
 1.0 privacy notice below. Renaming the product does not require moving these URLs.
 
 | Field | URL to retain |
