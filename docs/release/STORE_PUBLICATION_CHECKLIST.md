@@ -19,7 +19,7 @@ Last confirmed on 2026-10-30; this is not a live store-status feed.
 
 - [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph): public **1.0.1**, Revived name, updated October 30, 2026; the published manifest declares Chromium **108+**. Publication is not a general PAC-policy exception for future changes.
 - [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/): public **1.0.1**, desktop Firefox **140+**, Revived name in English and Russian. Mozilla file **5182456** is public.
-- [GitHub Release v1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1): Chromium ZIP and Mozilla-signed Firefox XPI, each with a checksum. The source tag and existing Chromium assets are unchanged.
+- [GitHub Release v1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/v1.0.1): Chromium ZIP and Mozilla-signed Firefox XPI, each with a checksum. The source tag and existing Chromium assets are unchanged.
 - The signed Firefox payload matches the canonical candidate: 77 files byte for byte, plus a semantically identical manifest with changed formatting and Mozilla signature files. Permanent installation, signature acceptance, options loading and persistence after restart passed in a clean Windows Firefox 159.0 profile. This does not assert installation through the store UI or Linux QA.
 - See the [release record](../development/releases/1.0.1.md) for hashes and full validation boundaries.
 
@@ -66,7 +66,7 @@ unchecked boxes are not a claim that the confirmed submissions did not occur.
   preserve sensitive-export warnings and no-password/support-export claims.
 - [ ] Verify the version's privacy notice on main is reachable without sign-in
   and matches the submitted package before entering this canonical store URL:
-  `https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md`.
+  `https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/release/PRIVACY_1_0.md`.
   Recheck the URL at submission time; repository link validation alone does not
   establish public availability.
 - [ ] Recheck repository, documentation, support, privacy and security links

@@ -4379,19 +4379,19 @@
     [
       [
         'optionsGitHubRepository',
-        'https://github.com/aVitomin/runet-censorship-bypass',
+        'https://github.com/aVitomin/runet-censorship-bypass-revived',
       ],
       [
         'optionsWhatsNew',
-        'https://github.com/aVitomin/runet-censorship-bypass/releases',
+        'https://github.com/aVitomin/runet-censorship-bypass-revived/releases',
       ],
       [
         'optionsReportIssue',
-        'https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose',
+        'https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose',
       ],
       [
         'optionsLicense',
-        'https://github.com/aVitomin/runet-censorship-bypass/blob/main/LICENSE',
+        'https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/LICENSE',
       ],
       [
         'optionsUpstreamProject',

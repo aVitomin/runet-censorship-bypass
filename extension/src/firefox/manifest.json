@@ -4,7 +4,7 @@
   "version": "1.0.1",
   "description": "__MSG_extensionDescription__",
   "author": "aVitomin",
-  "homepage_url": "https://github.com/aVitomin/runet-censorship-bypass",
+  "homepage_url": "https://github.com/aVitomin/runet-censorship-bypass-revived",
   "default_locale": "en",
   "permissions": [
     "storage",

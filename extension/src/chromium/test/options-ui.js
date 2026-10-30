@@ -1358,10 +1358,10 @@ describe('Chromium options UI', function() {
           'Original project',
         ]);
         expect(aboutLinks.map((link) => link.href)).to.deep.equal([
-          'https://github.com/aVitomin/runet-censorship-bypass',
-          'https://github.com/aVitomin/runet-censorship-bypass/releases',
-          'https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose',
-          'https://github.com/aVitomin/runet-censorship-bypass/blob/main/LICENSE',
+          'https://github.com/aVitomin/runet-censorship-bypass-revived',
+          'https://github.com/aVitomin/runet-censorship-bypass-revived/releases',
+          'https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose',
+          'https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/LICENSE',
           'https://github.com/anticensority/runet-censorship-bypass',
         ]);
         expect(aboutLinks.every((link) =>

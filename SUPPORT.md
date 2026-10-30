@@ -2,7 +2,7 @@
 
 [Установка](docs/user/INSTALLATION.md) ·
 [Руководство 1.0](docs/user/USER_GUIDE_1_0.md) ·
-[Создать обращение](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose)
+[Создать обращение](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose)
 
 ## Сначала проверьте
 
@@ -24,8 +24,8 @@
 
 ## Сообщить об ошибке
 
-Проверьте [существующие обращения](https://github.com/aVitomin/runet-censorship-bypass/issues),
-затем заполните [короткую форму](https://github.com/aVitomin/runet-censorship-bypass/issues/new?template=bug_report.yml):
+Проверьте [существующие обращения](https://github.com/aVitomin/runet-censorship-bypass-revived/issues),
+затем заполните [короткую форму](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new?template=bug_report.yml):
 
 1. Браузер, его версия, ОС, версия расширения и способ установки.
 2. Что делали, что ожидали и что получилось.
@@ -40,7 +40,7 @@
 
 ## Предложить улучшение или сообщить об уязвимости
 
-[Для предложения](https://github.com/aVitomin/runet-censorship-bypass/issues/new?template=feature_request.yml)
+[Для предложения](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new?template=feature_request.yml)
 опишите задачу, которую хотите решить, и ожидаемое поведение.
 Уязвимости отправляйте приватно по [политике безопасности](SECURITY.md).
 
@@ -50,7 +50,7 @@ Check the extension status, your proxy/local service, and whether saved changes
 were applied. Auto follows the selected source and rules; it can use a proxy.
 Firefox requires private-window permission for its browser-wide proxy setting.
 
-[Report a bug](https://github.com/aVitomin/runet-censorship-bypass/issues/new?template=bug_report.yml)
+[Report a bug](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new?template=bug_report.yml)
 with browser/OS/extension versions, installation method, steps and expected/actual
 results. Version 1.0 has a separate sanitized support export; inspect it before
 sharing. Do not attach settings exports, profiles, raw network logs or credentials.

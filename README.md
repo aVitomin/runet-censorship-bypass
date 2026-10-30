@@ -18,6 +18,7 @@
 [Установка](docs/user/INSTALLATION.md) ·
 [Руководство 1.0](docs/user/USER_GUIDE_1_0.md) ·
 [Помощь и сообщения об ошибках](SUPPORT.md) ·
+[Новости](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/105) ·
 [English](#english)
 
 ## Скачать
@@ -36,9 +37,9 @@
 Это оценка по используемым технологиям, а не проверка каждой версии и каждого
 форка. [Требования и проверенные версии](docs/development/BROWSER_COMPATIBILITY.md).
 
-**Ручная установка:** [Chromium ZIP 1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip) ·
-[подписанный Firefox XPI 1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.xpi) ·
-[изменения и файлы v1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1).
+**Ручная установка:** [Chromium ZIP 1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip) ·
+[подписанный Firefox XPI 1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.xpi) ·
+[изменения и файлы v1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/v1.0.1).
 
 ### Быстрый старт
 
@@ -111,14 +112,14 @@
 
 SHA-256: `8bd77fab8e414d2bc092801153fcf731b43bf1581f3588a5ec6cffab9daffdd8`
 
-[Контрольная сумма ZIP](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip.sha256.txt)
+[Контрольная сумма ZIP](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip.sha256.txt)
 
 **Firefox 1.0.1** — `runet-censorship-bypass-firefox-1.0.1-signed.xpi`
 
 SHA-256: `15e49ac406b0788bb35b002df1e81107012ede6093d411000db3565f980b75cb`
 
-[Контрольная сумма XPI](https://github.com/aVitomin/runet-censorship-bypass/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.sha256.txt) ·
-[Выпуск 1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1)
+[Контрольная сумма XPI](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/v1.0.1/runet-censorship-bypass-firefox-1.0.1-signed.sha256.txt) ·
+[Выпуск 1.0.1](https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/v1.0.1)
 
 </details>
 

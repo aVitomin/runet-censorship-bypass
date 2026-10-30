@@ -21,10 +21,10 @@ Chrome also linked the
 
 | Field | URL to retain |
 | --- | --- |
-| Homepage / source | [repository](https://github.com/aVitomin/runet-censorship-bypass) |
-| Support | [issue forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose) |
-| Privacy for the current 1.0 behavior | [privacy notice](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/release/PRIVACY_1_0.md) |
-| Downloads | [installation](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/INSTALLATION.md) |
+| Homepage / source | [repository](https://github.com/aVitomin/runet-censorship-bypass-revived) |
+| Support | [issue forms](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose) |
+| Privacy for the current 1.0 behavior | [privacy notice](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/release/PRIVACY_1_0.md) |
+| Downloads | [installation](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/user/INSTALLATION.md) |
 | Chrome Web Store | [existing item](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) |
 | Firefox Add-ons | [existing item](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) |
 
@@ -40,14 +40,14 @@ The remaining sections are the original dated audit, not a current status report
 
 | Purpose | Canonical link | Observed result |
 | --- | --- | --- |
-| Repository / homepage | [aVitomin/runet-censorship-bypass](https://github.com/aVitomin/runet-censorship-bypass) | HTTP 200, correct repository. |
-| Published documentation index | [docs on main](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/README.md) | HTTP 200, correct path. |
-| Unreleased workflow guide | [1.0 preparation](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/development/UPCOMING_1_0_USER_GUIDE.md) | HTTP 200; explicitly not a published release. |
-| Ordinary support | [issue forms](https://github.com/aVitomin/runet-censorship-bypass/issues/new/choose) | HTTP 200 after expected GitHub sign-in redirect. |
-| Contact-only fallback | [bug-report form](https://github.com/aVitomin/runet-censorship-bypass/issues/new?template=bug_report.yml) | HTTP 200 after expected sign-in redirect; use SECURITY.md instructions, no secrets. |
-| Published-release privacy | [privacy/security](https://github.com/aVitomin/runet-censorship-bypass/blob/main/docs/user/PRIVACY_AND_SECURITY.md) | HTTP 200; describes published 0.0.4.0, not the complete unreleased transfer workflow. |
-| Security policy | [SECURITY.md](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SECURITY.md) | HTTP 200. |
-| Private vulnerability reports | [private report form](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new) | HTTP 200 after expected sign-in redirect. GitHub's repository API separately reports private vulnerability reporting enabled. |
+| Repository / homepage | [aVitomin/runet-censorship-bypass-revived](https://github.com/aVitomin/runet-censorship-bypass-revived) | HTTP 200, correct repository. |
+| Published documentation index | [docs on main](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/README.md) | HTTP 200, correct path. |
+| Unreleased workflow guide | [1.0 preparation](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/development/UPCOMING_1_0_USER_GUIDE.md) | HTTP 200; explicitly not a published release. |
+| Ordinary support | [issue forms](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new/choose) | HTTP 200 after expected GitHub sign-in redirect. |
+| Contact-only fallback | [bug-report form](https://github.com/aVitomin/runet-censorship-bypass-revived/issues/new?template=bug_report.yml) | HTTP 200 after expected sign-in redirect; use SECURITY.md instructions, no secrets. |
+| Published-release privacy | [privacy/security](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/docs/user/PRIVACY_AND_SECURITY.md) | HTTP 200; describes published 0.0.4.0, not the complete unreleased transfer workflow. |
+| Security policy | [SECURITY.md](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SECURITY.md) | HTTP 200. |
+| Private vulnerability reports | [private report form](https://github.com/aVitomin/runet-censorship-bypass-revived/security/advisories/new) | HTTP 200 after expected sign-in redirect. GitHub's repository API separately reports private vulnerability reporting enabled. |
 
 Reachability of a sign-in page is not a claim that a form was submitted or
 fully exercised while authenticated. No issues/advisories were created.

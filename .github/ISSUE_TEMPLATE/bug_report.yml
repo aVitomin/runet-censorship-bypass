@@ -7,8 +7,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Сначала проверьте [раздел помощи](https://github.com/aVitomin/runet-censorship-bypass/blob/main/SUPPORT.md) и похожие обращения.
-        Об уязвимостях сообщайте [приватно](https://github.com/aVitomin/runet-censorship-bypass/security/advisories/new).
+        Сначала проверьте [раздел помощи](https://github.com/aVitomin/runet-censorship-bypass-revived/blob/main/SUPPORT.md) и похожие обращения.
+        Об уязвимостях сообщайте [приватно](https://github.com/aVitomin/runet-censorship-bypass-revived/security/advisories/new).
         Не прикладывайте экспорт настроек, профили, HAR/NetLog, пароли или частные адреса.
   - type: input
     id: environment

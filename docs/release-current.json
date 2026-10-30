@@ -1,7 +1,7 @@
 {
   "versionName": "1.0.1",
   "tag": "v1.0.1",
-  "releaseUrl": "https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1",
+  "releaseUrl": "https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/v1.0.1",
   "targetCommit": "4b9a9b31d19677d6ed8fb1399503b24023a51c02",
   "prerelease": false,
   "publishedAt": "2026-10-29T13:45:23Z",
@@ -11,7 +11,7 @@
   "checksumFilename": "runet-censorship-bypass-mv3-1.0.1-4b9a9b3.zip.sha256.txt",
   "firefoxVersionName": "1.0.1",
   "firefoxTag": "v1.0.1",
-  "firefoxReleaseUrl": "https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1",
+  "firefoxReleaseUrl": "https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/v1.0.1",
   "firefoxXpiFilename": "runet-censorship-bypass-firefox-1.0.1-signed.xpi",
   "firefoxXpiSize": 3829305,
   "firefoxXpiSha256": "15e49ac406b0788bb35b002df1e81107012ede6093d411000db3565f980b75cb",

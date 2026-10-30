@@ -473,7 +473,7 @@ if (fs.existsSync(readmePath)) {
       if (Number.isNaN(Date.parse(release.publishedAt ?? ''))) {
         addError(releaseMetadataPath, 1, release.publishedAt, 'publishedAt must be a valid timestamp');
       }
-      const expectedReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass/releases/tag/${release.tag}`;
+      const expectedReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/${release.tag}`;
       if (release.releaseUrl !== expectedReleaseUrl) {
         addError(releaseMetadataPath, 1, release.releaseUrl, `releaseUrl must be ${expectedReleaseUrl}`);
       }
@@ -493,12 +493,12 @@ if (fs.existsSync(readmePath)) {
       if (firefoxTag !== `v${firefoxVersionName}`) {
         addError(releaseMetadataPath, 1, firefoxTag, 'Firefox tag must equal v + firefoxVersionName');
       }
-      const expectedFirefoxReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass/releases/tag/${firefoxTag}`;
+      const expectedFirefoxReleaseUrl = `https://github.com/aVitomin/runet-censorship-bypass-revived/releases/tag/${firefoxTag}`;
       if (firefoxReleaseUrl !== expectedFirefoxReleaseUrl) {
         addError(releaseMetadataPath, 1, firefoxReleaseUrl, `firefoxReleaseUrl must be ${expectedFirefoxReleaseUrl}`);
       }
-      const expectedAssetBase = `https://github.com/aVitomin/runet-censorship-bypass/releases/download/${release.tag}`;
-      const expectedFirefoxAssetBase = `https://github.com/aVitomin/runet-censorship-bypass/releases/download/${firefoxTag}`;
+      const expectedAssetBase = `https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/${release.tag}`;
+      const expectedFirefoxAssetBase = `https://github.com/aVitomin/runet-censorship-bypass-revived/releases/download/${firefoxTag}`;
       for (const assetUrl of [
         `${expectedAssetBase}/${release.zipFilename}`,
         `${expectedAssetBase}/${release.checksumFilename}`,
