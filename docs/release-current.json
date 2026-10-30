@@ -18,5 +18,7 @@
   "firefoxChecksumFilename": "runet-censorship-bypass-firefox-1.0.1-signed.sha256.txt",
   "chromeWebStoreUrl": "https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph",
   "firefoxAddonsUrl": "https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/",
-  "storeAvailabilityCheckedAt": "2026-10-29"
+  "storeAvailabilityCheckedAt": "2026-10-30",
+  "chromeWebStoreVersion": "1.0.1",
+  "firefoxAddonsVersion": "1.0.1"
 }

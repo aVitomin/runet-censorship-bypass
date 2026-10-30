@@ -1,8 +1,8 @@
 # Store publication checklist — 1.0.x
 
 **Publication checklist.** Firefox Add-ons and locally installed desktop packages
-can ship independently of Chrome Web Store. Chrome Web Store preparation now
-proceeds in parallel; its review does not block those channels. This document grants no permission to bump
+can ship independently of Chrome Web Store. Store submissions may proceed in parallel; review in one store does not block
+the other channels. This document grants no permission to bump
 versions, sign, tag, create releases, upload or submit store packages. Obtain
 separate maintainer authorization for those actions.
 
@@ -15,9 +15,9 @@ version separately for each browser.
 
 ## Current channel status
 
-Last confirmed on 2026-10-29; this is not a live store-status feed.
+Last confirmed on 2026-10-30; this is not a live store-status feed.
 
-- [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph): published **1.0.0**; the developer dashboard shows **1.0.1** awaiting review. Publication is not a general PAC-policy exception for future changes.
+- [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph): public **1.0.1**, Revived name, updated October 30, 2026; the published manifest declares Chromium **108+**. Publication is not a general PAC-policy exception for future changes.
 - [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/): public **1.0.1**, desktop Firefox **140+**, Revived name in English and Russian. Mozilla file **5182456** is public.
 - [GitHub Release v1.0.1](https://github.com/aVitomin/runet-censorship-bypass/releases/tag/v1.0.1): Chromium ZIP and Mozilla-signed Firefox XPI, each with a checksum. The source tag and existing Chromium assets are unchanged.
 - The signed Firefox payload matches the canonical candidate: 77 files byte for byte, plus a semantically identical manifest with changed formatting and Mozilla signature files. Permanent installation, signature acceptance, options loading and persistence after restart passed in a clean Windows Firefox 159.0 profile. This does not assert installation through the store UI or Linux QA.

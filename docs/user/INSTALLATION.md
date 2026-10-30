@@ -1,14 +1,13 @@
 # Установка, обновление и удаление
 
-**Доступны:** Firefox 1.0.1 в Mozilla Add-ons и как подписанный XPI;
-Chromium 1.0.1 для ручной установки. Chrome Web Store пока распространяет
-1.0.0; обновление 1.0.1 ожидает проверки.
+**Версия 1.0.1 доступна в обоих магазинах.** Для ручной установки также
+доступны Chromium ZIP и подписанный Mozilla Firefox XPI.
 
 ## Установить из магазина
 
 | Браузер | Версия | Где установить |
 | --- | --- | --- |
-| Chrome, Brave и совместимые Chromium-браузеры | **1.0.0** | [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) |
+| Chrome, Brave и совместимые Chromium-браузеры | **1.0.1** | [Chrome Web Store](https://chromewebstore.google.com/detail/poohkdbmgajmcifcaijdjgiihghlgbph) |
 | Firefox **140+** | **1.0.1** | [Firefox Add-ons](https://addons.mozilla.org/ru/firefox/addon/runet-censorship-bypass-mv3/) |
 
 1. Откройте магазин в нужном браузере, нажмите кнопку установки и подтвердите разрешения.
@@ -22,10 +21,6 @@ Chromium 1.0.1 для ручной установки. Chrome Web Store пока
 Если установка ограничена политикой организации, обратитесь к администратору.
 
 ## Требования
-
-Опубликованный Firefox **1.0.1** требует **140.0+**, включая ESR на подходящей
-базе. У магазинного Chromium 1.0.0 отдельный минимум не задан;
-у опубликованного ZIP **1.0.1 — Chromium 108+**.
 
 В манифестах **1.0.1** установлены расчётные минимумы:
 **Chromium 108+** и **Firefox 140+**, включая ESR на подходящей базе.
